@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/__/auth/:path*",
+      "destination": "https://va-car-demo.firebaseapp.com/__/auth/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

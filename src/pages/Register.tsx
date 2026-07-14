@@ -46,14 +46,15 @@ export default function Register() {
     }
   };
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleLogin = () => {
     setErrorMsg("");
-    try {
-      await loginWithGoogle();
-      navigate("/account");
-    } catch (err: any) {
-      setErrorMsg(err.message || "Google Authentication failed.");
-    }
+    loginWithGoogle()
+      .then(() => {
+        navigate("/account");
+      })
+      .catch((err: any) => {
+        setErrorMsg(err.message || "Google Authentication failed.");
+      });
   };
 
   return (

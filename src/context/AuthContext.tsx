@@ -220,15 +220,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const loginWithGoogle = async () => {
+  const loginWithGoogle = () => {
+    const authPromise = loginWithGoogleOAuth();
     setLoading(true);
-    try {
-      const googleUser = await loginWithGoogleOAuth();
-      setUser(googleUser);
-      await fetchUserProfile(googleUser.uid, googleUser.displayName, googleUser.email);
-    } finally {
-      setLoading(false);
-    }
+    return authPromise
+      .then(async (googleUser) => {
+        setUser(googleUser);
+        await fetchUserProfile(googleUser.uid, googleUser.displayName, googleUser.email);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   };
 
   const logout = async () => {
