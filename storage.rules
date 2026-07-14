@@ -1,0 +1,77 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Limit files to 5MB
+    function isLessThan5MB() {
+      return request.resource.size < 5 * 1024 * 1024;
+    }
+
+    // Validate image format
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    // Validate PDF format (for resumes, invoices)
+    function isPDF() {
+      return request.resource.contentType == 'application/pdf';
+    }
+
+    // Users Folder
+    match /users/{userId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId) && isLessThan5MB() && isImage();
+    }
+
+    // Employees Folder
+    match /employees/{employeeId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if (isOwner(employeeId) || request.auth.token.role == 'admin') && isLessThan5MB() && isImage();
+    }
+
+    // Vehicles Folder
+    match /vehicles/{vehicleId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isLessThan5MB() && isImage();
+    }
+
+    // Resumes Folder
+    match /resumes/{resumeId}/{allPaths=**} {
+      allow create: if isLessThan5MB() && (isPDF() || isImage());
+      allow read: if isAuthenticated() && (request.auth.token.role == 'admin' || request.auth.token.role == 'super_admin');
+      allow write, delete: if isAuthenticated() && (request.auth.token.role == 'admin' || request.auth.token.role == 'super_admin');
+    }
+
+    // Gallery Folder
+    match /gallery/{imageId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAuthenticated() && (request.auth.token.role == 'admin' || request.auth.token.role == 'super_admin') && isLessThan5MB() && isImage();
+    }
+
+    // Documents Folder
+    match /documents/{docId}/{allPaths=**} {
+      allow read, write: if isAuthenticated() && (request.auth.token.role == 'admin' || request.auth.token.role == 'super_admin');
+    }
+
+    // Invoices Folder
+    match /invoices/{invoiceId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (request.auth.token.role == 'admin' || request.auth.token.role == 'super_admin') && isLessThan5MB() && isPDF();
+    }
+
+    // Reviews Folder
+    match /reviews/{reviewId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAuthenticated() && isLessThan5MB() && isImage();
+    }
+  }
+}

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <!-- Background gradient representing modern luxury look -->
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A" />
+      <stop offset="100%" stop-color="#0D3B8E" />
+    </linearGradient>
+    <linearGradient id="glowGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0D3B8E" />
+      <stop offset="100%" stop-color="#F4B400" />
+    </linearGradient>
+  </defs>
+
+  <!-- Solid rounded base -->
+  <rect width="512" height="512" rx="128" fill="url(#bgGrad)" />
+
+  <!-- Outer ambient glowing circle -->
+  <circle cx="256" cy="256" r="210" fill="none" stroke="url(#glowGrad)" stroke-width="8" opacity="0.4" />
+
+  <!-- Stylized Clean Car Silhouette -->
+  <path d="M130 290 C130 290, 160 210, 210 200 C240 194, 280 194, 310 200 C360 210, 390 290, 390 290 C405 290, 420 300, 420 315 C420 330, 410 345, 390 345 L130 345 C110 345, 100 330, 100 315 C100 300, 115 290, 130 290 Z" fill="#FFFFFF" />
+  
+  <!-- Car Windshield Cutout -->
+  <path d="M215 212 C215 212, 235 210, 256 210 C277 210, 297 212, 297 212 C297 212, 315 255, 325 280 L187 280 C197 255, 215 212, 215 212 Z" fill="#0D3B8E" opacity="0.8" />
+
+  <!-- Sparkling / Cleaning Accents (Luxury Sparkles) -->
+  <g transform="translate(360, 160) scale(1.2)">
+    <path d="M0 -20 Q0 0 20 0 Q0 0 0 20 Q0 0 -20 0 Q0 0 0 -20 Z" fill="#F4B400" />
+  </g>
+  <g transform="translate(140, 160) scale(0.8)">
+    <path d="M0 -20 Q0 0 20 0 Q0 0 0 20 Q0 0 -20 0 Q0 0 0 -20 Z" fill="#F4B400" opacity="0.9" />
+  </g>
+  <g transform="translate(256, 120) scale(0.6)">
+    <path d="M0 -20 Q0 0 20 0 Q0 0 0 20 Q0 0 -20 0 Q0 0 0 -20 Z" fill="#FFFFFF" />
+  </g>
+</svg>

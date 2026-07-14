@@ -1,0 +1,142 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Read user role from user document
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function hasRole(role) {
+      return isAuthenticated() && 
+        resource != null && 
+        getUserData().role == role;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (getUserData().role == 'admin' || getUserData().role == 'super_admin');
+    }
+
+    function isEmployee() {
+      return isAuthenticated() && getUserData().role == 'staff';
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+      
+      // Saved Addresses Subcollection
+      match /addresses/{addressId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+    }
+
+    // Bookings Collection
+    match /bookings/{bookingId} {
+      allow create: if isAuthenticated();
+      allow read: if isAdmin() 
+        || (isAuthenticated() && resource.data.customerId == request.auth.uid)
+        || (isEmployee() && resource.data.assignedEmployee == request.auth.uid);
+      allow update: if isAdmin()
+        || (isEmployee() && resource.data.assignedEmployee == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'updatedBy']))
+        || (isAuthenticated() && resource.data.customerId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'isDeleted', 'updatedAt', 'updatedBy']));
+      allow delete: if isAdmin();
+    }
+
+    // Vehicles Collection
+    match /vehicles/{vehicleId} {
+      allow create: if isAuthenticated();
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+      allow update: if isAdmin() || (isAuthenticated() && resource.data.customerId == request.auth.uid && request.resource.data.customerId == resource.data.customerId);
+      allow delete: if isAdmin() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+    }
+
+    // Services Collection
+    match /services/{serviceId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Employees Collection
+    match /employees/{employeeId} {
+      allow read: if isAdmin() || isOwner(employeeId);
+      allow write: if isAdmin() || (isOwner(employeeId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['availability', 'attendance', 'updatedAt']));
+    }
+
+    // Job Applications
+    match /job_applications/{appId} {
+      allow create: if true; // Public applies
+      allow read, write: if isAdmin();
+    }
+
+    // Payments Collection
+    match /payments/{paymentId} {
+      allow create: if isAuthenticated();
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+
+    // Reviews Collection
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update: if isAdmin() || (isAuthenticated() && resource.data.customerId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stars', 'review', 'images', 'updatedAt']));
+      allow delete: if isAdmin();
+    }
+
+    // Notifications Collection
+    match /notifications/{notifId} {
+      allow read: if isAuthenticated() && resource.data.user == request.auth.uid;
+      allow create: if isAdmin() || isAuthenticated(); // system triggered
+      allow update: if isAuthenticated() && resource.data.user == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'pinned', 'archived', 'updatedAt']);
+      allow delete: if isAdmin() || (isAuthenticated() && resource.data.user == request.auth.uid);
+    }
+
+    // Coupons Collection
+    match /coupons/{couponId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Contact Messages
+    match /contact_messages/{msgId} {
+      allow create: if true;
+      allow read, write: if isAdmin();
+    }
+
+    // Gallery
+    match /gallery/{imageId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // FAQs
+    match /faqs/{faqId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Settings
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Audit Logs
+    match /audit_logs/{logId} {
+      allow create: if isAuthenticated();
+      allow read: if isAdmin();
+      allow update, delete: if false; // Audit logs should never be modified or deleted!
+    }
+  }
+}

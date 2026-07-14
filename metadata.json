@@ -1,0 +1,6 @@
+{
+  "name": "VA Car Cleaning Service",
+  "description": "Premium professional car cleaning and detailing service at your doorstep. Professional exterior wash, deep interior vacuuming, dashboard polishing, and high-end vehicle detailing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
