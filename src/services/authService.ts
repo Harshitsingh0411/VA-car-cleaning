@@ -71,18 +71,26 @@ export const registerWithEmailAndPassword = async (email: string, pass: string, 
 };
 
 // 3. Google OAuth Login
-export const loginWithGoogleOAuth = async (): Promise<any> => {
+export const loginWithGoogleOAuth = (): Promise<any> => {
   if (isFirebaseConfigured) {
     try {
-      const credential = await signInWithPopup(auth, googleProvider);
-      await logLoginSession(credential.user);
-      return credential.user;
+      const authPromise = signInWithPopup(auth, googleProvider);
+      return authPromise.then(async (credential) => {
+        await logLoginSession(credential.user);
+        return credential.user;
+      }).catch(async (error: any) => {
+        if (error.code === 'auth/popup-blocked' || error.message?.includes('popup')) {
+          console.warn("Popup blocked by browser. Falling back to signInWithRedirect...");
+          await signInWithRedirect(auth, googleProvider);
+          return new Promise(() => {}); // never resolves
+        }
+        throw error;
+      });
     } catch (error: any) {
       if (error.code === 'auth/popup-blocked' || error.message?.includes('popup')) {
         console.warn("Popup blocked by browser. Falling back to signInWithRedirect...");
-        await signInWithRedirect(auth, googleProvider);
-        // Return a promise that never resolves since page is redirecting
-        return new Promise(() => {});
+        signInWithRedirect(auth, googleProvider);
+        return new Promise(() => {}); // never resolves
       }
       throw error;
     }
@@ -96,8 +104,7 @@ export const loginWithGoogleOAuth = async (): Promise<any> => {
     };
     localStorage.setItem("sim_auth_user", JSON.stringify(googleUser));
     auth.currentUser = googleUser;
-    await logLoginSession(googleUser);
-    return googleUser;
+    return logLoginSession(googleUser).then(() => googleUser);
   }
 };
 
