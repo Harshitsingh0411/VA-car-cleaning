@@ -6,7 +6,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { useAuth } from "../context/AuthContext";
 import { servicePrices } from "../lib/prices";
-import { createBooking } from "../services/dbService";
+import { createBooking, getAllServices, dbService } from "../services/dbService";
 
 interface BookingInputs {
   name: string;
@@ -28,6 +28,11 @@ export default function BookPage() {
   const [step, setStep] = useState(1);
   const [isBooked, setIsBooked] = useState(false);
   const [bookedDetails, setBookedDetails] = useState<any>(null);
+  const [services, setServices] = useState<dbService[]>([]);
+
+  useEffect(() => {
+    getAllServices().then(setServices).catch(console.error);
+  }, []);
 
   // Read service package query parameter (default to 'foam')
   const queryService = searchParams.get("service") || "foam";
@@ -62,27 +67,13 @@ export default function BookPage() {
     }
   }, [user, profile, setValue]);
 
-  // Lookup service details from central prices config
-  const getServiceInfo = (key: string) => {
-    switch (key) {
-      case "exterior":
-        return { name: "Exterior Wash", price: servicePrices.exteriorWash.formatted };
-      case "interior":
-        return { name: "Interior Cleaning", price: servicePrices.interiorCleaning.formatted };
-      case "foam":
-        return { name: "Foam Wash", price: servicePrices.foamWash.formatted };
-      case "wax":
-        return { name: "Wax Polish", price: servicePrices.waxPolish.formatted };
-      case "dashboard":
-        return { name: "Dashboard Cleaning", price: servicePrices.dashboardCleaning.formatted };
-      case "tyre":
-        return { name: "Tyre Dressing", price: servicePrices.tyreDressing.formatted };
-      default:
-        return { name: "Premium Detailing", price: servicePrices.premiumDetailing.formatted };
-    }
+  // Lookup service details from dynamic services list
+  const matchedService = services.find(s => s.id === selectedServiceKey);
+  const serviceInfo = {
+    name: matchedService ? matchedService.name : "Premium Detailing",
+    price: matchedService ? `₹${matchedService.price}` : "₹1999",
+    rawPrice: matchedService ? matchedService.price : 1999
   };
-
-  const serviceInfo = getServiceInfo(selectedServiceKey);
 
   const nextStep = async () => {
     let fields: Array<keyof BookingInputs> = [];
@@ -108,11 +99,12 @@ export default function BookPage() {
       finalVehicle = `${data.customVehicleName} (${data.customVehicleNumber})`;
     }
 
-    const sInfo = getServiceInfo(data.serviceType);
+    const matchedServiceSubmit = services.find(s => s.id === data.serviceType);
+    const serviceName = matchedServiceSubmit ? matchedServiceSubmit.name : data.serviceType;
+    const servicePrice = matchedServiceSubmit ? matchedServiceSubmit.price : 0;
 
     // Save to user appointment history & centralized bookings db
     if (user) {
-      const bookingPrice = Number(sInfo.price.replace(/[^\d]/g, "")) || 0;
       await createBooking({
         customerId: user.uid,
         customerName: data.name,
@@ -120,22 +112,22 @@ export default function BookPage() {
         vehicleId: data.vehicleSelect || "custom",
         vehicleDetails: finalVehicle,
         serviceId: data.serviceType,
-        serviceName: sInfo.name,
+        serviceName: serviceName,
         scheduledDate: data.bookingDate,
         timeSlot: data.bookingTime,
-        price: bookingPrice,
+        price: servicePrice,
         notes: data.notes,
         address: data.address
       });
-      await addAppointment(sInfo.name, finalVehicle, data.bookingDate, data.bookingTime, sInfo.price);
+      await addAppointment(serviceName, finalVehicle, data.bookingDate, data.bookingTime, `₹${servicePrice}`);
     }
 
     setBookedDetails({
-      service: sInfo.name,
+      service: serviceName,
       vehicle: finalVehicle,
       date: data.bookingDate,
       time: data.bookingTime,
-      price: sInfo.price,
+      price: `₹${servicePrice}`,
       address: data.address
     });
     setIsBooked(true);
@@ -278,13 +270,9 @@ export default function BookPage() {
                           {...register("serviceType", { required: "Service is required" })}
                           className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3.5 px-4 font-semibold text-dark text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition-all appearance-none cursor-pointer"
                         >
-                          <option value="exterior">Exterior Wash - {servicePrices.exteriorWash.formatted}</option>
-                          <option value="interior">Interior Cleaning - {servicePrices.interiorCleaning.formatted}</option>
-                          <option value="foam">Foam Wash - {servicePrices.foamWash.formatted}</option>
-                          <option value="wax">Wax Polish - {servicePrices.waxPolish.formatted}</option>
-                          <option value="dashboard">Dashboard Cleaning - {servicePrices.dashboardCleaning.formatted}</option>
-                          <option value="tyre">Tyre Dressing - {servicePrices.tyreDressing.formatted}</option>
-                          <option value="premium">Premium Detailing - {servicePrices.premiumDetailing.formatted}</option>
+                          {services.map(s => (
+                            <option key={s.id} value={s.id}>{s.name} - ₹{s.price}</option>
+                          ))}
                         </select>
                       </div>
 

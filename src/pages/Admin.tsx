@@ -16,7 +16,11 @@ import {
   createOrUpdateEmployee,
   deleteEmployeeProfile,
   getAllEmployees,
-  updateEmployeeProfile
+  updateEmployeeProfile,
+  getAllServices,
+  createOrUpdateService,
+  deleteServiceProfile,
+  dbService
 } from "../services/dbService";
 import NotificationCenterTab from "../components/admin/NotificationCenterTab";
 import {
@@ -129,6 +133,17 @@ export default function Admin() {
   const [assignArrivalDate, setAssignArrivalDate] = useState("");
   const [assignArrivalTime, setAssignArrivalTime] = useState("");
   const [viewingBookingDetails, setViewingBookingDetails] = useState<AdminAppointment | null>(null);
+
+  // Custom dynamic services state
+  const [servicesList, setServicesList] = useState<dbService[]>([]);
+  const [editingService, setEditingService] = useState<dbService | null>(null);
+  const [isAddingService, setIsAddingService] = useState(false);
+
+  const [serviceFormId, setServiceFormId] = useState("");
+  const [serviceFormName, setServiceFormName] = useState("");
+  const [serviceFormPrice, setServiceFormPrice] = useState(0);
+  const [serviceFormImage, setServiceFormImage] = useState("");
+  const [serviceFormDesc, setServiceFormDesc] = useState("");
 
   // Service form bindings
   const [servicePriceInputs, setServicePriceInputs] = useState<Record<string, number>>({});
@@ -387,6 +402,9 @@ export default function Admin() {
     if (activeTab === "staff") {
       fetchAdminEmployees();
     }
+    if (activeTab === "services") {
+      fetchServicesList();
+    }
   }, [activeTab]);
 
   // Initialize structures
@@ -405,6 +423,9 @@ export default function Admin() {
 
     // 5. Staff Directory Setup
     fetchAdminEmployees();
+
+    // 6. Custom Services Setup
+    fetchServicesList();
 
     // Load price, image and description inputs
     const loadedPrices: Record<string, number> = {};
@@ -540,6 +561,84 @@ export default function Admin() {
     setTimeout(() => {
       setShowConfigAlert(false);
     }, 3000);
+  };
+
+  const fetchServicesList = async () => {
+    try {
+      const data = await getAllServices();
+      setServicesList(data);
+    } catch (err) {
+      console.error("Failed to load services list:", err);
+    }
+  };
+
+  const handleCreateOrUpdateService = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!serviceFormId || !serviceFormName || serviceFormPrice <= 0) {
+      alert("Please fill in all required service details!");
+      return;
+    }
+
+    try {
+      await createOrUpdateService({
+        id: serviceFormId.trim().toLowerCase().replace(/\s+/g, "-"),
+        name: serviceFormName,
+        price: Number(serviceFormPrice),
+        image: serviceFormImage || "https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&q=80&w=600",
+        description: serviceFormDesc,
+        isCustom: editingService ? editingService.isCustom : true
+      });
+      
+      alert("Service saved successfully!");
+      setIsAddingService(false);
+      setEditingService(null);
+      
+      // Reset form states
+      setServiceFormId("");
+      setServiceFormName("");
+      setServiceFormPrice(0);
+      setServiceFormImage("");
+      setServiceFormDesc("");
+
+      fetchServicesList();
+    } catch (err) {
+      console.error("Failed to save service:", err);
+      alert("Error saving service.");
+    }
+  };
+
+  const handleDeleteService = async (id: string) => {
+    if (!window.confirm("Are you sure you want to remove this service? This will delete it from the website homepage and booking panels.")) {
+      return;
+    }
+    try {
+      await deleteServiceProfile(id);
+      alert("Service deleted successfully!");
+      fetchServicesList();
+    } catch (err) {
+      console.error("Failed to delete service:", err);
+      alert("Error deleting service.");
+    }
+  };
+
+  const openAddServiceModal = () => {
+    setEditingService(null);
+    setServiceFormId("");
+    setServiceFormName("");
+    setServiceFormPrice(0);
+    setServiceFormImage("");
+    setServiceFormDesc("");
+    setIsAddingService(true);
+  };
+
+  const openEditServiceModal = (s: dbService) => {
+    setEditingService(s);
+    setServiceFormId(s.id);
+    setServiceFormName(s.name);
+    setServiceFormPrice(s.price);
+    setServiceFormImage(s.image);
+    setServiceFormDesc(s.description);
+    setIsAddingService(true);
   };
 
   // Calculated Stats Metrics
@@ -1022,151 +1121,140 @@ export default function Admin() {
 
           {/* PRICING & SHOWCASE PANEL */}
           {activeTab === "services" && (
-            <form onSubmit={saveServiceConfig} className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm space-y-6">
-              <div className="flex justify-between items-center">
-                <h3 className="font-heading font-extrabold text-dark text-lg">Services, Prices & Image URLs</h3>
-                {profile?.role !== "staff" && (
-                  <button
-                    type="submit"
-                    className="bg-primary hover:bg-[#0b327b] text-white font-bold py-2.5 px-6 rounded-2xl text-xs uppercase tracking-wider shadow cursor-pointer"
-                  >
-                    Save Global Config
-                  </button>
-                )}
-              </div>
-
-              {profile?.role === "staff" && (
-                <div className="p-4 bg-amber-50 border border-amber-100 text-amber-600 rounded-2xl text-xs font-bold flex items-center gap-2">
-                  <Info size={16} />
-                  <span>Read-Only: Detailing service pricing and showcase configs can only be modified by Super Admins.</span>
-                </div>
-              )}
-
-              {showConfigAlert && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="p-4 bg-emerald-50 border border-emerald-100 text-emerald-600 rounded-2xl text-xs font-bold flex items-center gap-2"
-                >
-                  <Sparkles size={16} />
-                  <span>Config Saved Globally! All homepage prices and image cards are immediately updated.</span>
-                </motion.div>
-              )}
-
-              <div className="space-y-6">
-                {[
-                  { label: "Exterior Wash", key: "exterior", priceKey: "exteriorWash" },
-                  { label: "Interior Cleaning", key: "interior", priceKey: "interiorCleaning" },
-                  { label: "Foam Wash", key: "foam", priceKey: "foamWash" },
-                  { label: "Wax Polish", key: "wax", priceKey: "waxPolish" },
-                  { label: "Dashboard Cleaning", key: "dashboard", priceKey: "dashboardCleaning" },
-                  { label: "Tyre Dressing", key: "tyre", priceKey: "tyreDressing" }
-                ].map((s) => (
-                  <div key={s.key} className="p-5 border border-gray-100 rounded-2xl space-y-4">
-                    <h4 className="font-heading font-extrabold text-dark text-sm border-b border-gray-100 pb-2">{s.label}</h4>
-
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                      {/* Price input */}
-                      <div className="md:col-span-3 space-y-1.5">
-                        <label className="text-[9px] font-bold text-gray-400 uppercase">Base Price (₹)</label>
-                        <div className="relative">
-                          <input
-                            type="number"
-                            required
-                            disabled={profile?.role === "staff"}
-                            value={servicePriceInputs[s.priceKey] || ""}
-                            onChange={(e) => setServicePriceInputs({ ...servicePriceInputs, [s.priceKey]: Number(e.target.value) })}
-                            className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 pl-7 pr-3 text-xs font-semibold text-dark focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60"
-                          />
-                          <span className="absolute left-3 top-[50%] -translate-y-1/2 text-gray-400 font-bold text-xs">₹</span>
-                        </div>
-                      </div>
-
-                      {/* Image input */}
-                      <div className="md:col-span-9 space-y-1.5">
-                        <label className="text-[9px] font-bold text-gray-400 uppercase">Showcase Image URL</label>
-                        <div className="relative">
-                          <input
-                            type="url"
-                            required
-                            disabled={profile?.role === "staff"}
-                            value={serviceImageInputs[s.key] || ""}
-                            onChange={(e) => setServiceImageInputs({ ...serviceImageInputs, [s.key]: e.target.value })}
-                            className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 pl-8 pr-3 text-xs font-mono text-dark focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60"
-                          />
-                          <Image size={14} className="absolute left-3 top-[50%] -translate-y-1/2 text-gray-400" />
-                        </div>
-                      </div>
-
-                      {/* Description input */}
-                      <div className="md:col-span-12 space-y-1.5">
-                        <label className="text-[9px] font-bold text-gray-400 uppercase">Card Description</label>
-                        <input
-                          type="text"
-                          required
-                          disabled={profile?.role === "staff"}
-                          value={serviceDescInputs[s.key] || ""}
-                          onChange={(e) => setServiceDescInputs({ ...serviceDescInputs, [s.key]: e.target.value })}
-                          className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3.5 text-xs font-semibold text-dark focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60"
-                        />
-                      </div>
-                    </div>
+            <div className="space-y-6">
+              {/* Dynamic Services Management Block */}
+              <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm space-y-6">
+                <div className="flex justify-between items-center text-left">
+                  <div>
+                    <h3 className="font-heading font-extrabold text-dark text-lg">Services Pricing & Catalog</h3>
+                    <p className="text-gray-400 text-xs mt-1">Add, update, or remove doorstep detailing services and package rates.</p>
                   </div>
-                ))}
+                  {profile?.role !== "staff" && (
+                    <button
+                      onClick={openAddServiceModal}
+                      className="bg-primary hover:bg-[#0b327b] text-white font-bold py-2.5 px-6 rounded-2xl text-xs uppercase tracking-wider shadow cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Plus size={14} />
+                      Add Service
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+                  {servicesList.map((s) => (
+                    <div key={s.id} className="border border-gray-100 rounded-2xl p-5 flex flex-col justify-between space-y-4 hover:shadow-md transition-shadow relative bg-white">
+                      <div className="flex gap-4">
+                        <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 shrink-0">
+                          <img src={s.image} alt={s.name} className="w-full h-full object-cover" />
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-heading font-bold text-dark text-sm">{s.name}</h4>
+                            {s.isCustom && (
+                              <span className="text-[9px] font-bold text-primary bg-primary/10 py-0.5 px-2 rounded-full uppercase">
+                                Custom
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-gray-400 text-[11px] leading-relaxed line-clamp-2">{s.description}</p>
+                          <span className="font-black text-dark text-xs block pt-1">₹{s.price}</span>
+                        </div>
+                      </div>
+
+                      {profile?.role !== "staff" && (
+                        <div className="flex justify-end gap-2 pt-2 border-t border-gray-50">
+                          <button
+                            onClick={() => openEditServiceModal(s)}
+                            className="bg-gray-50 hover:bg-gray-100 text-gray-600 font-bold py-1.5 px-4 rounded-xl text-xs cursor-pointer"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteService(s.id)}
+                            className="bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold py-1.5 px-4 rounded-xl text-xs cursor-pointer"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {/* BEFORE & AFTER PHOTO COMPARISON OVERRIDES */}
-              <div className="p-5 border border-gray-100 rounded-2xl space-y-4 bg-[#F8FAFC]/50">
-                <h4 className="font-heading font-extrabold text-dark text-sm border-b border-gray-100 pb-2 flex items-center gap-2">
-                  <Sparkles size={16} className="text-[#F4B400]" />
-                  Before & After Comparison Slider Config
-                </h4>
-                <div className="grid grid-cols-1 gap-4">
-                  {/* Checkbox to choose whether to use separate images */}
-                  <div className="flex items-center gap-2 pb-2">
-                    <input
-                      type="checkbox"
-                      id="useSeparateImages"
-                      disabled={profile?.role === "staff"}
-                      checked={beforeAfterInputs.useSeparateImages}
-                      onChange={(e) => setBeforeAfterInputs({ ...beforeAfterInputs, useSeparateImages: e.target.checked })}
-                      className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary cursor-pointer"
-                    />
-                    <label htmlFor="useSeparateImages" className="text-xs font-bold text-gray-600 cursor-pointer select-none">
-                      Use separate before/after photos (if unchecked, CSS dirty-car filter is applied to the after photo)
-                    </label>
-                  </div>
+              <form onSubmit={saveServiceConfig} className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm space-y-6">
+                <div className="flex justify-between items-center">
+                  <h3 className="font-heading font-extrabold text-dark text-lg">Before & After Slider Config</h3>
+                  {profile?.role !== "staff" && (
+                    <button
+                      type="submit"
+                      className="bg-primary hover:bg-[#0b327b] text-white font-bold py-2.5 px-6 rounded-2xl text-xs uppercase tracking-wider shadow cursor-pointer"
+                    >
+                      Save Slider Config
+                    </button>
+                  )}
+                </div>
 
-                  {/* After image input */}
-                  <div className="space-y-1.5">
-                    <label className="text-[9px] font-bold text-gray-400 uppercase">After Image (or Main Comparison Image) URL</label>
-                    <input
-                      type="url"
-                      required
-                      disabled={profile?.role === "staff"}
-                      value={beforeAfterInputs.afterImage}
-                      onChange={(e) => setBeforeAfterInputs({ ...beforeAfterInputs, afterImage: e.target.value })}
-                      className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-3.5 text-xs font-mono text-dark focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60 shadow-sm"
-                    />
-                  </div>
+                {showConfigAlert && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="p-4 bg-emerald-50 border border-emerald-100 text-emerald-600 rounded-2xl text-xs font-bold flex items-center gap-2"
+                  >
+                    <Sparkles size={16} />
+                    <span>Config Saved! Homepage comparison slider was updated.</span>
+                  </motion.div>
+                )}
 
-                  {/* Before image input */}
-                  {beforeAfterInputs.useSeparateImages && (
+                <div className="p-5 border border-gray-100 rounded-2xl space-y-4 bg-[#F8FAFC]/50 text-left">
+                  <div className="grid grid-cols-1 gap-4">
+                    {/* Checkbox to choose whether to use separate images */}
+                    <div className="flex items-center gap-2 pb-2">
+                      <input
+                        type="checkbox"
+                        id="useSeparateImages"
+                        disabled={profile?.role === "staff"}
+                        checked={beforeAfterInputs.useSeparateImages}
+                        onChange={(e) => setBeforeAfterInputs({ ...beforeAfterInputs, useSeparateImages: e.target.checked })}
+                        className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary cursor-pointer"
+                      />
+                      <label htmlFor="useSeparateImages" className="text-xs font-bold text-gray-600 cursor-pointer select-none">
+                        Use separate before/after photos (if unchecked, CSS dirty-car filter is applied to the after photo)
+                      </label>
+                    </div>
+
+                    {/* After image input */}
                     <div className="space-y-1.5">
-                      <label className="text-[9px] font-bold text-gray-400 uppercase">Before Image URL (Left Side)</label>
+                      <label className="text-[9px] font-bold text-gray-400 uppercase">After Image (or Main Comparison Image) URL</label>
                       <input
                         type="url"
                         required
                         disabled={profile?.role === "staff"}
-                        value={beforeAfterInputs.beforeImage}
-                        onChange={(e) => setBeforeAfterInputs({ ...beforeAfterInputs, beforeImage: e.target.value })}
+                        value={beforeAfterInputs.afterImage}
+                        onChange={(e) => setBeforeAfterInputs({ ...beforeAfterInputs, afterImage: e.target.value })}
                         className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-3.5 text-xs font-mono text-dark focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60 shadow-sm"
                       />
                     </div>
-                  )}
+
+                    {/* Before image input */}
+                    {beforeAfterInputs.useSeparateImages && (
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-bold text-gray-400 uppercase">Before Image URL (Left Side)</label>
+                        <input
+                          type="url"
+                          required
+                          disabled={profile?.role === "staff"}
+                          value={beforeAfterInputs.beforeImage}
+                          onChange={(e) => setBeforeAfterInputs({ ...beforeAfterInputs, beforeImage: e.target.value })}
+                          className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-3.5 text-xs font-mono text-dark focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60 shadow-sm"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </form>
+              </form>
+            </div>
           )}
 
           {/* REVIEWS PANEL */}
@@ -1753,6 +1841,103 @@ export default function Admin() {
             >
               Acknowledge & Close
             </button>
+          </motion.div>
+        </div>
+      )}
+
+      {isAddingService && (
+        <div className="fixed inset-0 z-50 bg-dark/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-gray-100 space-y-6"
+          >
+            <div className="flex justify-between items-center">
+              <h3 className="font-heading font-extrabold text-dark text-lg">
+                {editingService ? "Edit Service Package" : "Add New Detailing Service"}
+              </h3>
+              <button
+                onClick={() => setIsAddingService(false)}
+                className="text-gray-400 hover:text-dark text-xs font-bold uppercase transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateOrUpdateService} className="space-y-4 text-left">
+              {/* Service ID (custom key) */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Service ID (e.g. ceramic-coating)</label>
+                <input
+                  type="text"
+                  required
+                  disabled={!!editingService}
+                  placeholder="e.g. ceramic-coating"
+                  value={serviceFormId}
+                  onChange={(e) => setServiceFormId(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white text-dark disabled:opacity-60"
+                />
+              </div>
+
+              {/* Service Name */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Service Display Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Ceramic Paint Protection"
+                  value={serviceFormName}
+                  onChange={(e) => setServiceFormName(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white text-dark"
+                />
+              </div>
+
+              {/* Service Price */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Base Rate (₹)</label>
+                <input
+                  type="number"
+                  required
+                  min={1}
+                  placeholder="e.g. 2999"
+                  value={serviceFormPrice || ""}
+                  onChange={(e) => setServiceFormPrice(Number(e.target.value))}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white text-dark"
+                />
+              </div>
+
+              {/* Image URL */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Showcase Image URL</label>
+                <input
+                  type="url"
+                  placeholder="Paste Unsplash or host image URL"
+                  value={serviceFormImage}
+                  onChange={(e) => setServiceFormImage(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white text-dark"
+                />
+              </div>
+
+              {/* Description */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Catalog Card Description</label>
+                <textarea
+                  required
+                  rows={3}
+                  placeholder="Write a brief description of what this service includes..."
+                  value={serviceFormDesc}
+                  onChange={(e) => setServiceFormDesc(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white text-dark resize-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full bg-primary hover:bg-[#0b327b] text-white font-bold py-2.5 rounded-xl text-xs transition-colors shadow-md mt-6 cursor-pointer"
+              >
+                {editingService ? "Update Catalog Item" : "Publish Detailing Service"}
+              </button>
+            </form>
           </motion.div>
         </div>
       )}

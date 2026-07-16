@@ -71,10 +71,11 @@ export const registerWithEmailAndPassword = async (email: string, pass: string, 
 };
 
 // 3. Google OAuth Login
-export const loginWithGoogleOAuth = (): Promise<any> => {
+export const loginWithGoogleOAuth = async (): Promise<any> => {
   if (isFirebaseConfigured) {
     try {
-      return signInWithRedirect(auth, googleProvider);
+      const result = await signInWithPopup(auth, googleProvider);
+      return result.user;
     } catch (error: any) {
       throw error;
     }

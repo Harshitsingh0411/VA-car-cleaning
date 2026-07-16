@@ -107,6 +107,16 @@ export interface dbBooking extends BaseDoc {
   invoiceRef?: string;
 }
 
+export interface dbService extends BaseDoc {
+  id: string;
+  name: string;
+  price: number;
+  image: string;
+  description: string;
+  isCustom?: boolean;
+  isDeleted?: boolean;
+}
+
 export interface dbEmployee extends BaseDoc {
   id: string;
   name: string;
@@ -823,4 +833,204 @@ export const getBeforeAfterSettings = async (): Promise<dbBeforeAfterSettings> =
 export const updateBeforeAfterSettings = async (settings: dbBeforeAfterSettings): Promise<void> => {
   await db.collection("settings").doc("before_after").set(settings);
   await logAuditAction("Update Before & After settings", null, settings);
+};
+
+// 14. Dynamic Custom Services
+export const defaultServices: dbService[] = [
+  {
+    id: "exterior",
+    name: "Exterior Wash",
+    price: 299,
+    image: "https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&q=80&w=600",
+    description: "Premium foam wash, wheel detailing, tyre dressing & exterior glass cleaning."
+  },
+  {
+    id: "interior",
+    name: "Interior Cleaning",
+    price: 599,
+    image: "https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&q=80&w=600",
+    description: "Full vacuuming, dashboard polish, seat stain cleaning & perfume spray."
+  },
+  {
+    id: "foam",
+    name: "Foam Wash",
+    price: 499,
+    image: "https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&q=80&w=600",
+    description: "Deep foam bath, underbody wash, vacuuming and dashboard dressing."
+  },
+  {
+    id: "wax",
+    name: "Wax Polish",
+    price: 799,
+    image: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&q=80&w=600",
+    description: "High-gloss liquid wax coat, paint protection & machine buffing."
+  },
+  {
+    id: "dashboard",
+    name: "Dashboard Cleaning",
+    price: 199,
+    image: "https://images.unsplash.com/photo-1507136566006-cfc505b114fc?auto=format&fit=crop&q=80&w=600",
+    description: "Detailed scrubbing of console, vent dusting & UV protection coat."
+  },
+  {
+    id: "tyre",
+    name: "Tyre Dressing",
+    price: 199,
+    image: "https://images.unsplash.com/photo-1486006920555-c77dce18193b?auto=format&fit=crop&q=80&w=600",
+    description: "Deep tyre cleaning, mud removal & high-shine protective silicone coating."
+  },
+  {
+    id: "premium",
+    name: "Premium Detailing",
+    price: 1999,
+    image: "https://images.unsplash.com/photo-1507136566006-cfc505b114fc?auto=format&fit=crop&q=80&w=600",
+    description: "All-in-one interior detox, engine bay polish, leather nourishment & paint correction."
+  }
+];
+
+export const getAllServices = async (): Promise<dbService[]> => {
+  const servicesMap = new Map<string, dbService>();
+  defaultServices.forEach(s => servicesMap.set(s.id, { ...s }));
+
+  try {
+    const snap = await db.collection("services").get();
+    snap.forEach((doc: any) => {
+      const data = doc.data() as Partial<dbService>;
+      const sId = doc.id;
+      if (data.isDeleted) {
+        servicesMap.delete(sId);
+      } else {
+        const existing = servicesMap.get(sId);
+        servicesMap.set(sId, {
+          id: sId,
+          name: data.name || existing?.name || "Unnamed Service",
+          price: data.price !== undefined ? data.price : (existing?.price || 0),
+          image: data.image || existing?.image || "",
+          description: data.description || existing?.description || "",
+          isCustom: data.isCustom ?? (existing ? false : true)
+        });
+      }
+    });
+  } catch (err) {
+    console.warn("Could not fetch custom services from db, falling back to local storage overrides:", err);
+  }
+
+  // Fallback / merge local storage pricing/image/desc overrides
+  try {
+    const priceOverrides = JSON.parse(localStorage.getItem("admin_pricing_overrides") || "{}");
+    const imageOverrides = JSON.parse(localStorage.getItem("admin_service_images") || "{}");
+    const descOverrides = JSON.parse(localStorage.getItem("admin_service_descriptions") || "{}");
+    const customServicesRaw = JSON.parse(localStorage.getItem("admin_custom_services") || "[]");
+    const defaultDeleted = JSON.parse(localStorage.getItem("admin_default_deleted_services") || "[]");
+
+    // Remove deleted default services
+    defaultDeleted.forEach((id: string) => {
+      servicesMap.delete(id);
+    });
+
+    // Apply overrides to default services
+    servicesMap.forEach((s, sId) => {
+      const priceKey = sId === "exterior" ? "exteriorWash"
+                      : sId === "interior" ? "interiorCleaning"
+                      : sId === "foam" ? "foamWash"
+                      : sId === "wax" ? "waxPolish"
+                      : sId === "dashboard" ? "dashboardCleaning"
+                      : sId === "tyre" ? "tyreDressing"
+                      : sId === "premium" ? "premiumDetailing" : sId;
+      
+      if (priceOverrides[priceKey] !== undefined) s.price = Number(priceOverrides[priceKey]);
+      if (imageOverrides[sId] !== undefined) s.image = imageOverrides[sId];
+      if (descOverrides[sId] !== undefined) s.description = descOverrides[sId];
+    });
+
+    // Load custom services from localStorage
+    customServicesRaw.forEach((cs: any) => {
+      if (cs.isDeleted) {
+        servicesMap.delete(cs.id);
+      } else {
+        servicesMap.set(cs.id, cs);
+      }
+    });
+  } catch (e) {
+    console.error("Error reading service overrides from local storage:", e);
+  }
+
+  return Array.from(servicesMap.values());
+};
+
+export const createOrUpdateService = async (service: dbService): Promise<void> => {
+  const docData = {
+    name: service.name,
+    price: service.price,
+    image: service.image,
+    description: service.description,
+    isCustom: service.isCustom ?? true,
+    isDeleted: false,
+    updatedAt: new Date().toISOString()
+  };
+
+  try {
+    await db.collection("services").doc(service.id).set(docData, { merge: true });
+  } catch (err) {
+    console.warn("Could not save service to Firestore, saving to simulator local storage:", err);
+  }
+
+  // Backup to Local Storage
+  try {
+    if (service.isCustom) {
+      const customServicesRaw = JSON.parse(localStorage.getItem("admin_custom_services") || "[]");
+      const filtered = customServicesRaw.filter((s: any) => s.id !== service.id);
+      filtered.push(service);
+      localStorage.setItem("admin_custom_services", JSON.stringify(filtered));
+    } else {
+      // It's a default service override
+      const priceOverrides = JSON.parse(localStorage.getItem("admin_pricing_overrides") || "{}");
+      const imageOverrides = JSON.parse(localStorage.getItem("admin_service_images") || "{}");
+      const descOverrides = JSON.parse(localStorage.getItem("admin_service_descriptions") || "{}");
+
+      const priceKey = service.id === "exterior" ? "exteriorWash"
+                      : service.id === "interior" ? "interiorCleaning"
+                      : service.id === "foam" ? "foamWash"
+                      : service.id === "wax" ? "waxPolish"
+                      : service.id === "dashboard" ? "dashboardCleaning"
+                      : service.id === "tyre" ? "tyreDressing"
+                      : service.id === "premium" ? "premiumDetailing" : service.id;
+
+      priceOverrides[priceKey] = service.price;
+      imageOverrides[service.id] = service.image;
+      descOverrides[service.id] = service.description;
+
+      localStorage.setItem("admin_pricing_overrides", JSON.stringify(priceOverrides));
+      localStorage.setItem("admin_service_images", JSON.stringify(imageOverrides));
+      localStorage.setItem("admin_service_descriptions", JSON.stringify(descOverrides));
+    }
+  } catch (e) {
+    console.error("Local storage service backup failed:", e);
+  }
+};
+
+export const deleteServiceProfile = async (id: string): Promise<void> => {
+  try {
+    await db.collection("services").doc(id).set({ isDeleted: true }, { merge: true });
+  } catch (err) {
+    console.warn("Could not delete service from Firestore, deleting from simulator local storage:", err);
+  }
+
+  try {
+    const customServicesRaw = JSON.parse(localStorage.getItem("admin_custom_services") || "[]");
+    const matched = customServicesRaw.find((s: any) => s.id === id);
+    if (matched) {
+      matched.isDeleted = true;
+      localStorage.setItem("admin_custom_services", JSON.stringify(customServicesRaw));
+    } else {
+      // It was a default service, save delete flag in localStorage
+      const defaultDeleted = JSON.parse(localStorage.getItem("admin_default_deleted_services") || "[]");
+      if (!defaultDeleted.includes(id)) {
+        defaultDeleted.push(id);
+        localStorage.setItem("admin_default_deleted_services", JSON.stringify(defaultDeleted));
+      }
+    }
+  } catch (e) {
+    console.error("Local storage delete backup failed:", e);
+  }
 };

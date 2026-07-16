@@ -39,9 +39,7 @@ export default function Login() {
     setErrorMsg("");
     loginWithGoogle()
       .then(() => {
-        if (!isFirebaseConfigured) {
-          navigate("/account");
-        }
+        navigate("/account");
       })
       .catch((err: any) => {
         setErrorMsg(err.message || "Google Authentication failed.");

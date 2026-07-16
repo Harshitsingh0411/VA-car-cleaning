@@ -4,10 +4,15 @@ import { Calendar, Clock, User, Phone, Settings, ShieldCheck, MapPin, Info } fro
 import { Button } from "../ui/Button";
 import { servicePrices } from "../../lib/prices";
 import { useAuth } from "../../context/AuthContext";
-import { createBooking } from "../../services/dbService";
+import { createBooking, getAllServices, dbService } from "../../services/dbService";
 
 export default function BookingSection() {
   const { user, addAppointment } = useAuth();
+  const [services, setServices] = useState<dbService[]>([]);
+
+  React.useEffect(() => {
+    getAllServices().then(setServices).catch(console.error);
+  }, []);
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -17,25 +22,6 @@ export default function BookingSection() {
   const [time, setTime] = useState("");
   const [isBooked, setIsBooked] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-
-  const getServiceInfo = (id: string) => {
-    switch (id) {
-      case "exterior":
-        return { name: "Exterior Wash", info: servicePrices.exteriorWash };
-      case "interior":
-        return { name: "Interior Cleaning", info: servicePrices.interiorCleaning };
-      case "foam":
-        return { name: "Foam Wash", info: servicePrices.foamWash };
-      case "wax":
-        return { name: "Wax Polish", info: servicePrices.waxPolish };
-      case "dashboard":
-        return { name: "Dashboard Cleaning", info: servicePrices.dashboardCleaning };
-      case "premium":
-        return { name: "Premium Detailing", info: servicePrices.premiumDetailing };
-      default:
-        return { name: "Premium Detailing", info: servicePrices.premiumDetailing };
-    }
-  };
 
   const getVehicleLabel = (val: string) => {
     switch (val) {
@@ -76,7 +62,9 @@ export default function BookingSection() {
 
     setSubmitting(true);
     try {
-      const serviceInfo = getServiceInfo(service);
+      const matchedService = services.find(s => s.id === service);
+      const serviceName = matchedService ? matchedService.name : service;
+      const servicePrice = matchedService ? matchedService.price : 0;
       const vehicleLabel = getVehicleLabel(vehicleType);
       const timeSlotLabel = getTimeSlotLabel(time);
       const cId = user ? user.uid : "guest-" + Math.random().toString(36).substring(2, 9);
@@ -88,21 +76,21 @@ export default function BookingSection() {
         vehicleId: "custom",
         vehicleDetails: vehicleLabel,
         serviceId: service,
-        serviceName: serviceInfo.name,
+        serviceName: serviceName,
         scheduledDate: date,
         timeSlot: timeSlotLabel,
-        price: serviceInfo.info.price,
+        price: servicePrice,
         notes: "Booking submitted via Home Page Quick Form",
         address: "Doorstep detailing service location provided upon confirmation call"
       });
 
       if (user) {
         await addAppointment(
-          serviceInfo.name,
+          serviceName,
           vehicleLabel,
           date,
           timeSlotLabel,
-          serviceInfo.info.formatted
+          `₹${servicePrice}`
         );
       }
 
@@ -181,12 +169,9 @@ export default function BookingSection() {
                         className="w-full bg-[#0B1220] border border-white/10 rounded-2xl py-3.5 pl-4 pr-10 text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-[#F4B400] transition-all appearance-none cursor-pointer"
                       >
                         <option value="" disabled>Choose service</option>
-                        <option value="exterior">Exterior Wash - {servicePrices.exteriorWash.formatted}</option>
-                        <option value="interior">Interior Cleaning - {servicePrices.interiorCleaning.formatted}</option>
-                        <option value="foam">Foam Wash - {servicePrices.foamWash.formatted}</option>
-                        <option value="wax">Wax Polish - {servicePrices.waxPolish.formatted}</option>
-                        <option value="dashboard">Dashboard Cleaning - {servicePrices.dashboardCleaning.formatted}</option>
-                        <option value="premium">Premium Detailing - {servicePrices.premiumDetailing.formatted}</option>
+                        {services.map(s => (
+                          <option key={s.id} value={s.id}>{s.name} - ₹{s.price}</option>
+                        ))}
                       </select>
                       <Settings size={16} className="absolute right-3.5 top-[50%] -translate-y-1/2 text-gray-400 pointer-events-none" />
                     </div>
