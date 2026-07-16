@@ -408,6 +408,9 @@ export default function Admin() {
     if (activeTab === "services") {
       fetchServicesList();
     }
+    if ((activeTab === "users" || activeTab === "team_accounts") && isAdminUser) {
+      fetchDirectoryUsers();
+    }
   }, [activeTab, authLoading, user, profile]);
 
   // Initialize structures
@@ -774,6 +777,17 @@ export default function Admin() {
             </button>
             {profile?.role !== "staff" && (
               <button
+                onClick={() => setActiveTab("team_accounts")}
+                className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${
+                  activeTab === "team_accounts" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
+                }`}
+              >
+                <UserCheck size={16} />
+                Team Accounts
+              </button>
+            )}
+            {profile?.role !== "staff" && (
+              <button
                 onClick={() => setActiveTab("staff")}
                 className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${
                   activeTab === "staff" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
@@ -1030,7 +1044,68 @@ export default function Admin() {
                     </tr>
                   </thead>
                   <tbody>
-                    {users.map((u) => (
+                    {users.filter(u => u.role !== "admin" && u.role !== "staff" && u.role !== "super_admin").map((u) => (
+                      <tr key={u.uid} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                        <td className="py-4 pr-4">
+                          <div className="font-bold text-dark">{u.name}</div>
+                          <div className="text-[10px] text-gray-400 font-mono mt-0.5">{u.uid}</div>
+                        </td>
+                        <td className="py-4 pr-4 font-mono">{u.email}</td>
+                        <td className="py-4 pr-4 font-semibold text-gray-700">{u.phone}</td>
+                        <td className="py-4 pr-4 text-center font-bold text-dark">{u.vehicleCount}</td>
+                        <td className="py-4 text-center font-bold text-dark">{u.addressCount}</td>
+                        <td className="py-4 text-right">
+                          {profile?.role === "staff" ? (
+                            <span className={`text-[10px] font-black uppercase tracking-wider py-1 px-2.5 rounded-full border ${
+                              u.role === "admin"
+                                ? "bg-amber-50 text-amber-600 border-amber-200"
+                                : u.role === "staff"
+                                ? "bg-emerald-50 text-emerald-600 border-emerald-200"
+                                : "bg-blue-50 text-blue-600 border-blue-200"
+                            }`}>
+                              {u.role || "customer"}
+                            </span>
+                          ) : (
+                            <select
+                              value={u.role || "customer"}
+                              onChange={(e) => handleRoleChange(u.uid, e.target.value as any)}
+                              className="bg-gray-50 border border-gray-200 rounded-xl px-2 py-1 text-xs font-bold text-dark focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
+                            >
+                              <option value="customer">Customer</option>
+                              <option value="staff">Staff</option>
+                              <option value="admin">Admin</option>
+                            </select>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* TEAM ACCOUNTS DIRECTORY */}
+          {activeTab === "team_accounts" && (
+            <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm space-y-6">
+              <div className="text-left">
+                <h3 className="font-heading font-extrabold text-dark text-lg">Staff & Admin Accounts</h3>
+                <p className="text-gray-400 text-xs mt-0.5">Manage administrative roles and detailer permissions for registered team members.</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-gray-500 border-collapse">
+                  <thead>
+                    <tr className="border-b border-gray-100 text-gray-400 font-bold uppercase tracking-wider">
+                      <th className="pb-3 pr-4">User Details</th>
+                      <th className="pb-3 pr-4">Email</th>
+                      <th className="pb-3 pr-4">Saved Contact</th>
+                      <th className="pb-3 pr-4 text-center">Vehicles</th>
+                      <th className="pb-3 text-center">Addresses</th>
+                      <th className="pb-3 text-right">Role</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.filter(u => u.role === "admin" || u.role === "super_admin" || u.role === "staff").map((u) => (
                       <tr key={u.uid} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
                         <td className="py-4 pr-4">
                           <div className="font-bold text-dark">{u.name}</div>
