@@ -5,7 +5,7 @@
 
 import { useState } from "react";
 import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
-import { AnimatePresence } from "motion/react";
+
 import Layout from "./components/layout/Layout";
 import Home from "./pages/Home";
 import Loader from "./components/ui/Loader";
@@ -21,7 +21,7 @@ import Register from "./pages/Register";
 import Account from "./pages/Account";
 import Admin from "./pages/Admin";
 import ProtectedRoute from "./components/ProtectedRoute";
-import EmployeeDashboard from "./pages/EmployeeDashboard";
+import EmployeeDashboard from "./pages/crew/EmployeeDashboard";
 import NotificationCenter from "./pages/NotificationCenter";
 
 import ExteriorWash from "./pages/services/ExteriorWash";
@@ -40,8 +40,7 @@ function AnimatedRoutes() {
   const location = useLocation();
 
   return (
-    <AnimatePresence mode="wait">
-      <Routes key={location.pathname} location={location}>
+    <Routes location={location}>
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />
           <Route path="services" element={<Services />} />
@@ -102,7 +101,6 @@ function AnimatedRoutes() {
           />
         </Route>
       </Routes>
-    </AnimatePresence>
   );
 }
 

@@ -28,12 +28,13 @@ service cloud.firestore {
     }
 
     function isEmployee() {
-      return isAuthenticated() && getUserData().role == 'staff';
+      return isAuthenticated() && (getUserData().role == 'staff' || getUserData().role == 'crew');
     }
 
     // Users Collection
     match /users/{userId} {
-      allow read, write: if isOwner(userId) || isAdmin();
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId) || isAdmin();
       
       // Saved Addresses Subcollection
       match /addresses/{addressId} {
@@ -44,12 +45,18 @@ service cloud.firestore {
     // Bookings Collection
     match /bookings/{bookingId} {
       allow create: if isAuthenticated();
-      allow read: if isAdmin() 
-        || (isAuthenticated() && resource.data.customerId == request.auth.uid)
-        || (isEmployee() && resource.data.assignedEmployee == request.auth.uid);
-      allow update: if isAdmin()
-        || (isEmployee() && resource.data.assignedEmployee == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'updatedBy']))
-        || (isAuthenticated() && resource.data.customerId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'isDeleted', 'updatedAt', 'updatedBy']));
+      allow read: if isAuthenticated() && (
+        isAdmin() ||
+        resource.data.customerId == request.auth.uid ||
+        resource.data.assignedEmployee == request.auth.uid ||
+        resource.data.bookingStatus == 'Pending'
+      );
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        (resource.data.bookingStatus == 'Pending' && request.resource.data.assignedEmployee == request.auth.uid) ||
+        (resource.data.assignedEmployee == request.auth.uid) ||
+        (resource.data.customerId == request.auth.uid)
+      );
       allow delete: if isAdmin();
     }
 
@@ -69,7 +76,7 @@ service cloud.firestore {
 
     // Employees Collection
     match /employees/{employeeId} {
-      allow read: if isAdmin() || isOwner(employeeId);
+      allow read: if isAuthenticated();
       allow write: if isAdmin() || (isOwner(employeeId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['availability', 'attendance', 'updatedAt']));
     }
 

@@ -3,15 +3,15 @@ import { motion } from "motion/react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { db, isFirebaseConfigured } from "../lib/firebase";
-import { collection, getDocs, doc, setDoc } from "firebase/firestore";
-import { 
-  getAuditLogs, 
-  getAllBookings, 
-  updateBookingStatus, 
-  getJobApplications, 
-  updateJobStatus as updateJobStatusInDb, 
-  getAllReviews, 
-  getBeforeAfterSettings, 
+
+import {
+  getAuditLogs,
+  getAllBookings,
+  updateBookingStatus,
+  getJobApplications,
+  updateJobStatus as updateJobStatusInDb,
+  getAllReviews,
+  getBeforeAfterSettings,
   updateBeforeAfterSettings,
   createOrUpdateEmployee,
   deleteEmployeeProfile,
@@ -204,8 +204,7 @@ export default function Admin() {
     try {
       if (isFirebaseConfigured) {
         try {
-          const userDocRef = doc(db, "users", uid);
-          await setDoc(userDocRef, { role: newRole }, { merge: true });
+          await db.collection("users").doc(uid).set({ role: newRole }, { merge: true });
         } catch (fbErr) {
           console.warn("Could not update user role in Firestore, falling back to simulator:", fbErr);
         }
@@ -218,8 +217,61 @@ export default function Admin() {
       profileData.role = newRole;
       localStorage.setItem(storeKey, JSON.stringify(profileData));
 
-      // Refresh list
+      // Sync with employees collection
+      try {
+        if (newRole === "staff") {
+          // Fetch user data
+          const userSnap = await db.collection("users").doc(uid).get();
+          const userData = userSnap.exists() ? userSnap.data() : null;
+
+          // Check if employee already exists
+          const empSnap = await db.collection("employees").doc(uid).get();
+          const empData = empSnap.exists() ? empSnap.data() : null;
+
+          // Fetch simulator registered user details for email/name fallback
+          let simUserEmail = "";
+          let simUserDisplayName = "";
+          try {
+            const simUsers = JSON.parse(localStorage.getItem("sim_registered_users") || "[]");
+            const found = simUsers.find((u: any) => u.uid === uid);
+            if (found) {
+              simUserEmail = found.email || "";
+              simUserDisplayName = found.displayName || "";
+            }
+          } catch { }
+
+          const newEmpProfile = {
+            id: uid,
+            name: userData?.name || userData?.displayName || simUserDisplayName || profileData?.name || "New Detailer Crew",
+            email: userData?.email || simUserEmail || profileData?.email || "",
+            photo: userData?.photoURL || profileData?.photoURL || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150",
+            phone: userData?.contactNumber || userData?.phone || profileData?.contactNumber || "+91 88888 88888",
+            address: userData?.address || (profileData?.addresses && profileData.addresses[0]) || "N/A",
+            department: empData?.department || "Detailing Crew",
+            salary: empData?.salary || "₹18,000/month",
+            bankDetails: empData?.bankDetails || "N/A",
+            KYCStatus: empData?.KYCStatus || "Verified",
+            availability: empData?.availability || "online",
+            rating: empData?.rating || 5.0,
+            updatedAt: new Date().toISOString(),
+            isDeleted: false
+          };
+
+          await db.collection("employees").doc(uid).set(newEmpProfile, { merge: true });
+        } else {
+          // If they were staff, soft delete
+          const empSnap = await db.collection("employees").doc(uid).get();
+          if (empSnap.exists()) {
+            await db.collection("employees").doc(uid).set({ isDeleted: true }, { merge: true });
+          }
+        }
+      } catch (syncErr) {
+        console.warn("Could not sync employee profile:", syncErr);
+      }
+
+      // Refresh lists
       await fetchDirectoryUsers();
+      await fetchAdminEmployees();
     } catch (err) {
       console.error("Error updating user role:", err);
     }
@@ -299,8 +351,87 @@ export default function Admin() {
   const fetchAdminEmployees = async () => {
     setEmployeesLoading(true);
     try {
-      const data = await getAllEmployees();
-      setEmployees(data);
+      // 1. Get all employees from employees collection
+      const empData = await getAllEmployees();
+
+      // 2. Get all staff users from users collection (they have actual Firebase UIDs)
+      let staffUsers: any[] = [];
+      try {
+        const usersSnap = await db.collection("users").get();
+        usersSnap.forEach((docSnap: any) => {
+          const d = docSnap.data();
+          if (d.role === "staff" && !d.isDeleted) {
+            staffUsers.push({
+              uid: docSnap.id,
+              name: d.name || d.displayName || "Crew Member",
+              email: d.email || "",
+              phone: d.contactNumber || d.phone || "",
+            });
+          }
+        });
+      } catch (fbErr) {
+        // Simulator fallback: check sim_registered_users
+        try {
+          const simUsers = JSON.parse(localStorage.getItem("sim_registered_users") || "[]");
+          for (const u of simUsers) {
+            const profileRaw = localStorage.getItem(`sim_db_users_${u.uid}`);
+            const profileData = profileRaw ? JSON.parse(profileRaw) : null;
+            if (profileData?.role === "staff") {
+              staffUsers.push({
+                uid: u.uid,
+                name: u.displayName || profileData?.name || "Crew Member",
+                email: u.email || "",
+                phone: profileData?.contactNumber || "",
+              });
+            }
+          }
+        } catch { }
+      }
+
+      // 3. Build merged list: prefer employees collection data, but ensure id = Firebase UID
+      const mergedMap = new Map<string, any>();
+
+      // First add all employees keyed by email (lowercased) to allow re-keying
+      const empByEmail = new Map<string, any>();
+      for (const emp of empData) {
+        if (emp.email) empByEmail.set(emp.email.toLowerCase(), emp);
+      }
+
+      // Add staff users - if a matching employee profile exists, merge it; use Firebase UID as id
+      for (const su of staffUsers) {
+        const existingEmp = empByEmail.get(su.email.toLowerCase());
+        const merged = {
+          ...(existingEmp || {}),
+          id: su.uid, // Always use Firebase UID
+          name: existingEmp?.name || su.name,
+          email: su.email,
+          phone: existingEmp?.phone || su.phone,
+          department: existingEmp?.department || "Detailing Crew",
+          availability: existingEmp?.availability || "online",
+          KYCStatus: existingEmp?.KYCStatus || "Verified",
+          rating: existingEmp?.rating || 5.0,
+          photo: existingEmp?.photo || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150",
+          isLinkedToAuth: true,
+        };
+        mergedMap.set(su.uid, merged);
+
+        // If the employees doc had a random id (emp-xxx), auto-fix it in Firestore
+        if (existingEmp && existingEmp.id !== su.uid) {
+          try {
+            await db.collection("employees").doc(su.uid).set({ ...existingEmp, id: su.uid }, { merge: true });
+          } catch { }
+        }
+      }
+
+      // Also include employees that have no linked auth account (manual-only, can't receive bookings)
+      for (const emp of empData) {
+        const alreadyMerged = [...mergedMap.values()].some((m) => m.email?.toLowerCase() === emp.email?.toLowerCase());
+        if (!alreadyMerged && !emp.isDeleted) {
+          mergedMap.set(emp.id, { ...emp, isLinkedToAuth: false });
+        }
+      }
+
+      setEmployees([...mergedMap.values()]);
     } catch (err) {
       console.error("Error fetching employees:", err);
     } finally {
@@ -329,9 +460,9 @@ export default function Admin() {
           KYCStatus: staffKYC,
           availability: staffAvail
         });
-        
+
         if (!editingStaff.id.startsWith("emp-")) {
-          await setDoc(doc(db, "users", editingStaff.id), {
+          await db.collection("users").doc(editingStaff.id).set({
             name: staffName,
             contactNumber: staffPhone,
             photoURL: staffPhoto || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150"
@@ -366,6 +497,7 @@ export default function Admin() {
       setShowAddStaffModal(false);
       setEditingStaff(null);
       await fetchAdminEmployees();
+      await fetchDirectoryUsers();
     } catch (err: any) {
       console.error("Error saving staff profile:", err);
       alert("Failed to save staff profile: " + err.message);
@@ -380,6 +512,7 @@ export default function Admin() {
     try {
       await deleteEmployeeProfile(empId);
       await fetchAdminEmployees();
+      await fetchDirectoryUsers();
     } catch (err: any) {
       console.error("Error deleting staff:", err);
       alert("Failed to remove staff member: " + err.message);
@@ -531,7 +664,7 @@ export default function Admin() {
         assignArrivalDate,
         assignArrivalTime
       );
-      
+
       setSelectedBookingForAssign(null);
       setAssignCrewId("");
       setAssignArrivalDate("");
@@ -608,11 +741,11 @@ export default function Admin() {
         description: serviceFormDesc,
         isCustom: editingService ? editingService.isCustom : true
       });
-      
+
       alert("Service saved successfully!");
       setIsAddingService(false);
       setEditingService(null);
-      
+
       // Reset form states
       setServiceFormId("");
       setServiceFormName("");
@@ -677,10 +810,10 @@ export default function Admin() {
       if (!appt.date) return;
       const apptDate = new Date(appt.date);
       if (isNaN(apptDate.getTime())) return;
-      
+
       const diffTime = now.getTime() - apptDate.getTime();
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-      
+
       if (diffDays >= 0 && diffDays < 49) {
         const weekIndex = 6 - Math.floor(diffDays / 7);
         if (weekIndex >= 0 && weekIndex < 7) {
@@ -730,47 +863,43 @@ export default function Admin() {
   return (
     <div className="pt-24 min-h-screen bg-[#F8FAFC] pb-24 relative overflow-hidden flex">
       <div className="container mx-auto px-4 md:px-6 relative z-10 flex flex-col md:flex-row gap-8">
-        
+
         {/* LEFT Sidebar */}
         <div className="w-full md:w-64 shrink-0 bg-white border border-gray-100 rounded-3xl p-6 shadow-sm h-fit space-y-6">
           <div className="space-y-1 text-center md:text-left">
-            <span className={`${
-              profile?.role === "staff" ? "bg-[#34A853] text-white" : "bg-[#F4B400] text-dark"
-            } text-[9px] font-black uppercase tracking-wider py-0.5 px-2 rounded`}>
-              {profile?.role === "staff" ? "Staff Crew" : "Super Admin"}
+            <span className={`${profile?.role === "staff" ? "bg-[#34A853] text-white" : "bg-[#F4B400] text-dark"
+              } text-[9px] font-black uppercase tracking-wider py-0.5 px-2 rounded`}>
+              {profile?.role === "staff" ? "Crew" : "Super Admin"}
             </span>
             <h2 className="text-xl font-heading font-extrabold text-dark tracking-tight">
-              {profile?.role === "staff" ? "Staff Control Panel" : "VA Control Panel"}
+              {profile?.role === "staff" ? "Crew Control Panel" : "VA Control Panel"}
             </h2>
             <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
-              {profile?.role === "staff" ? "Staff System View" : "Live System Manager"}
+              {profile?.role === "staff" ? "Crew System View" : "Live System Manager"}
             </p>
           </div>
 
           <nav className="flex flex-col gap-1 text-xs font-bold text-gray-500">
             <button
               onClick={() => setActiveTab("stats")}
-              className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${
-                activeTab === "stats" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
-              }`}
+              className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${activeTab === "stats" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
+                }`}
             >
               <TrendingUp size={16} />
               System Overview
             </button>
             <button
               onClick={() => setActiveTab("appointments")}
-              className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${
-                activeTab === "appointments" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
-              }`}
+              className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${activeTab === "appointments" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
+                }`}
             >
               <Calendar size={16} />
               Bookings & Slots ({pendingAppts})
             </button>
             <button
               onClick={() => setActiveTab("users")}
-              className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${
-                activeTab === "users" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
-              }`}
+              className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${activeTab === "users" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
+                }`}
             >
               <Users size={16} />
               Client Directory
@@ -778,9 +907,8 @@ export default function Admin() {
             {profile?.role !== "staff" && (
               <button
                 onClick={() => setActiveTab("team_accounts")}
-                className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${
-                  activeTab === "team_accounts" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
-                }`}
+                className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${activeTab === "team_accounts" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
+                  }`}
               >
                 <UserCheck size={16} />
                 Team Accounts
@@ -789,37 +917,33 @@ export default function Admin() {
             {profile?.role !== "staff" && (
               <button
                 onClick={() => setActiveTab("staff")}
-                className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${
-                  activeTab === "staff" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
-                }`}
+                className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${activeTab === "staff" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
+                  }`}
               >
                 <UserCheck size={16} />
-                Staff Directory
+                Crew Directory
               </button>
             )}
             <button
               onClick={() => setActiveTab("jobs")}
-              className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${
-                activeTab === "jobs" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
-              }`}
+              className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${activeTab === "jobs" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
+                }`}
             >
               <Briefcase size={16} />
               Job Applications ({pendingJobs})
             </button>
             <button
               onClick={() => setActiveTab("services")}
-              className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${
-                activeTab === "services" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
-              }`}
+              className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${activeTab === "services" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
+                }`}
             >
               <Layers size={16} />
               Pricing & Showcase
             </button>
             <button
               onClick={() => setActiveTab("reviews")}
-              className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${
-                activeTab === "reviews" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
-              }`}
+              className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${activeTab === "reviews" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
+                }`}
             >
               <Star size={16} />
               Customer Reviews
@@ -828,18 +952,16 @@ export default function Admin() {
               <>
                 <button
                   onClick={() => setActiveTab("notifications")}
-                  className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${
-                    activeTab === "notifications" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
-                  }`}
+                  className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${activeTab === "notifications" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
+                    }`}
                 >
                   <Bell size={16} />
                   Notification Center
                 </button>
                 <button
                   onClick={() => setActiveTab("logs")}
-                  className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${
-                    activeTab === "logs" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
-                  }`}
+                  className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${activeTab === "logs" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
+                    }`}
                 >
                   <Clipboard size={16} />
                   System Audits
@@ -851,7 +973,7 @@ export default function Admin() {
 
         {/* RIGHT Main Content panels */}
         <div className="flex-1 space-y-6">
-          
+
           {/* STATS PANEL */}
           {activeTab === "stats" && (
             <div className="space-y-6">
@@ -901,7 +1023,7 @@ export default function Admin() {
           {activeTab === "appointments" && (
             <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm space-y-6">
               <h3 className="font-heading font-extrabold text-dark text-lg">Active Bookings & Appointments</h3>
-              
+
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs text-gray-500 border-collapse">
                   <thead>
@@ -953,15 +1075,14 @@ export default function Admin() {
                         </td>
                         <td className="py-4 pr-4 text-right font-black text-dark">{a.price}</td>
                         <td className="py-4 pr-4">
-                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${
-                            a.status === "Completed"
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${a.status === "Completed"
                               ? "bg-emerald-50 text-emerald-600 border-emerald-100"
                               : a.status === "Pending"
-                              ? "bg-amber-50 text-amber-600 border-amber-100"
-                              : a.status === "Cancelled"
-                              ? "bg-rose-50 text-rose-600 border-rose-100"
-                              : "bg-blue-50 text-blue-600 border-blue-100"
-                          }`}>
+                                ? "bg-amber-50 text-amber-600 border-amber-100"
+                                : a.status === "Cancelled"
+                                  ? "bg-rose-50 text-rose-600 border-rose-100"
+                                  : "bg-blue-50 text-blue-600 border-blue-100"
+                            }`}>
                             {a.status}
                           </span>
                         </td>
@@ -979,7 +1100,7 @@ export default function Admin() {
                               {a.assignedEmployee ? "Reassign Crew" : "Assign Crew"}
                             </button>
                           )}
-                          
+
                           {a.status === "Pending" && (
                             <div className="flex gap-1.5 justify-end">
                               <button
@@ -996,7 +1117,7 @@ export default function Admin() {
                               </button>
                             </div>
                           )}
-                          
+
                           {a.status === "Assigned" && (
                             <button
                               onClick={() => updateAppointmentStatus(a.id, "In Progress")}
@@ -1005,7 +1126,7 @@ export default function Admin() {
                               Dispatch Crew
                             </button>
                           )}
-                          
+
                           {a.status === "In Progress" && (
                             <button
                               onClick={() => updateAppointmentStatus(a.id, "Completed")}
@@ -1014,7 +1135,7 @@ export default function Admin() {
                               Complete Detox
                             </button>
                           )}
-                          
+
                           {(a.status === "Completed" || a.status === "Cancelled") && (
                             <span className="text-[10px] text-gray-300 font-bold uppercase block text-center">Locked</span>
                           )}
@@ -1056,13 +1177,12 @@ export default function Admin() {
                         <td className="py-4 text-center font-bold text-dark">{u.addressCount}</td>
                         <td className="py-4 text-right">
                           {profile?.role === "staff" ? (
-                            <span className={`text-[10px] font-black uppercase tracking-wider py-1 px-2.5 rounded-full border ${
-                              u.role === "admin"
+                            <span className={`text-[10px] font-black uppercase tracking-wider py-1 px-2.5 rounded-full border ${u.role === "admin"
                                 ? "bg-amber-50 text-amber-600 border-amber-200"
                                 : u.role === "staff"
-                                ? "bg-emerald-50 text-emerald-600 border-emerald-200"
-                                : "bg-blue-50 text-blue-600 border-blue-200"
-                            }`}>
+                                  ? "bg-emerald-50 text-emerald-600 border-emerald-200"
+                                  : "bg-blue-50 text-blue-600 border-blue-200"
+                              }`}>
                               {u.role || "customer"}
                             </span>
                           ) : (
@@ -1072,7 +1192,7 @@ export default function Admin() {
                               className="bg-gray-50 border border-gray-200 rounded-xl px-2 py-1 text-xs font-bold text-dark focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
                             >
                               <option value="customer">Customer</option>
-                              <option value="staff">Staff</option>
+                              <option value="staff">Crew</option>
                               <option value="admin">Admin</option>
                             </select>
                           )}
@@ -1089,7 +1209,7 @@ export default function Admin() {
           {activeTab === "team_accounts" && (
             <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm space-y-6">
               <div className="text-left">
-                <h3 className="font-heading font-extrabold text-dark text-lg">Staff & Admin Accounts</h3>
+                <h3 className="font-heading font-extrabold text-dark text-lg">Crew & Admin Accounts</h3>
                 <p className="text-gray-400 text-xs mt-0.5">Manage administrative roles and detailer permissions for registered team members.</p>
               </div>
               <div className="overflow-x-auto">
@@ -1117,13 +1237,12 @@ export default function Admin() {
                         <td className="py-4 text-center font-bold text-dark">{u.addressCount}</td>
                         <td className="py-4 text-right">
                           {profile?.role === "staff" ? (
-                            <span className={`text-[10px] font-black uppercase tracking-wider py-1 px-2.5 rounded-full border ${
-                              u.role === "admin"
+                            <span className={`text-[10px] font-black uppercase tracking-wider py-1 px-2.5 rounded-full border ${u.role === "admin"
                                 ? "bg-amber-50 text-amber-600 border-amber-200"
                                 : u.role === "staff"
-                                ? "bg-emerald-50 text-emerald-600 border-emerald-200"
-                                : "bg-blue-50 text-blue-600 border-blue-200"
-                            }`}>
+                                  ? "bg-emerald-50 text-emerald-600 border-emerald-200"
+                                  : "bg-blue-50 text-blue-600 border-blue-200"
+                              }`}>
                               {u.role || "customer"}
                             </span>
                           ) : (
@@ -1133,7 +1252,7 @@ export default function Admin() {
                               className="bg-gray-50 border border-gray-200 rounded-xl px-2 py-1 text-xs font-bold text-dark focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
                             >
                               <option value="customer">Customer</option>
-                              <option value="staff">Staff</option>
+                              <option value="staff">Crew</option>
                               <option value="admin">Admin</option>
                             </select>
                           )}
@@ -1150,7 +1269,7 @@ export default function Admin() {
           {activeTab === "jobs" && (
             <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm space-y-6">
               <h3 className="font-heading font-extrabold text-dark text-lg">Detailer Partner Applications</h3>
-              
+
               <div className="space-y-4">
                 {jobs.map((j) => (
                   <div key={j.id} className="p-5 border border-gray-100 rounded-2xl bg-gray-50/30 space-y-4 shadow-sm">
@@ -1161,13 +1280,12 @@ export default function Admin() {
                           {j.email} | {j.phone}
                         </p>
                       </div>
-                      <span className={`text-[9px] font-bold py-1 px-2.5 rounded-full border uppercase tracking-wider ${
-                        j.status === "Approved"
+                      <span className={`text-[9px] font-bold py-1 px-2.5 rounded-full border uppercase tracking-wider ${j.status === "Approved"
                           ? "bg-emerald-50 text-emerald-600 border-emerald-100"
                           : j.status === "Rejected"
-                          ? "bg-rose-50 text-rose-600 border-rose-100"
-                          : "bg-amber-50 text-amber-600 border-amber-100"
-                      }`}>
+                            ? "bg-rose-50 text-rose-600 border-rose-100"
+                            : "bg-amber-50 text-amber-600 border-amber-100"
+                        }`}>
                         {j.status}
                       </span>
                     </div>
@@ -1353,7 +1471,7 @@ export default function Admin() {
           {activeTab === "reviews" && (
             <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm space-y-6">
               <h3 className="font-heading font-extrabold text-dark text-lg">Customer Reviews & Review Requests</h3>
-              
+
               <div className="space-y-4">
                 {reviews.map((r) => (
                   <div key={r.id} className="p-4 border border-gray-100 rounded-2xl bg-gray-50/20 space-y-3">
@@ -1383,7 +1501,7 @@ export default function Admin() {
                 <Clipboard size={20} className="text-primary" />
                 Security Audit Log
               </h3>
-              
+
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs text-gray-500 border-collapse">
                   <thead>
@@ -1423,7 +1541,7 @@ export default function Admin() {
             <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm space-y-6">
               <div className="flex flex-wrap justify-between items-center gap-4">
                 <div>
-                  <h3 className="font-heading font-extrabold text-dark text-lg">Staff Crew Directory</h3>
+                  <h3 className="font-heading font-extrabold text-dark text-lg">Detailing Crew Directory</h3>
                   <p className="text-gray-400 text-xs mt-0.5">Manage details, departments, salary, and status of service detailers.</p>
                 </div>
                 <button
@@ -1434,7 +1552,7 @@ export default function Admin() {
                   className="bg-primary hover:bg-[#0b327b] text-white font-bold py-2.5 px-5 rounded-xl text-xs shadow-md flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <Plus size={14} />
-                  Add Staff Member
+                  Add Crew Member
                 </button>
               </div>
 
@@ -1445,7 +1563,7 @@ export default function Admin() {
               ) : employees.length === 0 ? (
                 <div className="py-20 text-center text-gray-400 space-y-2 border border-dashed border-gray-200 rounded-2xl">
                   <UserCheck size={36} className="mx-auto text-gray-300" />
-                  <p className="font-semibold text-sm">No Staff Registered</p>
+                  <p className="font-semibold text-sm">No Crew Registered</p>
                   <p className="text-xs">Click the button above to register your first crew member.</p>
                 </div>
               ) : (
@@ -1453,7 +1571,7 @@ export default function Admin() {
                   <table className="w-full text-left text-xs text-gray-500 border-collapse">
                     <thead>
                       <tr className="border-b border-gray-100 text-gray-400 font-bold uppercase tracking-wider">
-                        <th className="pb-3 pr-4">Staff Details</th>
+                        <th className="pb-3 pr-4">Crew Details</th>
                         <th className="pb-3 pr-4">Contact Info</th>
                         <th className="pb-3 pr-4">Department & Salary</th>
                         <th className="pb-3 pr-4 text-center">KYC & Availability</th>
@@ -1475,6 +1593,11 @@ export default function Admin() {
                               <div>
                                 <div className="font-bold text-dark text-sm">{emp.name}</div>
                                 <div className="text-[10px] text-gray-400 font-mono mt-0.5">{emp.id}</div>
+                                {emp.isLinkedToAuth === false ? (
+                                  <span className="inline-block text-[9px] font-black uppercase tracking-wider bg-amber-100 text-amber-700 py-0.5 px-1.5 rounded mt-0.5">⚠️ No Login Account</span>
+                                ) : (
+                                  <span className="inline-block text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-700 py-0.5 px-1.5 rounded mt-0.5">✓ Auth Linked</span>
+                                )}
                               </div>
                             </div>
                           </td>
@@ -1489,22 +1612,20 @@ export default function Admin() {
                           </td>
                           <td className="py-4 pr-4 text-center space-y-1">
                             <div>
-                              <span className={`inline-block text-[9px] font-black uppercase tracking-wider py-0.5 px-2 rounded-full ${
-                                emp.KYCStatus === "Verified"
+                              <span className={`inline-block text-[9px] font-black uppercase tracking-wider py-0.5 px-2 rounded-full ${emp.KYCStatus === "Verified"
                                   ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
                                   : emp.KYCStatus === "Rejected"
-                                  ? "bg-rose-50 text-rose-600 border border-rose-100"
-                                  : "bg-amber-50 text-amber-600 border border-amber-100"
-                              }`}>
+                                    ? "bg-rose-50 text-rose-600 border border-rose-100"
+                                    : "bg-amber-50 text-amber-600 border border-amber-100"
+                                }`}>
                                 KYC: {emp.KYCStatus || "Pending"}
                               </span>
                             </div>
                             <div>
-                              <span className={`inline-block text-[9px] font-black uppercase tracking-wider py-0.5 px-2 rounded-full ${
-                                emp.availability === "online"
+                              <span className={`inline-block text-[9px] font-black uppercase tracking-wider py-0.5 px-2 rounded-full ${emp.availability === "online"
                                   ? "bg-blue-50 text-blue-600 border border-blue-100"
                                   : "bg-gray-100 text-gray-500 border border-gray-200"
-                              }`}>
+                                }`}>
                                 {emp.availability === "online" ? "Active" : "Offline"}
                               </span>
                             </div>
@@ -1558,7 +1679,7 @@ export default function Admin() {
           >
             <div className="flex justify-between items-center">
               <h3 className="font-heading font-extrabold text-dark text-xl">
-                {editingStaff ? "Edit Staff Details" : "Add New Staff Crew"}
+                {editingStaff ? "Edit Crew Details" : "Add New Crew Member"}
               </h3>
               <button
                 onClick={() => {
@@ -1707,7 +1828,7 @@ export default function Admin() {
                 type="submit"
                 className="w-full bg-primary hover:bg-[#0b327b] text-white font-bold py-2.5 rounded-xl text-xs transition-colors shadow-md mt-6 cursor-pointer"
               >
-                {editingStaff ? "Update Staff Profile" : "Create Staff Profile"}
+                {editingStaff ? "Update Crew Profile" : "Create Crew Profile"}
               </button>
             </form>
           </motion.div>
@@ -1753,12 +1874,34 @@ export default function Admin() {
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white text-dark cursor-pointer"
                 >
                   <option value="" disabled>Choose a crew member</option>
-                  {employees.map((emp) => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.name} ({emp.department} - {emp.availability === "online" ? "Active" : "Offline"})
-                    </option>
-                  ))}
+                  {employees.filter((emp) => emp.isLinkedToAuth !== false).length > 0 && (
+                    <optgroup label="── Active Crew (Linked Accounts)">
+                      {employees
+                        .filter((emp) => emp.isLinkedToAuth !== false)
+                        .map((emp) => (
+                          <option key={emp.id} value={emp.id}>
+                            {emp.name} ({emp.department} — {emp.availability === "online" ? "Active" : "Offline"})
+                          </option>
+                        ))}
+                    </optgroup>
+                  )}
+                  {employees.filter((emp) => emp.isLinkedToAuth === false).length > 0 && (
+                    <optgroup label="── ⚠️ No Login Account (Cannot receive notifications)">
+                      {employees
+                        .filter((emp) => emp.isLinkedToAuth === false)
+                        .map((emp) => (
+                          <option key={emp.id} value={emp.id} disabled>
+                            ⚠️ {emp.name} — No Auth Account
+                          </option>
+                        ))}
+                    </optgroup>
+                  )}
                 </select>
+                {employees.filter((emp) => emp.isLinkedToAuth !== false).length === 0 && (
+                  <p className="text-[11px] text-amber-600 font-semibold mt-1">
+                    ⚠️ No crew with login accounts found. Go to <strong>Users</strong> tab → promote a user to <strong>Staff</strong> role first.
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -1822,15 +1965,14 @@ export default function Admin() {
                 </div>
                 <div className="text-right">
                   <div className="text-[10px] text-gray-400 font-bold uppercase">Status</div>
-                  <span className={`inline-block text-[9px] font-black uppercase tracking-wider py-0.5 px-2 rounded-full border ${
-                    viewingBookingDetails.status === "Completed"
+                  <span className={`inline-block text-[9px] font-black uppercase tracking-wider py-0.5 px-2 rounded-full border ${viewingBookingDetails.status === "Completed"
                       ? "bg-emerald-50 text-emerald-600 border-emerald-100"
                       : viewingBookingDetails.status === "Pending"
-                      ? "bg-amber-50 text-amber-600 border-amber-100"
-                      : viewingBookingDetails.status === "Cancelled"
-                      ? "bg-rose-50 text-rose-600 border-rose-100"
-                      : "bg-blue-50 text-blue-600 border-blue-100"
-                  }`}>
+                        ? "bg-amber-50 text-amber-600 border-amber-100"
+                        : viewingBookingDetails.status === "Cancelled"
+                          ? "bg-rose-50 text-rose-600 border-rose-100"
+                          : "bg-blue-50 text-blue-600 border-blue-100"
+                    }`}>
                     {viewingBookingDetails.status}
                   </span>
                 </div>

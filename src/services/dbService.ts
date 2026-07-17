@@ -93,7 +93,8 @@ export interface dbBooking extends BaseDoc {
   assignedEmployeeName?: string;
   crewArrivingDate?: string;
   crewArrivingTime?: string;
-  bookingStatus: "Pending" | "Assigned" | "In Progress" | "Completed" | "Cancelled";
+  bookingStatus: "Pending" | "Accepted" | "Assigned" | "In Progress" | "Completed" | "Cancelled";
+  rejectedBy?: string[]; // UIDs of crew who rejected this booking
   scheduledDate: string;
   timeSlot: string;
   paymentStatus: "Unpaid" | "Paid" | "Refunded";
@@ -343,6 +344,73 @@ export const createBooking = async (data: Omit<dbBooking, "id" | "bookingStatus"
 
   const res = await db.collection("bookings").add(docData);
   await logAuditAction(`Create booking for customer ${data.customerId}`, null, docData);
+
+  // --- Forcefully notify ALL Crew Members for accepting booking ---
+  try {
+    const crewUids: string[] = [];
+
+    // 1. Check users collection
+    try {
+      const usersSnap = await db.collection("users").get();
+      usersSnap.forEach((doc: any) => {
+        const u = doc.data();
+        if (u.role === "staff" || u.role === "crew") {
+          crewUids.push(doc.id);
+        }
+      });
+    } catch (e) {}
+
+    // 2. Check employees collection
+    try {
+      const empSnap = await db.collection("employees").get();
+      empSnap.forEach((doc: any) => {
+        if (!crewUids.includes(doc.id)) {
+          crewUids.push(doc.id);
+        }
+      });
+    } catch (e) {}
+
+    // 3. Check simulator registered users fallback
+    if (typeof localStorage !== "undefined") {
+      try {
+        const simUsers = JSON.parse(localStorage.getItem("sim_registered_users") || "[]");
+        for (const u of simUsers) {
+          const profileRaw = localStorage.getItem(`sim_db_users_${u.uid}`);
+          const profileData = profileRaw ? JSON.parse(profileRaw) : null;
+          if (profileData && (profileData.role === "staff" || profileData.role === "crew")) {
+            if (!crewUids.includes(u.uid)) {
+              crewUids.push(u.uid);
+            }
+          }
+        }
+      } catch (e) {}
+    }
+
+    for (const crewUid of crewUids) {
+      await sendNotification(
+        crewUid,
+        `🚨 NEW BOOKING REQUEST AVAILABLE!`,
+        `Customer ${data.customerName} booked ${data.serviceName} for ${data.scheduledDate} (${data.timeSlot}). Tap to accept this job!`,
+        "Job Request",
+        "critical",
+        {
+          deepLink: "/employee",
+          receiverRole: "staff",
+          pinned: true,
+          sentTime: new Date().toISOString(),
+          actionButtons: [{ label: "Claim Job", action: "accept_booking", url: "/employee" }]
+        }
+      );
+    }
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("sim_booking_created", { detail: { bookingId: res.id } }));
+      window.dispatchEvent(new CustomEvent("sim_notification_created", { detail: { type: "crew_broadcast" } }));
+    }
+  } catch (err) {
+    console.error("Error sending crew notifications on booking creation:", err);
+  }
+
   return res.id;
 };
 
@@ -368,6 +436,86 @@ export const getBookingsByEmployee = async (employeeId: string): Promise<dbBooki
     }
   });
   return list;
+};
+
+/** All Pending bookings not yet assigned to anyone — visible to all crew */
+export const getAvailableBookings = async (currentCrewUid: string): Promise<dbBooking[]> => {
+  const snap = await db.collection("bookings").where("bookingStatus", "==", "Pending").get();
+  const list: dbBooking[] = [];
+  snap.forEach((doc: any) => {
+    const data = doc.data() as dbBooking;
+    if (!data.isDeleted && !data.assignedEmployee) {
+      // Skip bookings this crew already rejected
+      const rejected: string[] = data.rejectedBy || [];
+      if (!rejected.includes(currentCrewUid)) {
+        list.push({ id: doc.id, ...data });
+      }
+    }
+  });
+  return list.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+};
+
+/** Crew self-selects a booking: marks it Accepted + assigns themselves */
+export const crewAcceptBooking = async (bookingId: string, crewUid: string, crewName: string): Promise<void> => {
+  const ref = db.collection("bookings").doc(bookingId);
+  const prevSnap = await ref.get();
+  const prev = prevSnap.data() as dbBooking | undefined;
+
+  if (!prev || prev.bookingStatus !== "Pending" || prev.assignedEmployee) {
+    throw new Error("This booking is no longer available.");
+  }
+
+  const updated = {
+    assignedEmployee: crewUid,
+    assignedEmployeeName: crewName,
+    bookingStatus: "Accepted" as const,
+    updatedAt: new Date().toISOString(),
+    updatedBy: crewUid
+  };
+  await ref.set(updated, { merge: true });
+  await logAuditAction(`Crew ${crewName} self-accepted booking ${bookingId}`, prev, updated);
+
+  // Notify admin
+  const adminSnap = await db.collection("users").where("role", "in", ["admin", "super_admin"]).get();
+  adminSnap.forEach(async (adminDoc: any) => {
+    await sendNotification(
+      adminDoc.id,
+      `✅ Booking Accepted by Crew`,
+      `${crewName} has accepted booking #${bookingId.slice(0, 8).toUpperCase()} for ${prev.serviceName} (${prev.customerName}).`,
+      "Job Assignment",
+      "high",
+      { deepLink: "/admin", receiverRole: "admin", sentTime: new Date().toISOString() }
+    );
+  });
+
+  // Notify customer
+  if (prev.customerId) {
+    await sendNotification(
+      prev.customerId,
+      `🚗 Crew Assigned to Your Booking!`,
+      `${crewName} has accepted your booking for ${prev.serviceName}. They will arrive on ${prev.scheduledDate} at ${prev.timeSlot}.`,
+      "Booking Update",
+      "high",
+      { deepLink: "/account", receiverRole: "customer", sentTime: new Date().toISOString() }
+    );
+  }
+
+  // Dispatch real-time events
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("booking_accepted_by_crew", { detail: { bookingId, crewUid } }));
+  }
+};
+
+/** Crew rejects a booking — it stays available for others but hidden for this crew */
+export const crewRejectBooking = async (bookingId: string, crewUid: string): Promise<void> => {
+  const ref = db.collection("bookings").doc(bookingId);
+  const snap = await ref.get();
+  const data = snap.data() as dbBooking | undefined;
+  if (!data) return;
+  const existing: string[] = data.rejectedBy || [];
+  if (!existing.includes(crewUid)) {
+    await ref.set({ rejectedBy: [...existing, crewUid], updatedAt: new Date().toISOString() }, { merge: true });
+  }
 };
 
 export const getAllBookings = async (): Promise<dbBooking[]> => {
@@ -396,8 +544,8 @@ export const updateBookingStatus = async (bookingId: string, status: dbBooking["
 };
 
 export const assignEmployee = async (
-  bookingId: string, 
-  employeeId: string, 
+  bookingId: string,
+  employeeId: string,
   employeeName: string,
   crewArrivingDate?: string,
   crewArrivingTime?: string
@@ -405,6 +553,15 @@ export const assignEmployee = async (
   const ref = db.collection("bookings").doc(bookingId);
   const prevSnap = await ref.get();
   const prev = prevSnap.data();
+
+  // Build booking summary for notification
+  const bookingData = prev as any;
+  const serviceName = bookingData?.serviceName || "Service";
+  const customerName = bookingData?.customerName || "Customer";
+  const scheduledDate = bookingData?.scheduledDate || crewArrivingDate || "";
+  const timeSlot = bookingData?.timeSlot || crewArrivingTime || "";
+  const address = bookingData?.notes || bookingData?.address || "Check booking for address";
+
   const updated = {
     assignedEmployee: employeeId,
     assignedEmployeeName: employeeName,
@@ -416,6 +573,36 @@ export const assignEmployee = async (
   };
   await ref.set(updated, { merge: true });
   await logAuditAction(`Assigned booking ${bookingId} to ${employeeName}`, prev, updated);
+
+  // --- Force notification to the crew member ---
+  const arrivalInfo = crewArrivingDate
+    ? ` Arrive by ${crewArrivingDate}${crewArrivingTime ? " at " + crewArrivingTime : ""}.`
+    : "";
+
+  await sendNotification(
+    employeeId,
+    `🚗 New Job Assigned: ${serviceName}`,
+    `You have been assigned a new booking for ${customerName}. Service: ${serviceName} | Date: ${scheduledDate} ${timeSlot} | Address: ${address}.${arrivalInfo}`,
+    "Job Assignment",
+    "critical",
+    {
+      subtitle: `Booking ID: ${bookingId}`,
+      deepLink: "/employee",
+      receiverRole: "staff",
+      sentTime: new Date().toISOString(),
+      pinned: true
+    }
+  );
+
+  // Dispatch real-time event so crew dashboard refreshes instantly if open
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent("crew_booking_assigned", { detail: { employeeId, bookingId } })
+    );
+    window.dispatchEvent(
+      new CustomEvent("sim_notification_created", { detail: { userId: employeeId } })
+    );
+  }
 };
 
 // 5. Payments CRUD

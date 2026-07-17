@@ -221,7 +221,7 @@ export default function Account() {
                   ? "bg-emerald-50 text-emerald-600 border-emerald-100"
                   : "bg-blue-50 text-blue-600 border-blue-100"
               }`}>
-                {profile?.role || "customer"}
+                {profile?.role === "staff" ? "crew" : (profile?.role || "customer")}
               </span>
               <h4 className="font-heading font-extrabold text-dark tracking-tight truncate">{user.displayName || "Valued Customer"}</h4>
               <p className="text-gray-400 text-[10px] truncate">{user.email}</p>
@@ -286,13 +286,22 @@ export default function Account() {
           </nav>
 
           <div className="pt-4 border-t border-gray-100 flex flex-col gap-2">
-            {(profile?.role === "admin" || profile?.role === "staff") && (
+            {profile?.role === "admin" && (
               <Link
                 to="/admin"
                 className="flex items-center gap-2 bg-primary/10 hover:bg-primary/20 text-primary py-2.5 px-4 rounded-xl text-xs font-bold transition-all justify-center"
               >
                 <ShieldAlert size={16} />
                 Admin Panel
+              </Link>
+            )}
+            {profile?.role === "staff" && (
+              <Link
+                to="/employee"
+                className="flex items-center gap-2 bg-[#34A853]/10 hover:bg-[#34A853]/20 text-[#34A853] py-2.5 px-4 rounded-xl text-xs font-bold transition-all justify-center"
+              >
+                <Calendar size={16} />
+                Crew Dashboard
               </Link>
             )}
             <button

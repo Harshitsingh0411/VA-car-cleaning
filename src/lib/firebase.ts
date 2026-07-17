@@ -21,12 +21,13 @@ import {
 } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyD0sNDYKvUbwMZbqnAHoFvOwF1D5DIqF0c",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "va-car-demo.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "va-car-demo",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "va-car-demo.firebasestorage.app",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "521333664887",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:521333664887:web:dc723be1b4498b7b2c6a72",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyBhnH7CMSCoBu-wK6_QxjnC38jd3Qkgk2k",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "va-cleaning-services.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "va-cleaning-services",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "va-cleaning-services.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "1022047528427",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:1022047528427:web:1f84752c9af3e7ece225ae",
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-SRXY9CS84T"
 };
 
 const isFirebaseConfigured = !!(
