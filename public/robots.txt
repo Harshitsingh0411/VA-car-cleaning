@@ -1,0 +1,14 @@
+# User-agent directives for web crawlers
+User-agent: *
+Allow: /
+
+# Exclude private authentication and dashboard routes
+Disallow: /login
+Disallow: /register
+Disallow: /account
+Disallow: /admin
+Disallow: /employee
+Disallow: /notifications
+
+# Sitemap location
+Sitemap: https://vacarcleaningservice.com/sitemap.xml
