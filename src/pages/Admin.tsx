@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { db, isFirebaseConfigured } from "../lib/firebase";
+import { GoogleMapEmbed } from "../components/location/LocationPickerMap";
 
 import {
   getAuditLogs,
@@ -11,8 +12,6 @@ import {
   getJobApplications,
   updateJobStatus as updateJobStatusInDb,
   getAllReviews,
-  getBeforeAfterSettings,
-  updateBeforeAfterSettings,
   createOrUpdateEmployee,
   deleteEmployeeProfile,
   getAllEmployees,
@@ -32,9 +31,19 @@ import {
   getContactSettings,
   updateContactSettings,
   dbContactSettings,
-  DEFAULT_CONTACT_SETTINGS
+  DEFAULT_CONTACT_SETTINGS,
+  getLoyaltySettings,
+  updateLoyaltySettings,
+  grantOrAdjustLoyaltyPoints,
+  dbLoyaltySettings,
+  DEFAULT_LOYALTY_SETTINGS,
+  getBeforeAfterItems,
+  createOrUpdateBeforeAfterItem,
+  deleteBeforeAfterItem,
+  dbBeforeAfterItem
 } from "../services/dbService";
 import NotificationCenterTab from "../components/admin/NotificationCenterTab";
+import CloudinaryUploader from "../components/common/CloudinaryUploader";
 import { getCartoonAvatar, handleAvatarError } from "../utils/avatar";
 import {
   ShieldAlert,
@@ -49,6 +58,7 @@ import {
   TrendingUp,
   Image,
   MessageSquare,
+  Gift,
   CheckCircle,
   XCircle,
   Sparkles,
@@ -72,6 +82,10 @@ interface AdminAppointment {
   price: string;
   status: string;
   address: string;
+  customerLatitude?: number;
+  customerLongitude?: number;
+  crewLatitude?: number;
+  crewLongitude?: number;
   assignedEmployee?: string;
   assignedEmployeeName?: string;
   crewArrivingDate?: string;
@@ -114,7 +128,16 @@ interface AdminReview {
 
 export default function Admin() {
   const { user, profile, loading: authLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState<"stats" | "appointments" | "users" | "jobs" | "services" | "pricing" | "reviews" | "logs" | "notifications" | "staff">("stats");
+  const [activeTab, setActiveTab] = useState<"stats" | "appointments" | "users" | "jobs" | "services" | "pricing" | "reviews" | "logs" | "notifications" | "staff" | "loyalty">("stats");
+
+  // Loyalty Management State
+  const [loyaltyConfig, setLoyaltyConfig] = useState<dbLoyaltySettings>(DEFAULT_LOYALTY_SETTINGS);
+  const [loyaltySavedAlert, setLoyaltySavedAlert] = useState(false);
+  const [targetLoyaltyUserId, setTargetLoyaltyUserId] = useState("");
+  const [pointsAmountInput, setPointsAmountInput] = useState(100);
+  const [pointsTypeInput, setPointsTypeInput] = useState<"admin_bonus" | "admin_adjustment">("admin_bonus");
+  const [pointsDescInput, setPointsDescInput] = useState("Loyalty Bonus Grant");
+  const [grantSuccessMsg, setGrantSuccessMsg] = useState(false);
 
   // Load state variables
   const [appointments, setAppointments] = useState<AdminAppointment[]>([]);
@@ -122,11 +145,6 @@ export default function Admin() {
   const [jobs, setJobs] = useState<AdminJobApp[]>([]);
   const [reviews, setReviews] = useState<AdminReview[]>([]);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
-  const [beforeAfterInputs, setBeforeAfterInputs] = useState({
-    beforeImage: "",
-    afterImage: "",
-    useSeparateImages: false
-  });
 
   const [employees, setEmployees] = useState<any[]>([]);
   const [employeesLoading, setEmployeesLoading] = useState(false);
@@ -163,12 +181,6 @@ export default function Admin() {
   const [serviceFormImage, setServiceFormImage] = useState("");
   const [serviceFormDesc, setServiceFormDesc] = useState("");
 
-  // Service form bindings
-  const [servicePriceInputs, setServicePriceInputs] = useState<Record<string, number>>({});
-  const [serviceImageInputs, setServiceImageInputs] = useState<Record<string, string>>({});
-  const [serviceDescInputs, setServiceDescInputs] = useState<Record<string, string>>({});
-  const [showConfigAlert, setShowConfigAlert] = useState(false);
-
   // Dynamic Pricing Plans & Subscriptions state
   const [pricingPlans, setPricingPlans] = useState<dbPricingPlan[]>([]);
   const [pricingLoading, setPricingLoading] = useState(false);
@@ -185,8 +197,79 @@ export default function Admin() {
   const [planPopular, setPlanPopular] = useState(false);
   const [planCta, setPlanCta] = useState("Book Now");
 
-  // Single unified management sub-tab for Services, Pricing, About & Contact
-  const [serviceSubTab, setServiceSubTab] = useState<"catalog" | "pricing" | "about" | "contact">("catalog");
+  // Single unified management sub-tab for Services, Pricing, Before & After, About & Contact
+  const [serviceSubTab, setServiceSubTab] = useState<"catalog" | "pricing" | "before_after" | "about" | "contact">("catalog");
+
+  // Before & After Gallery State
+  const [beforeAfterItems, setBeforeAfterItems] = useState<dbBeforeAfterItem[]>([]);
+  const [showBaModal, setShowBaModal] = useState(false);
+  const [editingBaItem, setEditingBaItem] = useState<dbBeforeAfterItem | null>(null);
+
+  const [baFormId, setBaFormId] = useState("");
+  const [baFormTitle, setBaFormTitle] = useState("");
+  const [baFormCategory, setBaFormCategory] = useState("Exterior Wash");
+  const [baFormBeforeImage, setBaFormBeforeImage] = useState("");
+  const [baFormAfterImage, setBaFormAfterImage] = useState("");
+  const [baFormDesc, setBaFormDesc] = useState("");
+
+  const fetchBeforeAfterGallery = async () => {
+    const data = await getBeforeAfterItems();
+    setBeforeAfterItems(data);
+  };
+
+  const resetBaForm = () => {
+    setBaFormId("");
+    setBaFormTitle("");
+    setBaFormCategory("Exterior Wash");
+    setBaFormBeforeImage("");
+    setBaFormAfterImage("");
+    setBaFormDesc("");
+  };
+
+  const openAddBaModal = () => {
+    setEditingBaItem(null);
+    resetBaForm();
+    setShowBaModal(true);
+  };
+
+  const openEditBaModal = (item: dbBeforeAfterItem) => {
+    setEditingBaItem(item);
+    setBaFormId(item.id);
+    setBaFormTitle(item.title);
+    setBaFormCategory(item.category || "Exterior Wash");
+    setBaFormBeforeImage(item.beforeImage);
+    setBaFormAfterImage(item.afterImage);
+    setBaFormDesc(item.description || "");
+    setShowBaModal(true);
+  };
+
+  const handleSaveBeforeAfterItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!baFormTitle || !baFormBeforeImage || !baFormAfterImage) {
+      alert("Please fill in Title, Before Image, and After Image.");
+      return;
+    }
+
+    const item: dbBeforeAfterItem = {
+      id: baFormId || `ba-${Date.now()}`,
+      title: baFormTitle,
+      category: baFormCategory,
+      beforeImage: baFormBeforeImage,
+      afterImage: baFormAfterImage,
+      description: baFormDesc,
+      displayOrder: editingBaItem ? editingBaItem.displayOrder : beforeAfterItems.length + 1
+    };
+
+    await createOrUpdateBeforeAfterItem(item);
+    setShowBaModal(false);
+    fetchBeforeAfterGallery();
+  };
+
+  const handleDeleteBeforeAfterItem = async (id: string) => {
+    if (!window.confirm("Are you sure you want to remove this Before & After showcase card?")) return;
+    await deleteBeforeAfterItem(id);
+    fetchBeforeAfterGallery();
+  };
 
   // About Us Page State
   const [aboutInputs, setAboutInputs] = useState<dbAboutSettings>(DEFAULT_ABOUT_SETTINGS);
@@ -218,6 +301,36 @@ export default function Admin() {
     await updateContactSettings(contactInputs);
     setContactSavedAlert(true);
     setTimeout(() => setContactSavedAlert(false), 3000);
+  };
+
+  const fetchLoyaltyConfig = async () => {
+    const data = await getLoyaltySettings();
+    setLoyaltyConfig(data);
+  };
+
+  const handleSaveLoyaltyConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await updateLoyaltySettings(loyaltyConfig);
+    setLoyaltySavedAlert(true);
+    setTimeout(() => setLoyaltySavedAlert(false), 3000);
+  };
+
+  const handleGrantLoyaltyPoints = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!targetLoyaltyUserId) {
+      alert("Please select a registered client to grant points.");
+      return;
+    }
+    const finalPoints = pointsTypeInput === "admin_adjustment" && pointsAmountInput > 0 ? -pointsAmountInput : pointsAmountInput;
+    await grantOrAdjustLoyaltyPoints(
+      targetLoyaltyUserId,
+      finalPoints,
+      pointsTypeInput,
+      pointsDescInput || "Admin Points Adjustment"
+    );
+    setGrantSuccessMsg(true);
+    setTimeout(() => setGrantSuccessMsg(false), 3500);
+    fetchDirectoryUsers();
   };
 
 
@@ -370,7 +483,11 @@ export default function Admin() {
         time: b.timeSlot,
         price: `₹${b.price}`,
         status: b.bookingStatus,
-        address: b.notes || "",
+        address: b.notes || b.address || "",
+        customerLatitude: b.customerLatitude,
+        customerLongitude: b.customerLongitude,
+        crewLatitude: b.crewLatitude,
+        crewLongitude: b.crewLongitude,
         assignedEmployee: b.assignedEmployee || "",
         assignedEmployeeName: b.assignedEmployeeName || "",
         crewArrivingDate: b.crewArrivingDate || "",
@@ -714,9 +831,14 @@ export default function Admin() {
     }
     if (activeTab === "services") {
       fetchServicesList();
+      fetchBeforeAfterGallery();
     }
     if (activeTab === "pricing") {
       fetchPricingPlans();
+    }
+    if (activeTab === "loyalty") {
+      fetchLoyaltyConfig();
+      fetchDirectoryUsers();
     }
     if ((activeTab === "users" || activeTab === "team_accounts") && isAdminUser) {
       fetchDirectoryUsers();
@@ -766,50 +888,6 @@ export default function Admin() {
     const loadedImages: Record<string, string> = {};
     const loadedDescs: Record<string, string> = {};
 
-    const serviceKeys = ["exteriorWash", "interiorCleaning", "foamWash", "waxPolish", "dashboardCleaning", "tyreDressing", "premiumDetailing"];
-    serviceKeys.forEach((key) => {
-      loadedPrices[key] = servicePrices[key]?.price || 0;
-    });
-
-    const services = ["exterior", "interior", "foam", "wax", "dashboard", "tyre"];
-    const fallbackImages: Record<string, string> = {
-      exterior: "https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&q=80&w=800",
-      interior: "https://images.unsplash.com/photo-1601362840469-51e4d8d58785?auto=format&fit=crop&q=80&w=800",
-      foam: "https://images.unsplash.com/photo-1552930294-6b595f4c2974?auto=format&fit=crop&q=80&w=800",
-      wax: "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?auto=format&fit=crop&q=80&w=800",
-      dashboard: "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?auto=format&fit=crop&q=80&w=800",
-      tyre: "https://images.unsplash.com/photo-1620891549027-942fdc95d3f5?auto=format&fit=crop&q=80&w=800"
-    };
-    const fallbackDescs: Record<string, string> = {
-      exterior: "High pressure foam wash for exterior body.",
-      interior: "Deep cleaning of seats, floor & interior.",
-      foam: "Premium foam wash for deep cleaning.",
-      wax: "Protects your car paint & gives extra shine.",
-      dashboard: "Shine & protection for your dashboard.",
-      tyre: "Restore the deep rich, wet-gloss black look of your tyres."
-    };
-
-    services.forEach((s) => {
-      // images
-      const customImgRaw = localStorage.getItem("admin_service_images");
-      const customImgs = customImgRaw ? JSON.parse(customImgRaw) : {};
-      loadedImages[s] = customImgs[s] || fallbackImages[s];
-
-      // descs
-      const customDescRaw = localStorage.getItem("admin_service_descriptions");
-      const customDescs = customDescRaw ? JSON.parse(customDescRaw) : {};
-      loadedDescs[s] = customDescs[s] || fallbackDescs[s];
-    });
-
-    setServicePriceInputs(loadedPrices);
-    setServiceImageInputs(loadedImages);
-    setServiceDescInputs(loadedDescs);
-
-    const loadBeforeAfter = async () => {
-      const s = await getBeforeAfterSettings();
-      setBeforeAfterInputs(s);
-    };
-    loadBeforeAfter();
   }, []);
 
   // Update Appointment status
@@ -865,36 +943,6 @@ export default function Admin() {
     } catch (err) {
       console.error("Error updating job status:", err);
     }
-  };
-
-  // Save Service Config Overrides
-  const saveServiceConfig = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // 1. Save Prices
-    const priceOverrides: Record<string, number> = {};
-    Object.keys(servicePriceInputs).forEach((k) => {
-      priceOverrides[k] = Number(servicePriceInputs[k]);
-    });
-    localStorage.setItem("admin_pricing_overrides", JSON.stringify(priceOverrides));
-
-    // 2. Save Images
-    localStorage.setItem("admin_service_images", JSON.stringify(serviceImageInputs));
-
-    // 3. Save Descriptions
-    localStorage.setItem("admin_service_descriptions", JSON.stringify(serviceDescInputs));
-
-    // 4. Save Before & After Settings
-    try {
-      await updateBeforeAfterSettings(beforeAfterInputs);
-    } catch (err) {
-      console.error("Error updating before/after settings:", err);
-    }
-
-    setShowConfigAlert(true);
-    setTimeout(() => {
-      setShowConfigAlert(false);
-    }, 3000);
   };
 
   const fetchServicesList = async () => {
@@ -1009,15 +1057,15 @@ export default function Admin() {
 
   if (authLoading) {
     return (
-      <div className="pt-24 min-h-screen bg-[#F8FAFC] flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="pt-24 min-h-screen bg-[#070C16] flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-[#F4B400] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (!user || (profile?.role !== "admin" && profile?.role !== "staff")) {
     return (
-      <div className="pt-24 min-h-screen bg-[#F8FAFC] flex items-center justify-center text-center px-4">
+      <div className="pt-24 min-h-screen bg-[#070C16] flex items-center justify-center text-center px-4">
         <div className="max-w-md w-full p-8 bg-white rounded-3xl shadow-lg border border-gray-100 space-y-6">
           <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto border border-rose-100 shadow-sm">
             <ShieldAlert size={32} />
@@ -1042,7 +1090,7 @@ export default function Admin() {
   }
 
   return (
-    <div className="pt-24 min-h-screen bg-[#F8FAFC] pb-24 relative overflow-hidden flex">
+    <div className="pt-24 min-h-screen bg-[#070C16] pb-24 relative overflow-hidden flex">
       <div className="container mx-auto px-4 md:px-6 relative z-10 flex flex-col md:flex-row gap-8">
 
         {/* LEFT Sidebar */}
@@ -1121,6 +1169,16 @@ export default function Admin() {
               <Layers size={16} />
               Services, Pricing & Content
             </button>
+            {profile?.role !== "staff" && (
+              <button
+                onClick={() => setActiveTab("loyalty")}
+                className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${activeTab === "loyalty" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
+                  }`}
+              >
+                <Gift size={16} />
+                Loyalty & Rewards
+              </button>
+            )}
             <button
               onClick={() => setActiveTab("reviews")}
               className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${activeTab === "reviews" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
@@ -1257,12 +1315,12 @@ export default function Admin() {
                         <td className="py-4 pr-4 text-right font-black text-dark">{a.price}</td>
                         <td className="py-4 pr-4">
                           <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${a.status === "Completed"
-                              ? "bg-emerald-50 text-emerald-600 border-emerald-100"
-                              : a.status === "Pending"
-                                ? "bg-amber-50 text-amber-600 border-amber-100"
-                                : a.status === "Cancelled"
-                                  ? "bg-rose-50 text-rose-600 border-rose-100"
-                                  : "bg-blue-50 text-blue-600 border-blue-100"
+                            ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                            : a.status === "Pending"
+                              ? "bg-amber-50 text-amber-600 border-amber-100"
+                              : a.status === "Cancelled"
+                                ? "bg-rose-50 text-rose-600 border-rose-100"
+                                : "bg-blue-50 text-blue-600 border-blue-100"
                             }`}>
                             {a.status}
                           </span>
@@ -1359,10 +1417,10 @@ export default function Admin() {
                         <td className="py-4 text-right">
                           {profile?.role === "staff" ? (
                             <span className={`text-[10px] font-black uppercase tracking-wider py-1 px-2.5 rounded-full border ${u.role === "admin"
-                                ? "bg-amber-50 text-amber-600 border-amber-200"
-                                : u.role === "staff"
-                                  ? "bg-emerald-50 text-emerald-600 border-emerald-200"
-                                  : "bg-blue-50 text-blue-600 border-blue-200"
+                              ? "bg-amber-50 text-amber-600 border-amber-200"
+                              : u.role === "staff"
+                                ? "bg-emerald-50 text-emerald-600 border-emerald-200"
+                                : "bg-blue-50 text-blue-600 border-blue-200"
                               }`}>
                               {u.role || "customer"}
                             </span>
@@ -1419,10 +1477,10 @@ export default function Admin() {
                         <td className="py-4 text-right">
                           {profile?.role === "staff" ? (
                             <span className={`text-[10px] font-black uppercase tracking-wider py-1 px-2.5 rounded-full border ${u.role === "admin"
-                                ? "bg-amber-50 text-amber-600 border-amber-200"
-                                : u.role === "staff"
-                                  ? "bg-emerald-50 text-emerald-600 border-emerald-200"
-                                  : "bg-blue-50 text-blue-600 border-blue-200"
+                              ? "bg-amber-50 text-amber-600 border-amber-200"
+                              : u.role === "staff"
+                                ? "bg-emerald-50 text-emerald-600 border-emerald-200"
+                                : "bg-blue-50 text-blue-600 border-blue-200"
                               }`}>
                               {u.role || "customer"}
                             </span>
@@ -1462,10 +1520,10 @@ export default function Admin() {
                         </p>
                       </div>
                       <span className={`text-[9px] font-bold py-1 px-2.5 rounded-full border uppercase tracking-wider ${j.status === "Approved"
-                          ? "bg-emerald-50 text-emerald-600 border-emerald-100"
-                          : j.status === "Rejected"
-                            ? "bg-rose-50 text-rose-600 border-rose-100"
-                            : "bg-amber-50 text-amber-600 border-amber-100"
+                        ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                        : j.status === "Rejected"
+                          ? "bg-rose-50 text-rose-600 border-rose-100"
+                          : "bg-amber-50 text-amber-600 border-amber-100"
                         }`}>
                         {j.status}
                       </span>
@@ -1509,146 +1567,6 @@ export default function Admin() {
               </div>
             </div>
           )}
-
-          {/* PRICING & SHOWCASE PANEL */}
-          {activeTab === "services" && (
-            <div className="space-y-6">
-              {/* Dynamic Services Management Block */}
-              <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm space-y-6">
-                <div className="flex justify-between items-center text-left">
-                  <div>
-                    <h3 className="font-heading font-extrabold text-dark text-lg">Services Pricing & Catalog</h3>
-                    <p className="text-gray-400 text-xs mt-1">Add, update, or remove doorstep detailing services and package rates.</p>
-                  </div>
-                  {profile?.role !== "staff" && (
-                    <button
-                      onClick={openAddServiceModal}
-                      className="bg-primary hover:bg-[#0b327b] text-white font-bold py-2.5 px-6 rounded-2xl text-xs uppercase tracking-wider shadow cursor-pointer flex items-center gap-1.5"
-                    >
-                      <Plus size={14} />
-                      Add Service
-                    </button>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
-                  {servicesList.map((s) => (
-                    <div key={s.id} className="border border-gray-100 rounded-2xl p-5 flex flex-col justify-between space-y-4 hover:shadow-md transition-shadow relative bg-white">
-                      <div className="flex gap-4">
-                        <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 shrink-0">
-                          <img src={s.image} alt={s.name} className="w-full h-full object-cover" />
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-heading font-bold text-dark text-sm">{s.name}</h4>
-                            {s.isCustom && (
-                              <span className="text-[9px] font-bold text-primary bg-primary/10 py-0.5 px-2 rounded-full uppercase">
-                                Custom
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-gray-400 text-[11px] leading-relaxed line-clamp-2">{s.description}</p>
-                          <span className="font-black text-dark text-xs block pt-1">₹{s.price}</span>
-                        </div>
-                      </div>
-
-                      {profile?.role !== "staff" && (
-                        <div className="flex justify-end gap-2 pt-2 border-t border-gray-50">
-                          <button
-                            onClick={() => openEditServiceModal(s)}
-                            className="bg-gray-50 hover:bg-gray-100 text-gray-600 font-bold py-1.5 px-4 rounded-xl text-xs cursor-pointer"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteService(s.id)}
-                            className="bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold py-1.5 px-4 rounded-xl text-xs cursor-pointer"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* BEFORE & AFTER PHOTO COMPARISON OVERRIDES */}
-              <form onSubmit={saveServiceConfig} className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm space-y-6">
-                <div className="flex justify-between items-center">
-                  <h3 className="font-heading font-extrabold text-dark text-lg">Before & After Slider Config</h3>
-                  {profile?.role !== "staff" && (
-                    <button
-                      type="submit"
-                      className="bg-primary hover:bg-[#0b327b] text-white font-bold py-2.5 px-6 rounded-2xl text-xs uppercase tracking-wider shadow cursor-pointer"
-                    >
-                      Save Slider Config
-                    </button>
-                  )}
-                </div>
-
-                {showConfigAlert && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="p-4 bg-emerald-50 border border-emerald-100 text-emerald-600 rounded-2xl text-xs font-bold flex items-center gap-2"
-                  >
-                    <Sparkles size={16} />
-                    <span>Config Saved! Homepage comparison slider was updated.</span>
-                  </motion.div>
-                )}
-
-                <div className="p-5 border border-gray-100 rounded-2xl space-y-4 bg-[#F8FAFC]/50 text-left">
-                  <div className="grid grid-cols-1 gap-4">
-                    {/* Checkbox to choose whether to use separate images */}
-                    <div className="flex items-center gap-2 pb-2">
-                      <input
-                        type="checkbox"
-                        id="useSeparateImages"
-                        disabled={profile?.role === "staff"}
-                        checked={beforeAfterInputs.useSeparateImages}
-                        onChange={(e) => setBeforeAfterInputs({ ...beforeAfterInputs, useSeparateImages: e.target.checked })}
-                        className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary cursor-pointer"
-                      />
-                      <label htmlFor="useSeparateImages" className="text-xs font-bold text-gray-600 cursor-pointer select-none">
-                        Use separate before/after photos (if unchecked, CSS dirty-car filter is applied to the after photo)
-                      </label>
-                    </div>
-
-                    {/* After image input */}
-                    <div className="space-y-1.5">
-                      <label className="text-[9px] font-bold text-gray-400 uppercase">After Image (or Main Comparison Image) URL</label>
-                      <input
-                        type="url"
-                        required
-                        disabled={profile?.role === "staff"}
-                        value={beforeAfterInputs.afterImage}
-                        onChange={(e) => setBeforeAfterInputs({ ...beforeAfterInputs, afterImage: e.target.value })}
-                        className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-3.5 text-xs font-mono text-dark focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60 shadow-sm"
-                      />
-                    </div>
-
-                    {/* Before image input */}
-                    {beforeAfterInputs.useSeparateImages && (
-                      <div className="space-y-1.5">
-                        <label className="text-[9px] font-bold text-gray-400 uppercase">Before Image URL (Left Side)</label>
-                        <input
-                          type="url"
-                          required
-                          disabled={profile?.role === "staff"}
-                          value={beforeAfterInputs.beforeImage}
-                          onChange={(e) => setBeforeAfterInputs({ ...beforeAfterInputs, beforeImage: e.target.value })}
-                          className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-3.5 text-xs font-mono text-dark focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60 shadow-sm"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </form>
-            </div>
-          )}
-
-          {/* UNIFIED SERVICES, PRICING, ABOUT & CONTACT MANAGEMENT HUB */}
           {activeTab === "services" && (
             <div className="space-y-6">
               {/* Sub-Tabs Selector Bar */}
@@ -1656,11 +1574,10 @@ export default function Admin() {
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => setServiceSubTab("catalog")}
-                    className={`py-2 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                      serviceSubTab === "catalog"
+                    className={`py-2 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${serviceSubTab === "catalog"
                         ? "bg-primary text-white shadow"
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                    }`}
+                      }`}
                   >
                     <Layers size={14} />
                     Homepage Services ({servicesList.length})
@@ -1668,23 +1585,32 @@ export default function Admin() {
 
                   <button
                     onClick={() => setServiceSubTab("pricing")}
-                    className={`py-2 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                      serviceSubTab === "pricing"
+                    className={`py-2 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${serviceSubTab === "pricing"
                         ? "bg-primary text-white shadow"
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                    }`}
+                      }`}
                   >
                     <DollarSign size={14} />
                     Pricing Packages ({pricingPlans.length})
                   </button>
 
                   <button
-                    onClick={() => setServiceSubTab("about")}
-                    className={`py-2 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                      serviceSubTab === "about"
+                    onClick={() => setServiceSubTab("before_after")}
+                    className={`py-2 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${serviceSubTab === "before_after"
                         ? "bg-primary text-white shadow"
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                    }`}
+                      }`}
+                  >
+                    <Image size={14} />
+                    Before & After Cards ({beforeAfterItems.length})
+                  </button>
+
+                  <button
+                    onClick={() => setServiceSubTab("about")}
+                    className={`py-2 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${serviceSubTab === "about"
+                        ? "bg-primary text-white shadow"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      }`}
                   >
                     <Info size={14} />
                     About Us Details
@@ -1692,11 +1618,10 @@ export default function Admin() {
 
                   <button
                     onClick={() => setServiceSubTab("contact")}
-                    className={`py-2 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                      serviceSubTab === "contact"
+                    className={`py-2 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${serviceSubTab === "contact"
                         ? "bg-primary text-white shadow"
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                    }`}
+                      }`}
                   >
                     <Phone size={14} />
                     Contact Us Details
@@ -1772,72 +1697,6 @@ export default function Admin() {
                       ))}
                     </div>
                   </div>
-
-                  {/* BEFORE & AFTER PHOTO COMPARISON OVERRIDES */}
-                  <form onSubmit={saveServiceConfig} className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm space-y-6">
-                    <div className="flex justify-between items-center">
-                      <h3 className="font-heading font-extrabold text-dark text-lg">Before & After Slider Config</h3>
-                      {profile?.role !== "staff" && (
-                        <button
-                          type="submit"
-                          className="bg-primary hover:bg-[#0b327b] text-white font-bold py-2.5 px-6 rounded-2xl text-xs uppercase tracking-wider shadow cursor-pointer"
-                        >
-                          Save Slider Config
-                        </button>
-                      )}
-                    </div>
-
-                    {showConfigAlert && (
-                      <div className="p-4 bg-emerald-50 border border-emerald-100 text-emerald-600 rounded-2xl text-xs font-bold flex items-center gap-2">
-                        <Sparkles size={16} />
-                        <span>Config Saved! Homepage comparison slider was updated.</span>
-                      </div>
-                    )}
-
-                    <div className="p-5 border border-gray-100 rounded-2xl space-y-4 bg-[#F8FAFC]/50 text-left">
-                      <div className="grid grid-cols-1 gap-4">
-                        <div className="flex items-center gap-2 pb-2">
-                          <input
-                            type="checkbox"
-                            id="useSeparateImages"
-                            disabled={profile?.role === "staff"}
-                            checked={beforeAfterInputs.useSeparateImages}
-                            onChange={(e) => setBeforeAfterInputs({ ...beforeAfterInputs, useSeparateImages: e.target.checked })}
-                            className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary cursor-pointer"
-                          />
-                          <label htmlFor="useSeparateImages" className="text-xs font-bold text-gray-600 cursor-pointer select-none">
-                            Use separate before/after photos (if unchecked, CSS dirty filter is applied to after photo)
-                          </label>
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <label className="text-[9px] font-bold text-gray-400 uppercase">After Image URL</label>
-                          <input
-                            type="url"
-                            required
-                            disabled={profile?.role === "staff"}
-                            value={beforeAfterInputs.afterImage}
-                            onChange={(e) => setBeforeAfterInputs({ ...beforeAfterInputs, afterImage: e.target.value })}
-                            className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-3.5 text-xs font-mono text-dark"
-                          />
-                        </div>
-
-                        {beforeAfterInputs.useSeparateImages && (
-                          <div className="space-y-1.5">
-                            <label className="text-[9px] font-bold text-gray-400 uppercase">Before Image URL</label>
-                            <input
-                              type="url"
-                              required
-                              disabled={profile?.role === "staff"}
-                              value={beforeAfterInputs.beforeImage}
-                              onChange={(e) => setBeforeAfterInputs({ ...beforeAfterInputs, beforeImage: e.target.value })}
-                              className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-3.5 text-xs font-mono text-dark"
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </form>
                 </div>
               )}
 
@@ -1865,9 +1724,8 @@ export default function Admin() {
                       {pricingPlans.map((plan) => (
                         <div
                           key={plan.id}
-                          className={`p-6 bg-white border rounded-3xl shadow-sm relative flex flex-col justify-between space-y-4 ${
-                            plan.popular ? "border-primary ring-2 ring-primary/10" : "border-gray-100"
-                          }`}
+                          className={`p-6 bg-white border rounded-3xl shadow-sm relative flex flex-col justify-between space-y-4 ${plan.popular ? "border-primary ring-2 ring-primary/10" : "border-gray-100"
+                            }`}
                         >
                           {plan.popular && (
                             <span className="absolute -top-3 right-6 bg-primary text-white text-[9px] font-black uppercase tracking-wider px-3 py-1 rounded-full shadow">
@@ -1922,6 +1780,91 @@ export default function Admin() {
                               </button>
                             </div>
                           )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* SUB-TAB: BEFORE & AFTER SHOWCASE CARDS */}
+              {serviceSubTab === "before_after" && (
+                <div className="bg-white border border-gray-100 rounded-3xl p-6 md:p-8 shadow-sm space-y-6 text-left">
+                  <div className="flex justify-between items-center border-b border-gray-100 pb-4">
+                    <div>
+                      <h3 className="font-heading font-extrabold text-dark text-lg flex items-center gap-2">
+                        <Image size={20} className="text-primary" />
+                        Before & After Showcase Manager
+                      </h3>
+                      <p className="text-gray-400 text-xs mt-0.5">Manage side-by-side detailing comparison cards with Cloudinary image hosting support.</p>
+                    </div>
+                    {profile?.role !== "staff" && (
+                      <button
+                        type="button"
+                        onClick={openAddBaModal}
+                        className="bg-primary hover:bg-[#0b327b] text-white font-bold py-2.5 px-5 rounded-2xl text-xs uppercase tracking-wider shadow cursor-pointer transition-all flex items-center gap-1.5"
+                      >
+                        <Plus size={15} />
+                        Add Before/After Card
+                      </button>
+                    )}
+                  </div>
+
+                  {beforeAfterItems.length === 0 ? (
+                    <div className="text-center py-12 space-y-3">
+                      <div className="w-12 h-12 bg-gray-50 text-gray-400 rounded-full flex items-center justify-center mx-auto">
+                        <Image size={24} />
+                      </div>
+                      <h4 className="font-heading font-extrabold text-dark text-sm">No Before & After Cards Yet</h4>
+                      <p className="text-gray-400 text-xs max-w-xs mx-auto">Click 'Add Before/After Card' above to publish detailing result cards.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {beforeAfterItems.map((ba) => (
+                        <div key={ba.id} className="border border-gray-200 rounded-3xl p-5 space-y-4 shadow-sm bg-gray-50/50">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <span className="text-[9px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full border border-amber-200">
+                                {ba.category || "Detailing"}
+                              </span>
+                              <h4 className="font-heading font-extrabold text-dark text-base mt-1">{ba.title}</h4>
+                              {ba.description && <p className="text-xs text-gray-500 font-semibold">{ba.description}</p>}
+                            </div>
+                            {profile?.role !== "staff" && (
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => openEditBaModal(ba)}
+                                  className="text-xs font-bold text-primary hover:underline cursor-pointer"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteBeforeAfterItem(ba.id)}
+                                  className="text-xs font-bold text-rose-500 hover:underline cursor-pointer"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Image Comparison Thumbnail */}
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <span className="text-[10px] font-bold text-gray-400 uppercase">Before Detailing</span>
+                              <div className="h-32 rounded-2xl overflow-hidden border border-gray-200 bg-gray-900">
+                                <img src={ba.beforeImage} alt="Before" className="w-full h-full object-cover" />
+                              </div>
+                            </div>
+                            <div className="space-y-1">
+                              <span className="text-[10px] font-bold text-emerald-600 uppercase">After VA Detailing</span>
+                              <div className="h-32 rounded-2xl overflow-hidden border border-emerald-300 bg-gray-900">
+                                <img src={ba.afterImage} alt="After" className="w-full h-full object-cover" />
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -2237,6 +2180,47 @@ export default function Admin() {
                         className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-dark focus:outline-none focus:ring-2 focus:ring-primary"
                       />
                     </div>
+                    <div className="col-span-1 md:col-span-2 pt-4 border-t border-gray-100">
+                      <h4 className="font-heading font-bold text-dark text-sm mb-4">Social Media Links</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Facebook URL</label>
+                          <input
+                            type="url"
+                            value={contactInputs.facebook || ""}
+                            onChange={(e) => setContactInputs({ ...contactInputs, facebook: e.target.value })}
+                            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-dark focus:outline-none focus:ring-2 focus:ring-primary"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Instagram URL</label>
+                          <input
+                            type="url"
+                            value={contactInputs.instagram || ""}
+                            onChange={(e) => setContactInputs({ ...contactInputs, instagram: e.target.value })}
+                            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-dark focus:outline-none focus:ring-2 focus:ring-primary"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">YouTube URL</label>
+                          <input
+                            type="url"
+                            value={contactInputs.youtube || ""}
+                            onChange={(e) => setContactInputs({ ...contactInputs, youtube: e.target.value })}
+                            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-dark focus:outline-none focus:ring-2 focus:ring-primary"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Twitter URL</label>
+                          <input
+                            type="url"
+                            value={contactInputs.twitter || ""}
+                            onChange={(e) => setContactInputs({ ...contactInputs, twitter: e.target.value })}
+                            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-dark focus:outline-none focus:ring-2 focus:ring-primary"
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </form>
               )}
@@ -2424,18 +2408,18 @@ export default function Admin() {
                           <td className="py-4 pr-4 text-center space-y-1">
                             <div>
                               <span className={`inline-block text-[9px] font-black uppercase tracking-wider py-0.5 px-2 rounded-full ${emp.KYCStatus === "Verified"
-                                  ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                                  : emp.KYCStatus === "Rejected"
-                                    ? "bg-rose-50 text-rose-600 border border-rose-100"
-                                    : "bg-amber-50 text-amber-600 border border-amber-100"
+                                ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                                : emp.KYCStatus === "Rejected"
+                                  ? "bg-rose-50 text-rose-600 border border-rose-100"
+                                  : "bg-amber-50 text-amber-600 border border-amber-100"
                                 }`}>
                                 KYC: {emp.KYCStatus || "Pending"}
                               </span>
                             </div>
                             <div>
                               <span className={`inline-block text-[9px] font-black uppercase tracking-wider py-0.5 px-2 rounded-full ${emp.availability === "online"
-                                  ? "bg-blue-50 text-blue-600 border border-blue-100"
-                                  : "bg-gray-100 text-gray-500 border border-gray-200"
+                                ? "bg-blue-50 text-blue-600 border border-blue-100"
+                                : "bg-gray-100 text-gray-500 border border-gray-200"
                                 }`}>
                                 {emp.availability === "online" ? "Active" : "Offline"}
                               </span>
@@ -2474,6 +2458,196 @@ export default function Admin() {
                   </table>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* LOYALTY & REWARDS MANAGEMENT TAB */}
+          {activeTab === "loyalty" && (
+            <div className="space-y-6">
+              {/* Card 1: Loyalty Program Settings */}
+              <form onSubmit={handleSaveLoyaltyConfig} className="bg-white border border-gray-100 rounded-3xl p-6 md:p-8 shadow-sm space-y-6 text-left">
+                <div className="flex justify-between items-center border-b border-gray-100 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-amber-50 text-[#F4B400] flex items-center justify-center border border-amber-200">
+                      <Gift size={20} />
+                    </div>
+                    <div>
+                      <h3 className="font-heading font-extrabold text-dark text-lg">Loyalty & Rewards Program Rules</h3>
+                      <p className="text-gray-400 text-xs mt-0.5">Configure earning rates, redemption values, and welcome bonus rewards.</p>
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-xl">
+                    <input
+                      type="checkbox"
+                      checked={loyaltyConfig.enabled}
+                      onChange={(e) => setLoyaltyConfig({ ...loyaltyConfig, enabled: e.target.checked })}
+                      className="w-4 h-4 text-primary accent-[#F4B400] rounded cursor-pointer"
+                    />
+                    <span className="text-xs font-bold text-dark">{loyaltyConfig.enabled ? "Program Active ✅" : "Program Disabled ❌"}</span>
+                  </label>
+                </div>
+
+                {loyaltySavedAlert && (
+                  <div className="p-4 bg-emerald-50 border border-emerald-100 text-emerald-600 rounded-2xl text-xs font-bold flex items-center gap-2">
+                    <CheckCircle size={16} />
+                    <span>Loyalty program settings saved successfully!</span>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 text-xs">
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-gray-500 uppercase tracking-wider text-[10px]">Earn Rate (Points per ₹100 spent)</label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={loyaltyConfig.pointsPer100Spent}
+                      onChange={(e) => setLoyaltyConfig({ ...loyaltyConfig, pointsPer100Spent: parseInt(e.target.value) || 0 })}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 px-4 font-semibold text-dark focus:bg-white focus:ring-2 focus:ring-primary outline-none"
+                    />
+                    <span className="text-[10px] text-gray-400">e.g. 10 points for every ₹100 booking value.</span>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-gray-500 uppercase tracking-wider text-[10px]">Redemption Value (₹ INR per 1 Point)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min={0.1}
+                      value={loyaltyConfig.pointRedemptionValue}
+                      onChange={(e) => setLoyaltyConfig({ ...loyaltyConfig, pointRedemptionValue: parseFloat(e.target.value) || 0 })}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 px-4 font-semibold text-dark focus:bg-white focus:ring-2 focus:ring-primary outline-none"
+                    />
+                    <span className="text-[10px] text-gray-400">e.g. 1 point = ₹1 discount.</span>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-gray-500 uppercase tracking-wider text-[10px]">Min Points Required to Redeem</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={loyaltyConfig.minPointsToRedeem}
+                      onChange={(e) => setLoyaltyConfig({ ...loyaltyConfig, minPointsToRedeem: parseInt(e.target.value) || 0 })}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 px-4 font-semibold text-dark focus:bg-white focus:ring-2 focus:ring-primary outline-none"
+                    />
+                    <span className="text-[10px] text-gray-400">Min point threshold for checkout.</span>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-gray-500 uppercase tracking-wider text-[10px]">Max Booking Discount % Cap</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={loyaltyConfig.maxDiscountPercent}
+                      onChange={(e) => setLoyaltyConfig({ ...loyaltyConfig, maxDiscountPercent: parseInt(e.target.value) || 0 })}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 px-4 font-semibold text-dark focus:bg-white focus:ring-2 focus:ring-primary outline-none"
+                    />
+                    <span className="text-[10px] text-gray-400">Max % of booking cost redeemable with points.</span>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-gray-500 uppercase tracking-wider text-[10px]">New User Welcome Bonus Points</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={loyaltyConfig.welcomeBonusPoints}
+                      onChange={(e) => setLoyaltyConfig({ ...loyaltyConfig, welcomeBonusPoints: parseInt(e.target.value) || 0 })}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 px-4 font-semibold text-dark focus:bg-white focus:ring-2 focus:ring-primary outline-none"
+                    />
+                    <span className="text-[10px] text-gray-400">Granted automatically on registration.</span>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    type="submit"
+                    className="bg-primary hover:bg-[#0b327b] text-white font-bold py-3 px-8 rounded-2xl text-xs uppercase tracking-wider shadow cursor-pointer transition-all"
+                  >
+                    Save Loyalty Rules
+                  </button>
+                </div>
+              </form>
+
+              {/* Card 2: Manual Loyalty Points Distribution */}
+              <form onSubmit={handleGrantLoyaltyPoints} className="bg-white border border-gray-100 rounded-3xl p-6 md:p-8 shadow-sm space-y-6 text-left">
+                <div className="flex justify-between items-center border-b border-gray-100 pb-4">
+                  <div>
+                    <h3 className="font-heading font-extrabold text-dark text-lg">Distribute Loyalty Points to Client</h3>
+                    <p className="text-gray-400 text-xs mt-0.5">Manually award bonus points or adjust points balance for any registered client.</p>
+                  </div>
+                </div>
+
+                {grantSuccessMsg && (
+                  <div className="p-4 bg-emerald-50 border border-emerald-100 text-emerald-600 rounded-2xl text-xs font-bold flex items-center gap-2">
+                    <CheckCircle size={16} />
+                    <span>Loyalty points updated successfully and logged in user transaction history!</span>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                  <div className="space-y-1.5 lg:col-span-2">
+                    <label className="font-bold text-gray-500 uppercase tracking-wider text-[10px]">Select Client</label>
+                    <select
+                      required
+                      value={targetLoyaltyUserId}
+                      onChange={(e) => setTargetLoyaltyUserId(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 px-4 font-semibold text-dark focus:bg-white focus:ring-2 focus:ring-primary outline-none cursor-pointer"
+                    >
+                      <option value="" disabled>Choose a registered client</option>
+                      {users.map((u) => (
+                        <option key={u.uid} value={u.uid}>
+                          {u.name} ({u.email || u.phone})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-gray-500 uppercase tracking-wider text-[10px]">Points Amount</label>
+                    <input
+                      type="number"
+                      required
+                      min={1}
+                      value={pointsAmountInput}
+                      onChange={(e) => setPointsAmountInput(parseInt(e.target.value) || 0)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 px-4 font-semibold text-dark focus:bg-white focus:ring-2 focus:ring-primary outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-gray-500 uppercase tracking-wider text-[10px]">Action Type</label>
+                    <select
+                      value={pointsTypeInput}
+                      onChange={(e) => setPointsTypeInput(e.target.value as any)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 px-4 font-semibold text-dark focus:bg-white focus:ring-2 focus:ring-primary outline-none cursor-pointer"
+                    >
+                      <option value="admin_bonus">+ Grant Bonus Points</option>
+                      <option value="admin_adjustment">- Deduct / Adjust Points</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5 lg:col-span-4">
+                    <label className="font-bold text-gray-500 uppercase tracking-wider text-[10px]">Transaction Description / Reason</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. VIP Customer Appreciation Bonus"
+                      value={pointsDescInput}
+                      onChange={(e) => setPointsDescInput(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 px-4 font-semibold text-dark focus:bg-white focus:ring-2 focus:ring-primary outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    type="submit"
+                    className="bg-[#F4B400] hover:bg-[#ffe258] text-dark font-extrabold py-3 px-8 rounded-2xl text-xs uppercase tracking-wider shadow cursor-pointer transition-all border-none"
+                  >
+                    Distribute Points
+                  </button>
+                </div>
+              </form>
             </div>
           )}
 
@@ -2777,12 +2951,12 @@ export default function Admin() {
                 <div className="text-right">
                   <div className="text-[10px] text-gray-400 font-bold uppercase">Status</div>
                   <span className={`inline-block text-[9px] font-black uppercase tracking-wider py-0.5 px-2 rounded-full border ${viewingBookingDetails.status === "Completed"
-                      ? "bg-emerald-50 text-emerald-600 border-emerald-100"
-                      : viewingBookingDetails.status === "Pending"
-                        ? "bg-amber-50 text-amber-600 border-amber-100"
-                        : viewingBookingDetails.status === "Cancelled"
-                          ? "bg-rose-50 text-rose-600 border-rose-100"
-                          : "bg-blue-50 text-blue-600 border-blue-100"
+                    ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                    : viewingBookingDetails.status === "Pending"
+                      ? "bg-amber-50 text-amber-600 border-amber-100"
+                      : viewingBookingDetails.status === "Cancelled"
+                        ? "bg-rose-50 text-rose-600 border-rose-100"
+                        : "bg-blue-50 text-blue-600 border-blue-100"
                     }`}>
                     {viewingBookingDetails.status}
                   </span>
@@ -2878,6 +3052,26 @@ export default function Admin() {
                   </div>
                 )}
               </div>
+
+              {/* 5. Google Maps Location Info */}
+              {(viewingBookingDetails.customerLatitude || viewingBookingDetails.crewLatitude) && (
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-gray-100 pb-1 flex justify-between items-center">
+                    <span>5. Google Maps GPS Coordinates</span>
+                    {viewingBookingDetails.crewLatitude && (
+                      <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-[10px] font-extrabold">
+                        Live Crew GPS Active
+                      </span>
+                    )}
+                  </h4>
+                  <GoogleMapEmbed
+                    latitude={viewingBookingDetails.crewLatitude || viewingBookingDetails.customerLatitude || 26.4499}
+                    longitude={viewingBookingDetails.crewLongitude || viewingBookingDetails.customerLongitude || 80.3319}
+                    title="Admin Booking Map"
+                    className="h-44 w-full rounded-2xl overflow-hidden shadow-sm border border-gray-100"
+                  />
+                </div>
+              )}
             </div>
 
             <button
@@ -3135,6 +3329,88 @@ export default function Admin() {
                   {editingPlan ? "Save Package Changes" : "Create Package"}
                 </button>
               </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Before & After Modal with Cloudinary Uploader */}
+      {showBaModal && (
+        <div className="fixed inset-0 z-50 bg-dark/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-3xl p-8 max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-100 space-y-6 text-left"
+          >
+            <div className="flex justify-between items-center">
+              <h3 className="font-heading font-extrabold text-dark text-xl">
+                {editingBaItem ? "Edit Before & After Showcase Card" : "Add Before & After Showcase Card"}
+              </h3>
+              <button
+                onClick={() => setShowBaModal(false)}
+                className="text-gray-400 hover:text-dark text-xs font-bold uppercase transition-colors"
+              >
+                Close
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveBeforeAfterItem} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Showcase Card Title</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Exterior Foam Wash & Gloss Polish"
+                  value={baFormTitle}
+                  onChange={(e) => setBaFormTitle(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 px-4 text-xs font-semibold text-dark focus:bg-white focus:ring-2 focus:ring-primary outline-none"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Service Category</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Exterior Wash, Interior Cleaning"
+                  value={baFormCategory}
+                  onChange={(e) => setBaFormCategory(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 px-4 text-xs font-semibold text-dark focus:bg-white focus:ring-2 focus:ring-primary outline-none"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Description (Optional)</label>
+                <textarea
+                  rows={2}
+                  placeholder="Describe the detailing transformation..."
+                  value={baFormDesc}
+                  onChange={(e) => setBaFormDesc(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 text-xs font-semibold text-dark focus:bg-white focus:ring-2 focus:ring-primary outline-none resize-none"
+                />
+              </div>
+
+              {/* Cloudinary Image Uploaders */}
+              <CloudinaryUploader
+                label="Before Detailing Image (Cloudinary / File)"
+                value={baFormBeforeImage}
+                onChange={setBaFormBeforeImage}
+                placeholder="https://res.cloudinary.com/..."
+              />
+
+              <CloudinaryUploader
+                label="After Detailing Image (Cloudinary / File)"
+                value={baFormAfterImage}
+                onChange={setBaFormAfterImage}
+                placeholder="https://res.cloudinary.com/..."
+              />
+
+              <button
+                type="submit"
+                className="w-full bg-primary hover:bg-[#0b327b] text-white font-bold py-3 rounded-2xl text-xs uppercase tracking-wider shadow cursor-pointer transition-all mt-4"
+              >
+                {editingBaItem ? "Update Showcase Card" : "Save Showcase Card"}
+              </button>
             </form>
           </motion.div>
         </div>

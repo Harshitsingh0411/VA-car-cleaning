@@ -60,18 +60,22 @@ export default function ApplyNow() {
   };
 
   return (
-    <div className="pt-24 min-h-screen bg-[#F8FAFC] pb-24 relative overflow-hidden">
-      <div className="absolute top-20 left-[-10%] w-[35vw] h-[35vw] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
-
-      <div className="container mx-auto px-4 md:px-6 relative z-10 max-w-2xl">
-        {/* Breadcrumb */}
-        <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">
-          <Link to="/" className="hover:text-primary transition-colors">Home</Link>
-          <span className="mx-2">/</span>
-          <Link to="/jobs" className="hover:text-primary transition-colors">Careers</Link>
-          <span className="mx-2">/</span>
-          <span className="text-primary">Apply Now</span>
+    <div className="min-h-screen bg-[#F8FAFC] pb-24 relative overflow-hidden">
+      {/* Dark Header Top */}
+      <div className="bg-[#070C16] pt-24 pb-6 mb-8">
+        <div className="container mx-auto px-4 md:px-6 relative z-10 max-w-4xl">
+          <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+            <Link to="/" className="hover:text-white transition-colors">Home</Link>
+            <span className="mx-2">/</span>
+            <Link to="/jobs" className="hover:text-white transition-colors">Careers</Link>
+            <span className="mx-2">/</span>
+            <span className="text-[#F4B400]">Apply Now</span>
+          </div>
         </div>
+      </div>
+
+      <div className="container mx-auto px-4 md:px-6 relative z-10 max-w-4xl">
+        <div className="absolute top-20 left-[-10%] w-[35vw] h-[35vw] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
 
         {/* Portal Box */}
         <div className="bg-white rounded-3xl p-8 shadow-xl border border-gray-100 relative overflow-hidden">

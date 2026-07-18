@@ -49,8 +49,15 @@ export async function uploadMediaToCloudinary(
     dataUrlPreview = URL.createObjectURL(file);
   }
 
-  // 2. Upload to Cloudinary API if credentials exist
-  if (cloudName && cloudName.trim().length > 0) {
+  // 2. Upload to Cloudinary API if valid Cloud Name and Preset exist
+  const hasCloudinaryConfig =
+    cloudName &&
+    cloudName.trim().length > 0 &&
+    cloudName !== "va-car-cleaning" &&
+    uploadPreset &&
+    uploadPreset !== "unsigned_reviews";
+
+  if (hasCloudinaryConfig) {
     try {
       const resourceType = isVideo ? "video" : "image";
       const formData = new FormData();

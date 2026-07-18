@@ -23,6 +23,7 @@ import {
   ExternalLink
 } from "lucide-react";
 import { getContactSettings, dbContactSettings, DEFAULT_CONTACT_SETTINGS } from "../services/dbService";
+import SEO from "../components/seo/SEO";
 
 // Service zones definition for the animated map
 interface Zone {
@@ -135,21 +136,19 @@ export default function ContactPage() {
   };
 
   return (
-    <div className="pt-24 min-h-screen bg-[#F8FAFC] pb-24 relative overflow-hidden">
-      {/* Floating water droplet background elements */}
-      <div className="absolute top-20 left-[-5%] w-[45vw] h-[45vw] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-10 right-[-5%] w-[35vw] h-[35vw] bg-secondary/5 rounded-full blur-[90px] pointer-events-none" />
-
-
-
-      <div className="container mx-auto px-4 md:px-6 relative z-10">
-        
-        {/* HERO SECTION */}
-        <div className="text-center max-w-2xl mx-auto mb-10">
+    <div className="min-h-screen bg-[#F8FAFC] pb-24 relative overflow-hidden">
+      <SEO 
+        title="Contact Us | Book Doorstep Car Wash in Kanpur"
+        description="Contact VaCar Cleaning Service to book your premium doorstep car wash, detailing, or ceramic coating in Kanpur. Call us or book online instantly."
+      />
+      {/* Dark Header Banner */}
+      <div className="bg-[#070C16] text-white pt-24 pb-12 md:pt-28 md:pb-14 relative overflow-hidden mb-10 text-center">
+        <div className="absolute inset-0 bg-primary/10" />
+        <div className="container mx-auto px-4 md:px-6 relative z-10">
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 rounded-full text-primary font-semibold text-[11px] uppercase tracking-wider mb-2"
+            className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#F4B400]/20 text-[#F4B400] font-semibold text-[11px] uppercase tracking-wider mb-2 rounded-full"
           >
             <Smartphone size={14} className="animate-pulse" />
             {contactSettings.badge}
@@ -159,7 +158,7 @@ export default function ContactPage() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="text-3xl md:text-5xl font-heading font-extrabold text-dark mb-3 tracking-tight leading-[1.1]"
+            className="text-3xl md:text-5xl font-heading font-extrabold text-white mb-3 tracking-tight leading-[1.1]"
           >
             {contactSettings.title}
           </motion.h1>
@@ -168,11 +167,18 @@ export default function ContactPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 0.8 }}
             transition={{ delay: 0.2 }}
-            className="text-gray-600 text-sm md:text-base leading-relaxed max-w-lg mx-auto"
+            className="text-gray-300 text-sm md:text-base max-w-xl mx-auto leading-relaxed"
           >
             {contactSettings.subtitle}
           </motion.p>
         </div>
+      </div>
+
+      {/* Floating water droplet background elements */}
+      <div className="absolute top-48 left-[-5%] w-[45vw] h-[45vw] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-10 right-[-5%] w-[35vw] h-[35vw] bg-secondary/5 rounded-full blur-[90px] pointer-events-none" />
+
+      <div className="container mx-auto px-4 md:px-6 relative z-10">
 
         {/* DOORSTEP VS SHOP COMPARATIVE DASHBOARD */}
         <motion.div
@@ -309,15 +315,20 @@ export default function ContactPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0 border border-white/5">
+                    <a
+                      href={`https://wa.me/${(contactSettings.whatsappNumber || contactSettings.phone1 || "919569949626").replace(/[^\d]/g, "")}?text=${encodeURIComponent(contactSettings.whatsappMessage || "Hello VA Detailing, I have an inquiry regarding car cleaning services.")}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-4 group hover:opacity-90 transition-opacity"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0 border border-white/5 group-hover:border-[#F4B400]">
                         <Phone size={20} className="text-secondary" />
                       </div>
                       <div>
                         <span className="block text-[10px] text-gray-400 font-bold uppercase">Call / WhatsApp Helpline</span>
-                        <span className="text-sm font-semibold">{contactSettings.phone1} {contactSettings.phone2 ? `/ ${contactSettings.phone2}` : ""}</span>
+                        <span className="text-sm font-semibold group-hover:text-[#F4B400] transition-colors">{contactSettings.phone1} {contactSettings.phone2 ? `/ ${contactSettings.phone2}` : ""}</span>
                       </div>
-                    </div>
+                    </a>
 
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0 border border-white/5">

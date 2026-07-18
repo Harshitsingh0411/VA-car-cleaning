@@ -45,6 +45,7 @@ export interface UserProfile {
   notificationPreference?: "Email" | "SMS" | "Both" | "None";
   themePreference?: "Light" | "Dark";
   profileCompletion?: number;
+  loyaltyPoints?: number;
 }
 
 interface AuthContextType {

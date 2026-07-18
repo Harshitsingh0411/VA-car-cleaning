@@ -1,14 +1,22 @@
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Car, Facebook, Instagram, Twitter, Youtube, MapPin, Phone, Mail } from "lucide-react";
 import vaLogo from "@/assets/va logo.png";
+import { seoServices, seoLocations } from "../../data/seoData";
+import { getContactSettings, dbContactSettings, DEFAULT_CONTACT_SETTINGS } from "../../services/dbService";
 
 export default function Footer() {
+  const [contactSettings, setContactSettings] = useState<dbContactSettings>(DEFAULT_CONTACT_SETTINGS);
+
+  useEffect(() => {
+    getContactSettings().then(setContactSettings);
+  }, []);
   return (
     <footer className="bg-[#0B1220] text-gray-400 py-16 border-t border-white/5 relative">
       <div className="container mx-auto px-4 md:px-6">
 
         {/* Foot Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-10 mb-12">
 
           {/* Brand Col */}
           <div className="space-y-4">
@@ -29,18 +37,26 @@ export default function Footer() {
               We provide premium car cleaning & detailing services at your doorstep. Your car, our responsibility.
             </p>
             <div className="flex items-center gap-3 pt-2">
-              <a href="#" className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-gray-400 hover:bg-[#F4B400] hover:text-dark transition-colors">
-                <Facebook size={16} />
-              </a>
-              <a href="#" className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-gray-400 hover:bg-[#F4B400] hover:text-dark transition-colors">
-                <Instagram size={16} />
-              </a>
-              <a href="#" className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-gray-400 hover:bg-[#F4B400] hover:text-dark transition-colors">
-                <Youtube size={16} />
-              </a>
-              <a href="#" className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-gray-400 hover:bg-[#F4B400] hover:text-dark transition-colors">
-                <Twitter size={16} />
-              </a>
+              {contactSettings.facebook && (
+                <a href={contactSettings.facebook} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-gray-400 hover:bg-[#F4B400] hover:text-dark transition-colors">
+                  <Facebook size={16} />
+                </a>
+              )}
+              {contactSettings.instagram && (
+                <a href={contactSettings.instagram} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-gray-400 hover:bg-[#F4B400] hover:text-dark transition-colors">
+                  <Instagram size={16} />
+                </a>
+              )}
+              {contactSettings.youtube && (
+                <a href={contactSettings.youtube} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-gray-400 hover:bg-[#F4B400] hover:text-dark transition-colors">
+                  <Youtube size={16} />
+                </a>
+              )}
+              {contactSettings.twitter && (
+                <a href={contactSettings.twitter} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-gray-400 hover:bg-[#F4B400] hover:text-dark transition-colors">
+                  <Twitter size={16} />
+                </a>
+              )}
             </div>
           </div>
 
@@ -61,12 +77,27 @@ export default function Footer() {
           <div>
             <h4 className="text-white font-heading font-bold mb-5 text-sm uppercase tracking-wider">Our Services</h4>
             <ul className="flex flex-col gap-2.5 text-xs">
-              <li><Link to="/services/exterior-wash" className="hover:text-[#F4B400] transition-colors">Exterior Wash</Link></li>
-              <li><Link to="/services/interior-cleaning" className="hover:text-[#F4B400] transition-colors">Interior Cleaning</Link></li>
-              <li><Link to="/services/foam-wash" className="hover:text-[#F4B400] transition-colors">Foam Wash</Link></li>
-              <li><Link to="/services/wax-polish" className="hover:text-[#F4B400] transition-colors">Wax Polish</Link></li>
-              <li><Link to="/services/dashboard-cleaning" className="hover:text-[#F4B400] transition-colors">Dashboard Cleaning</Link></li>
-              <li><Link to="/services/tyre-dressing" className="hover:text-[#F4B400] transition-colors">Tyre Dressing</Link></li>
+              {seoServices.slice(0, 6).map(service => (
+                <li key={service.slug}>
+                  <Link to={`/services/${service.slug}`} className="hover:text-[#F4B400] transition-colors">
+                    {service.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Popular Areas */}
+          <div>
+            <h4 className="text-white font-heading font-bold mb-5 text-sm uppercase tracking-wider">Popular Areas</h4>
+            <ul className="flex flex-col gap-2.5 text-xs">
+              {seoLocations.slice(0, 6).map(location => (
+                <li key={location.slug}>
+                  <Link to={`/kanpur/${location.slug}`} className="hover:text-[#F4B400] transition-colors">
+                    {location.name}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
@@ -87,17 +118,17 @@ export default function Footer() {
             <div className="flex items-start gap-2.5">
               <Phone size={14} className="text-[#F4B400] mt-0.5 shrink-0" />
               <div className="flex flex-col gap-1">
-                <span>+91 95699 49626</span>
-                <span>+91 92501 64163</span>
+                <span>{contactSettings.phone1}</span>
+                <span>{contactSettings.phone2}</span>
               </div>
             </div>
             <div className="flex items-center gap-2.5">
               <Mail size={14} className="text-[#F4B400] shrink-0" />
-              <span>info@vacleaning.com</span>
+              <span>{contactSettings.email}</span>
             </div>
             <div className="flex items-start gap-2.5">
               <MapPin size={14} className="text-[#F4B400] mt-0.5 shrink-0" />
-              <span className="leading-relaxed">Everywhere in Kanpur nagar</span>
+              <span className="leading-relaxed">{contactSettings.address}</span>
             </div>
           </div>
 

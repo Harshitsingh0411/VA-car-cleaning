@@ -91,6 +91,7 @@ export interface dbBooking extends BaseDoc {
   serviceName: string;
   assignedEmployee?: string;
   assignedEmployeeName?: string;
+  assignedEmployeePhone?: string;
   crewArrivingDate?: string;
   crewArrivingTime?: string;
   bookingStatus: "Pending" | "Accepted" | "Assigned" | "In Progress" | "Completed" | "Cancelled";
@@ -103,6 +104,15 @@ export interface dbBooking extends BaseDoc {
   couponCode?: string;
   notes?: string;
   address?: string;
+  customerLatitude?: number;
+  customerLongitude?: number;
+  customerLocationUrl?: string;
+  crewLatitude?: number;
+  crewLongitude?: number;
+  crewLocationUrl?: string;
+  loyaltyPointsRedeemed?: number;
+  loyaltyPointsDiscount?: number;
+  loyaltyPointsEarned?: number;
   rating?: number;
   feedback?: string;
   invoiceRef?: string;
@@ -237,13 +247,13 @@ export const getUserProfile = async (uid: string): Promise<dbUser | null> => {
 export const updateUserProfile = async (uid: string, data: Partial<dbUser>): Promise<void> => {
   if (data.email && !validateEmail(data.email)) throw new Error("Invalid Email Format");
   if (data.phone && !validatePhone(data.phone)) throw new Error("Invalid Phone Format");
-  
+
   const updated = {
     ...data,
     updatedAt: new Date().toISOString(),
     updatedBy: auth.currentUser?.uid || uid
   };
-  
+
   const prev = await getUserProfile(uid);
   await db.collection("users").doc(uid).set(updated, { merge: true });
   await logAuditAction(`Update profile for user ${uid}`, prev, updated);
@@ -270,7 +280,7 @@ export const getAddresses = async (userId: string): Promise<dbAddress[]> => {
 
 export const addAddress = async (userId: string, data: Omit<dbAddress, "id">): Promise<string> => {
   if (!validatePincode(data.zipCode)) throw new Error("Invalid Pincode Format");
-  
+
   const docData = {
     ...data,
     createdAt: new Date().toISOString(),
@@ -306,7 +316,7 @@ export const getVehicles = async (customerId: string): Promise<dbVehicle[]> => {
 
 export const addVehicle = async (data: Omit<dbVehicle, "id">): Promise<string> => {
   if (!validateRegNumber(data.registrationNumber)) throw new Error("Invalid registration plate format.");
-  
+
   const docData = {
     ...data,
     createdAt: new Date().toISOString(),
@@ -349,45 +359,67 @@ export const createBooking = async (data: Omit<dbBooking, "id" | "bookingStatus"
   const res = await db.collection("bookings").add(docData);
   await logAuditAction(`Create booking for customer ${data.customerId}`, null, docData);
 
-  // --- Forcefully notify ALL Crew Members for accepting booking ---
+  // --- Forcefully notify ONLY Crew Members for accepting booking ---
   try {
     const crewUids: string[] = [];
+    const adminUidsSet = new Set<string>();
 
-    // 1. Check users collection
+    // 1. Gather all admin UIDs to explicitly exclude them
+    try {
+      const adminUsersSnap = await db.collection("users").where("role", "in", ["admin", "super_admin"]).get();
+      adminUsersSnap.forEach((doc: any) => adminUidsSet.add(doc.id));
+    } catch (e) { }
+
+    // 2. Check users collection for crew/staff roles ONLY
     try {
       const usersSnap = await db.collection("users").get();
       usersSnap.forEach((doc: any) => {
         const u = doc.data();
-        if (u.role === "staff" || u.role === "crew") {
-          crewUids.push(doc.id);
+        if ((u.role === "staff" || u.role === "crew") && u.role !== "admin" && u.role !== "super_admin") {
+          if (!adminUidsSet.has(doc.id)) {
+            crewUids.push(doc.id);
+          }
         }
       });
-    } catch (e) {}
+    } catch (e) { }
 
-    // 2. Check employees collection
+    // 3. Check employees collection for crew/staff role ONLY
     try {
       const empSnap = await db.collection("employees").get();
       empSnap.forEach((doc: any) => {
-        if (!crewUids.includes(doc.id)) {
+        const emp = doc.data();
+        const empRole = emp?.role || "crew";
+        if (
+          !crewUids.includes(doc.id) &&
+          !adminUidsSet.has(doc.id) &&
+          empRole !== "admin" &&
+          empRole !== "super_admin" &&
+          (empRole === "staff" || empRole === "crew" || empRole === "employee")
+        ) {
           crewUids.push(doc.id);
         }
       });
-    } catch (e) {}
+    } catch (e) { }
 
-    // 3. Check simulator registered users fallback
+    // 4. Check simulator registered users fallback
     if (typeof localStorage !== "undefined") {
       try {
         const simUsers = JSON.parse(localStorage.getItem("sim_registered_users") || "[]");
         for (const u of simUsers) {
           const profileRaw = localStorage.getItem(`sim_db_users_${u.uid}`);
           const profileData = profileRaw ? JSON.parse(profileRaw) : null;
-          if (profileData && (profileData.role === "staff" || profileData.role === "crew")) {
-            if (!crewUids.includes(u.uid)) {
+          if (
+            profileData &&
+            (profileData.role === "staff" || profileData.role === "crew") &&
+            profileData.role !== "admin" &&
+            profileData.role !== "super_admin"
+          ) {
+            if (!crewUids.includes(u.uid) && !adminUidsSet.has(u.uid)) {
               crewUids.push(u.uid);
             }
           }
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     for (const crewUid of crewUids) {
@@ -469,9 +501,18 @@ export const crewAcceptBooking = async (bookingId: string, crewUid: string, crew
     throw new Error("This booking is no longer available.");
   }
 
+  let crewPhone = "";
+  try {
+    const crewUser = await getUserProfile(crewUid);
+    if (crewUser?.phone || crewUser?.contactNumber) {
+      crewPhone = crewUser.phone || crewUser.contactNumber || "";
+    }
+  } catch (e) {}
+
   const updated = {
     assignedEmployee: crewUid,
     assignedEmployeeName: crewName,
+    assignedEmployeePhone: crewPhone,
     bookingStatus: "Accepted" as const,
     updatedAt: new Date().toISOString(),
     updatedBy: crewUid
@@ -547,6 +588,47 @@ export const updateBookingStatus = async (bookingId: string, status: dbBooking["
   await logAuditAction(`Update booking status ${bookingId} to ${status}`, prev, updated);
 };
 
+export const updateBookingCrewLocation = async (
+  bookingId: string,
+  latitude: number,
+  longitude: number
+): Promise<void> => {
+  const ref = db.collection("bookings").doc(bookingId);
+  const locationUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
+  const updated = {
+    crewLatitude: latitude,
+    crewLongitude: longitude,
+    crewLocationUrl: locationUrl,
+    crewLocationUpdatedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    updatedBy: auth.currentUser?.uid || "crew"
+  };
+  await ref.set(updated, { merge: true });
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent("crew_location_updated", { detail: { bookingId, latitude, longitude } })
+    );
+  }
+};
+
+export const updateBookingCustomerLocation = async (
+  bookingId: string,
+  latitude: number,
+  longitude: number
+): Promise<void> => {
+  const ref = db.collection("bookings").doc(bookingId);
+  const locationUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
+  const updated = {
+    customerLatitude: latitude,
+    customerLongitude: longitude,
+    customerLocationUrl: locationUrl,
+    updatedAt: new Date().toISOString(),
+    updatedBy: auth.currentUser?.uid || "customer"
+  };
+  await ref.set(updated, { merge: true });
+};
+
 export const assignEmployee = async (
   bookingId: string,
   employeeId: string,
@@ -566,9 +648,18 @@ export const assignEmployee = async (
   const timeSlot = bookingData?.timeSlot || crewArrivingTime || "";
   const address = bookingData?.notes || bookingData?.address || "Check booking for address";
 
+  let crewPhone = "";
+  try {
+    const crewUser = await getUserProfile(employeeId);
+    if (crewUser?.phone || crewUser?.contactNumber) {
+      crewPhone = crewUser.phone || crewUser.contactNumber || "";
+    }
+  } catch (e) {}
+
   const updated = {
     assignedEmployee: employeeId,
     assignedEmployeeName: employeeName,
+    assignedEmployeePhone: crewPhone,
     crewArrivingDate: crewArrivingDate || "",
     crewArrivingTime: crewArrivingTime || "",
     bookingStatus: "Assigned" as const,
@@ -621,7 +712,7 @@ export const createPayment = async (data: Omit<dbPayment, "id">): Promise<string
   };
 
   const res = await db.collection("payments").add(docData);
-  
+
   // Auto-update corresponding booking paymentStatus to Paid if success
   if (data.status === "Success") {
     await db.collection("bookings").doc(data.bookingId).set({
@@ -797,7 +888,7 @@ export const submitReview = async (data: Omit<dbReview, "id">): Promise<string> 
   };
 
   const res = await db.collection("reviews").add(docData);
-  
+
   // Update booking with rating references
   await db.collection("bookings").doc(data.bookingId).set({
     rating: data.stars,
@@ -899,7 +990,7 @@ export const sendNotification = async (
   });
 
   const res = await db.collection("notifications").add(docData);
-  
+
   if (typeof window !== "undefined") {
     try {
       const { dispatchMultiDeviceNotification } = await import("./notificationService");
@@ -985,16 +1076,16 @@ export const validateCoupon = async (code: string, userId: string): Promise<dbCo
   const ref = db.collection("coupons").doc(code.toUpperCase());
   const snap = await ref.get();
   if (!snap.exists()) return null;
-  
+
   const coupon = snap.data() as dbCoupon;
-  
+
   // Check validity date
   if (new Date(coupon.validity) < new Date()) return null;
-  
+
   // Check total usage limits
   const usageCount = coupon.usersUsed?.length || 0;
   if (usageCount >= coupon.usageLimit) return null;
-  
+
   // Check if current user already used it
   if (coupon.usersUsed?.includes(userId)) return null;
 
@@ -1004,7 +1095,7 @@ export const validateCoupon = async (code: string, userId: string): Promise<dbCo
 // 11. Contact Messages
 export const sendContactMessage = async (name: string, phone: string, email: string, subject: string, message: string): Promise<string> => {
   if (!validateEmail(email)) throw new Error("Invalid Email Address");
-  
+
   const docData = {
     name,
     phone,
@@ -1133,6 +1224,10 @@ export interface dbContactSettings {
   cityTagline: string;
   whatsappNumber: string;
   whatsappMessage: string;
+  facebook?: string;
+  instagram?: string;
+  youtube?: string;
+  twitter?: string;
 }
 
 export const DEFAULT_CONTACT_SETTINGS: dbContactSettings = {
@@ -1141,11 +1236,15 @@ export const DEFAULT_CONTACT_SETTINGS: dbContactSettings = {
   subtitle: "Save time and fuel. We bring the complete detailing wash setup directly to your doorstep. Proudly cleaning Cars and Bikes across active districts.",
   phone1: "+91 95699 49626",
   phone2: "+91 92501 64163",
-  email: "info@vacleaning.com",
+  email: "vacarcleanservice3@gmail.com",
   address: "Everywhere in Kanpur nagar",
   cityTagline: "Coming to your City Soon",
-  whatsappNumber: "918882540255",
-  whatsappMessage: "Need a quick quote? Chat on WhatsApp!"
+  whatsappNumber: "919250164163",
+  whatsappMessage: "Need a quick quote? Chat on WhatsApp!",
+  facebook: "https://facebook.com",
+  instagram: "https://instagram.com",
+  youtube: "https://youtube.com",
+  twitter: "https://twitter.com"
 };
 
 export const getContactSettings = async (): Promise<dbContactSettings> => {
@@ -1262,13 +1361,13 @@ export const getAllServices = async (): Promise<dbService[]> => {
     // Apply overrides to default services
     servicesMap.forEach((s, sId) => {
       const priceKey = sId === "exterior" ? "exteriorWash"
-                      : sId === "interior" ? "interiorCleaning"
-                      : sId === "foam" ? "foamWash"
-                      : sId === "wax" ? "waxPolish"
-                      : sId === "dashboard" ? "dashboardCleaning"
-                      : sId === "tyre" ? "tyreDressing"
-                      : sId === "premium" ? "premiumDetailing" : sId;
-      
+        : sId === "interior" ? "interiorCleaning"
+          : sId === "foam" ? "foamWash"
+            : sId === "wax" ? "waxPolish"
+              : sId === "dashboard" ? "dashboardCleaning"
+                : sId === "tyre" ? "tyreDressing"
+                  : sId === "premium" ? "premiumDetailing" : sId;
+
       if (priceOverrides[priceKey] !== undefined) s.price = Number(priceOverrides[priceKey]);
       if (imageOverrides[sId] !== undefined) s.image = imageOverrides[sId];
       if (descOverrides[sId] !== undefined) s.description = descOverrides[sId];
@@ -1320,12 +1419,12 @@ export const createOrUpdateService = async (service: dbService): Promise<void> =
       const descOverrides = JSON.parse(localStorage.getItem("admin_service_descriptions") || "{}");
 
       const priceKey = service.id === "exterior" ? "exteriorWash"
-                      : service.id === "interior" ? "interiorCleaning"
-                      : service.id === "foam" ? "foamWash"
-                      : service.id === "wax" ? "waxPolish"
-                      : service.id === "dashboard" ? "dashboardCleaning"
-                      : service.id === "tyre" ? "tyreDressing"
-                      : service.id === "premium" ? "premiumDetailing" : service.id;
+        : service.id === "interior" ? "interiorCleaning"
+          : service.id === "foam" ? "foamWash"
+            : service.id === "wax" ? "waxPolish"
+              : service.id === "dashboard" ? "dashboardCleaning"
+                : service.id === "tyre" ? "tyreDressing"
+                  : service.id === "premium" ? "premiumDetailing" : service.id;
 
       priceOverrides[priceKey] = service.price;
       imageOverrides[service.id] = service.image;
@@ -1539,5 +1638,375 @@ export const deletePricingPlan = async (id: string): Promise<void> => {
   } catch (e) {
     console.error("Local storage pricing plan delete failed:", e);
   }
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   LOYALTY PROGRAM & POINTS SYSTEM
+   ───────────────────────────────────────────────────────────────────────────── */
+
+export interface dbLoyaltySettings extends BaseDoc {
+  enabled: boolean;
+  pointsPer100Spent: number;
+  pointRedemptionValue: number;
+  minPointsToRedeem: number;
+  maxDiscountPercent: number;
+  welcomeBonusPoints: number;
+}
+
+export const DEFAULT_LOYALTY_SETTINGS: dbLoyaltySettings = {
+  enabled: true,
+  pointsPer100Spent: 10,
+  pointRedemptionValue: 1,
+  minPointsToRedeem: 50,
+  maxDiscountPercent: 50,
+  welcomeBonusPoints: 100
+};
+
+export interface dbLoyaltyTransaction {
+  id: string;
+  userId: string;
+  type: "earned" | "redeemed" | "admin_bonus" | "admin_adjustment" | "welcome_bonus";
+  points: number;
+  bookingId?: string;
+  description: string;
+  createdAt: string;
+}
+
+export const getLoyaltySettings = async (): Promise<dbLoyaltySettings> => {
+  try {
+    const doc = await db.collection("settings").doc("loyalty").get();
+    if (doc.exists && doc.data()) {
+      return { ...DEFAULT_LOYALTY_SETTINGS, ...doc.data() } as dbLoyaltySettings;
+    }
+  } catch (err) {
+    console.warn("Could not fetch loyalty settings from Firestore:", err);
+  }
+
+  try {
+    const local = localStorage.getItem("admin_loyalty_settings");
+    if (local) {
+      return { ...DEFAULT_LOYALTY_SETTINGS, ...JSON.parse(local) };
+    }
+  } catch (e) {
+    console.error("Failed to read local loyalty settings:", e);
+  }
+
+  return DEFAULT_LOYALTY_SETTINGS;
+};
+
+export const updateLoyaltySettings = async (settings: Partial<dbLoyaltySettings>): Promise<void> => {
+  const updated = {
+    ...settings,
+    updatedAt: new Date().toISOString(),
+    updatedBy: auth.currentUser?.uid || "admin"
+  };
+
+  try {
+    await db.collection("settings").doc("loyalty").set(updated, { merge: true });
+  } catch (err) {
+    console.warn("Could not save loyalty settings to Firestore:", err);
+  }
+
+  try {
+    const current = await getLoyaltySettings();
+    localStorage.setItem("admin_loyalty_settings", JSON.stringify({ ...current, ...updated }));
+  } catch (e) {
+    console.error("Failed to save local loyalty settings:", e);
+  }
+};
+
+export const getUserLoyaltyPoints = async (userId: string): Promise<number> => {
+  try {
+    const userDoc = await db.collection("users").doc(userId).get();
+    if (userDoc.exists) {
+      const data = userDoc.data();
+      if (typeof data?.loyaltyPoints === "number") {
+        return data.loyaltyPoints;
+      }
+    }
+  } catch (err) {
+    console.warn("Could not fetch user loyalty points from Firestore:", err);
+  }
+
+  try {
+    const localPts = localStorage.getItem(`user_loyalty_points_${userId}`);
+    if (localPts !== null) {
+      return parseInt(localPts, 10) || 0;
+    }
+  } catch (e) {}
+
+  return 0;
+};
+
+export const getUserLoyaltyHistory = async (userId: string): Promise<dbLoyaltyTransaction[]> => {
+  const list: dbLoyaltyTransaction[] = [];
+  try {
+    const snap = await db.collection("loyalty_transactions")
+      .where("userId", "==", userId)
+      .get();
+
+    snap.forEach((doc) => {
+      list.push({ id: doc.id, ...doc.data() } as dbLoyaltyTransaction);
+    });
+    list.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+  } catch (err: any) {
+    if (err?.code !== "permission-denied") {
+      console.warn("Could not fetch user loyalty history from Firestore, using local data fallback:", err);
+    }
+  }
+
+  try {
+    const localList = JSON.parse(localStorage.getItem(`user_loyalty_history_${userId}`) || "[]");
+    localList.forEach((item: any) => {
+      if (!list.some(l => l.id === item.id)) {
+        list.push(item);
+      }
+    });
+    list.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+  } catch (e) {}
+
+  return list;
+};
+
+export const grantOrAdjustLoyaltyPoints = async (
+  userId: string,
+  points: number,
+  type: dbLoyaltyTransaction["type"],
+  description: string,
+  bookingId?: string
+): Promise<number> => {
+  const currentPts = await getUserLoyaltyPoints(userId);
+  const newBalance = Math.max(0, currentPts + points);
+
+  try {
+    await db.collection("users").doc(userId).set({
+      loyaltyPoints: newBalance,
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
+  } catch (err) {
+    console.warn("Failed to update user loyalty points in Firestore:", err);
+  }
+
+  try {
+    localStorage.setItem(`user_loyalty_points_${userId}`, newBalance.toString());
+  } catch (e) {}
+
+  const tx: dbLoyaltyTransaction = {
+    id: `tx-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    userId,
+    type,
+    points,
+    bookingId,
+    description,
+    createdAt: new Date().toISOString()
+  };
+
+  try {
+    await db.collection("loyalty_transactions").doc(tx.id).set(tx);
+  } catch (err) {
+    console.warn("Failed to save loyalty transaction in Firestore:", err);
+  }
+
+  try {
+    const localHistory = JSON.parse(localStorage.getItem(`user_loyalty_history_${userId}`) || "[]");
+    localHistory.unshift(tx);
+    localStorage.setItem(`user_loyalty_history_${userId}`, JSON.stringify(localHistory));
+  } catch (e) {}
+
+  await logAuditAction(`Loyalty Points adjustment (${points > 0 ? '+' : ''}${points}) for user ${userId}`, null, { points, type, newBalance });
+
+  return newBalance;
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   BEFORE & AFTER SHOWCASE GALLERY (CLOUDINARY ENABLED)
+   ───────────────────────────────────────────────────────────────────────────── */
+
+export interface dbBeforeAfterItem extends BaseDoc {
+  id: string;
+  title: string;
+  category: string;
+  beforeImage: string;
+  afterImage: string;
+  description?: string;
+  displayOrder?: number;
+}
+
+export const DEFAULT_BEFORE_AFTER_ITEMS: dbBeforeAfterItem[] = [
+  {
+    id: "ba-1",
+    title: "Exterior Foam Wash & Gloss Polish",
+    category: "Exterior Wash",
+    beforeImage: "https://images.unsplash.com/photo-1507136566006-cfc505b114fc?auto=format&fit=crop&q=80&w=800",
+    afterImage: "https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&q=80&w=800",
+    description: "Deep mud extraction, foam bath, and ceramic shine polish.",
+    displayOrder: 1
+  },
+  {
+    id: "ba-2",
+    title: "Interior Cabin Deep Clean & Sanitize",
+    category: "Interior Cleaning",
+    beforeImage: "https://images.unsplash.com/photo-1580273916550-e323be2ae537?auto=format&fit=crop&q=80&w=800",
+    afterImage: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80&w=800",
+    description: "Stain removal on upholstery, dashboard dressing, and odor elimination.",
+    displayOrder: 2
+  },
+  {
+    id: "ba-3",
+    title: "Alloy Wheel & Tyre Dressing",
+    category: "Wheel Detailing",
+    beforeImage: "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&q=80&w=800",
+    afterImage: "https://images.unsplash.com/photo-1520050206274-a1ae44613e6d?auto=format&fit=crop&q=80&w=800",
+    description: "Brake dust removal, rim de-ironization, and wet-look tyre glaze.",
+    displayOrder: 3
+  }
+];
+
+export const getBeforeAfterItems = async (): Promise<dbBeforeAfterItem[]> => {
+  const map = new Map<string, dbBeforeAfterItem>();
+  DEFAULT_BEFORE_AFTER_ITEMS.forEach((item) => map.set(item.id, item));
+
+  try {
+    const snap = await db.collection("before_after_gallery").get();
+    if (!snap.empty) {
+      snap.forEach((doc) => {
+        const data = doc.data() as dbBeforeAfterItem;
+        if (data.isDeleted) {
+          map.delete(data.id);
+        } else {
+          map.set(data.id, { ...map.get(data.id), ...data });
+        }
+      });
+    }
+  } catch (err: any) {
+    if (err?.code !== "permission-denied") {
+      console.warn("Could not fetch Before & After items from Firestore, using default gallery fallback:", err);
+    }
+  }
+
+  try {
+    const local = JSON.parse(localStorage.getItem("admin_before_after_gallery") || "[]");
+    local.forEach((item: any) => {
+      if (item.isDeleted) {
+        map.delete(item.id);
+      } else {
+        map.set(item.id, { ...map.get(item.id), ...item });
+      }
+    });
+  } catch (e) {}
+
+  return Array.from(map.values()).sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+};
+
+export const createOrUpdateBeforeAfterItem = async (item: dbBeforeAfterItem): Promise<void> => {
+  const docData = {
+    ...item,
+    isDeleted: false,
+    updatedAt: new Date().toISOString()
+  };
+
+  try {
+    await db.collection("before_after_gallery").doc(item.id).set(docData, { merge: true });
+  } catch (err) {
+    console.warn("Could not save Before & After item to Firestore:", err);
+  }
+
+  try {
+    const local = JSON.parse(localStorage.getItem("admin_before_after_gallery") || "[]");
+    const filtered = local.filter((i: any) => i.id !== item.id);
+    filtered.push(docData);
+    localStorage.setItem("admin_before_after_gallery", JSON.stringify(filtered));
+  } catch (e) {}
+};
+
+export const deleteBeforeAfterItem = async (id: string): Promise<void> => {
+  try {
+    await db.collection("before_after_gallery").doc(id).set({ isDeleted: true }, { merge: true });
+  } catch (err) {
+    console.warn("Could not delete Before & After item in Firestore:", err);
+  }
+
+  try {
+    const local = JSON.parse(localStorage.getItem("admin_before_after_gallery") || "[]");
+    const matched = local.find((i: any) => i.id === id);
+    if (matched) {
+      matched.isDeleted = true;
+    } else {
+      local.push({ id, isDeleted: true });
+    }
+    localStorage.setItem("admin_before_after_gallery", JSON.stringify(local));
+  } catch (e) {}
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   REALTIME COMPANY STATS CALCULATOR (ORDER HISTORY & REAL-TIME SYNC)
+   ───────────────────────────────────────────────────────────────────────────── */
+
+export interface RealtimeCompanyStats {
+  carsCleaned: string;
+  topRating: string;
+  satisfaction: string;
+  teamMembers: string;
+  totalBookingsCount: number;
+  completedBookingsCount: number;
+  averageRating: number;
+  totalReviewsCount: number;
+  activeCrewCount: number;
+}
+
+export const getRealtimeCompanyStats = async (): Promise<RealtimeCompanyStats> => {
+  let completedCount = 0;
+  let totalBookingsCount = 0;
+  let reviewsCount = 0;
+  let totalStars = 0;
+  let satisfactionRate = 100;
+  let activeCrewCount = 0;
+
+  // 1. Fetch real-time completed bookings count from order history
+  try {
+    const bookings = await getAllBookings();
+    totalBookingsCount = bookings.length;
+    completedCount = bookings.filter((b) => b.bookingStatus === "Completed").length;
+  } catch (e) {
+    console.warn("Realtime stats order history fetch fallback:", e);
+  }
+
+  // 2. Fetch real-time customer reviews and calculate average top rating & satisfaction
+  try {
+    const reviews = await getAllReviews();
+    if (reviews && reviews.length > 0) {
+      reviewsCount = reviews.length;
+      totalStars = reviews.reduce((sum, r) => sum + (r.stars || 5), 0);
+      const highRatingsCount = reviews.filter((r) => r.stars >= 4).length;
+      satisfactionRate = Math.round((highRatingsCount / reviewsCount) * 100);
+    }
+  } catch (e) {
+    console.warn("Realtime stats reviews fetch fallback:", e);
+  }
+
+  // 3. Fetch active team members / detailers count
+  try {
+    const employees = await getAllEmployees();
+    activeCrewCount = employees.length;
+  } catch (e) {
+    console.warn("Realtime stats crew count fetch fallback:", e);
+  }
+
+  // Base company statistics + dynamic order history counts
+  const carsCleanedTotal = 1000 + completedCount;
+  const computedRating = reviewsCount > 0 ? (totalStars / reviewsCount).toFixed(1) : "4.9";
+  const teamMembersTotal = 50 + activeCrewCount;
+
+  return {
+    carsCleaned: `${carsCleanedTotal}+`,
+    topRating: computedRating,
+    satisfaction: `${satisfactionRate}%`,
+    teamMembers: `${teamMembersTotal}+`,
+    totalBookingsCount,
+    completedBookingsCount: completedCount,
+    averageRating: reviewsCount > 0 ? totalStars / reviewsCount : 4.9,
+    totalReviewsCount: reviewsCount,
+    activeCrewCount
+  };
 };
 

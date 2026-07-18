@@ -176,7 +176,7 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
         <div className="flex justify-between items-center border-b border-gray-100 pb-4">
           <div>
             <span className="text-[9px] font-black uppercase tracking-widest bg-yellow-100 text-yellow-800 py-0.5 px-2 rounded-full">
-              Flipkart-Style Verified Review
+              -Style Verified Review
             </span>
             <h3 className="font-heading font-extrabold text-dark text-xl mt-1">
               Rate Your Car Cleaning Experience
@@ -218,7 +218,7 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
               </div>
             )}
 
-            {/* 1. Flipkart Interactive Star Ratings */}
+            {/* 1.    Interactive Star Ratings */}
             <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100 text-center space-y-2">
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
                 Overall Service Rating
@@ -351,7 +351,7 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
               ) : (
                 <>
                   <Star size={16} className="fill-white" />
-                  <span>Submit Flipkart Review</span>
+                  <span>Submit    Review</span>
                 </>
               )}
             </button>

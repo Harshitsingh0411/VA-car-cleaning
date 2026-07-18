@@ -83,11 +83,11 @@ export default function Testimonials() {
   return (
     <section className="py-24 bg-[#070C16] text-white relative border-t border-white/5" id="testimonials">
       <div className="container mx-auto px-4 md:px-6">
-        
+
         {/* Header Block */}
         <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
           <span className="text-[#F4B400] font-heading font-semibold tracking-widest text-xs uppercase block">
-            — FLIPKART VERIFIED REVIEWS —
+            — VERIFIED REVIEWS —
           </span>
           <h2 className="text-3xl md:text-5xl font-heading font-extrabold tracking-tight text-white">
             What Our Customers Say
@@ -96,7 +96,7 @@ export default function Testimonials() {
 
         {/* Carousel Block */}
         <div className="max-w-4xl mx-auto relative px-12">
-          
+
           {/* Main Card Container */}
           <div className="bg-[#0B1220] border border-white/5 rounded-3xl p-8 md:p-12 shadow-2xl relative min-h-[280px] flex flex-col justify-between">
             {/* Big quote mark graphic */}
@@ -170,7 +170,7 @@ export default function Testimonials() {
           >
             <ChevronLeft size={20} />
           </button>
-          
+
           <button
             onClick={handleNext}
             className="absolute right-0 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl bg-white/5 hover:bg-[#F4B400] hover:text-dark border border-white/10 flex items-center justify-center text-white transition-all cursor-pointer z-10"
@@ -185,9 +185,8 @@ export default function Testimonials() {
               <button
                 key={idx}
                 onClick={() => setIndex(idx)}
-                className={`w-2.5 h-2.5 rounded-full transition-all cursor-pointer ${
-                  index === idx ? "bg-[#F4B400] w-6" : "bg-white/20 hover:bg-white/30"
-                }`}
+                className={`w-2.5 h-2.5 rounded-full transition-all cursor-pointer ${index === idx ? "bg-[#F4B400] w-6" : "bg-white/20 hover:bg-white/30"
+                  }`}
                 aria-label={`Go to slide ${idx + 1}`}
               />
             ))}

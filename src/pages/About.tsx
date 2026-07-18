@@ -1,24 +1,28 @@
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { Target, Award, Shield, Heart, Users, Sparkles, Droplets } from "lucide-react";
-import { getAboutSettings, dbAboutSettings, DEFAULT_ABOUT_SETTINGS } from "../services/dbService";
+import { getAboutSettings, dbAboutSettings, DEFAULT_ABOUT_SETTINGS, getRealtimeCompanyStats, RealtimeCompanyStats } from "../services/dbService";
+import SEO from "../components/seo/SEO";
 
 export default function AboutPage() {
   const [settings, setSettings] = useState<dbAboutSettings>(DEFAULT_ABOUT_SETTINGS);
+  const [realtimeStats, setRealtimeStats] = useState<RealtimeCompanyStats | null>(null);
 
   useEffect(() => {
     async function loadSettings() {
       const data = await getAboutSettings();
       setSettings(data);
+      const rt = await getRealtimeCompanyStats();
+      setRealtimeStats(rt);
     }
     loadSettings();
   }, []);
 
   const stats = [
-    { number: settings.stat1Number || "1000+", label: settings.stat1Label || "Cars Cleaned" },
-    { number: settings.stat2Number || "100%", label: settings.stat2Label || "Water Saved" },
-    { number: settings.stat3Number || "4.9★", label: settings.stat3Label || "Customer Rating" },
-    { number: settings.stat4Number || "50+", label: settings.stat4Label || "Mobile Detailers" }
+    { number: realtimeStats ? realtimeStats.carsCleaned : (settings.stat1Number || "1000+"), label: settings.stat1Label || "Cars Cleaned" },
+    { number: realtimeStats ? realtimeStats.satisfaction : (settings.stat2Number || "100%"), label: settings.stat2Label || "Satisfaction Rate" },
+    { number: realtimeStats ? `${realtimeStats.topRating}★` : (settings.stat3Number || "4.9★"), label: settings.stat3Label || "Customer Rating" },
+    { number: realtimeStats ? realtimeStats.teamMembers : (settings.stat4Number || "50+"), label: settings.stat4Label || "Team Members" }
   ];
 
   const values = [
@@ -45,9 +49,13 @@ export default function AboutPage() {
   ];
 
   return (
-    <div className="pt-24 min-h-screen bg-light">
+    <div className="min-h-screen bg-light">
+      <SEO 
+        title="About Us | VaCar Cleaning Service"
+        description="Learn about VaCar Cleaning Service, Kanpur's leading eco-friendly doorstep car detailing company. Discover our mission, values, and expert team."
+      />
       {/* Banner */}
-      <div className="bg-dark text-white py-12 md:py-14 relative overflow-hidden">
+      <div className="bg-[#070C16] text-white pt-24 pb-12 md:pt-28 md:pb-14 relative overflow-hidden">
         <div className="absolute inset-0 bg-primary/10" />
         <div className="container mx-auto px-4 md:px-6 relative z-10 text-center">
           <motion.span

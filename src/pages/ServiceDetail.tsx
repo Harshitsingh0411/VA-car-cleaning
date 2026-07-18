@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useParams, Link, useNavigate } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import {
   Droplets,
@@ -164,18 +164,22 @@ export default function ServiceDetailPage() {
   };
 
   return (
-    <div className="pt-24 min-h-screen bg-[#F8FAFC] pb-24 relative overflow-hidden text-left">
-      <div className="absolute top-20 left-[-10%] w-[35vw] h-[35vw] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
+    <div className="min-h-screen bg-[#F8FAFC] pb-24 relative overflow-hidden text-left">
+      {/* Dark Header Top */}
+      <div className="bg-[#070C16] pt-24 pb-6 mb-8">
+        <div className="container mx-auto px-4 md:px-6 relative z-10 max-w-5xl">
+          {/* Breadcrumb Navigation */}
+          <div className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5 flex-wrap">
+            <Link to="/" className="hover:text-white transition-colors">Home</Link>
+            <ChevronRight size={12} />
+            <Link to="/services" className="hover:text-white transition-colors">Services</Link>
+            <ChevronRight size={12} />
+            <span className="text-[#F4B400]">{service.name}</span>
+          </div>
+        </div>
+      </div>
 
       <div className="container mx-auto px-4 md:px-6 relative z-10 max-w-5xl">
-        {/* Breadcrumb Navigation */}
-        <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6 flex items-center gap-1.5 flex-wrap">
-          <Link to="/" className="hover:text-primary transition-colors">Home</Link>
-          <ChevronRight size={12} />
-          <Link to="/services" className="hover:text-primary transition-colors">Services</Link>
-          <ChevronRight size={12} />
-          <span className="text-primary">{service.name}</span>
-        </div>
 
         {/* Hero Card Banner */}
         <div className="bg-gradient-to-r from-dark via-[#0b2861] to-primary rounded-3xl p-6 md:p-10 text-white shadow-xl mb-12 relative overflow-hidden">
@@ -282,46 +286,17 @@ export default function ServiceDetailPage() {
                 Restoration Quality Preview
               </h3>
 
-              <div
-                ref={containerRef}
-                onMouseMove={handleMouseMove}
-                className="relative h-72 rounded-2xl overflow-hidden shadow-md border border-gray-200 cursor-ew-resize select-none"
-              >
-                <div className="absolute inset-0">
-                  <img
-                    src={service.image || "https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&q=80&w=800"}
-                    alt="Restored finish"
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute right-3 bottom-3 bg-[#F4B400] text-dark font-heading font-bold text-[9px] uppercase tracking-wider py-1 px-2 rounded shadow">
-                    Restored Finish
-                  </div>
-                </div>
-
-                <div
-                  className="absolute inset-y-0 left-0 h-full overflow-hidden"
-                  style={{ width: `${sliderPos}%` }}
-                >
-                  <img
-                    src={service.image || "https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&q=80&w=800"}
-                    alt="Before wash"
-                    className="absolute inset-0 h-full object-cover filter saturate-[0.3] brightness-[0.6] sepia-[0.3] blur-[1px]"
-                    style={{ width: containerRef.current?.getBoundingClientRect().width || "350px", maxWidth: "none" }}
-                  />
-                  <div className="absolute left-3 bottom-3 bg-black/70 text-white font-heading font-bold text-[9px] uppercase tracking-wider py-1 px-2 rounded shadow">
-                    Before Detail
-                  </div>
-                </div>
-
-                <div
-                  className="absolute inset-y-0 w-1 bg-white shadow z-10"
-                  style={{ left: `${sliderPos}%` }}
+              <div className="relative h-72 rounded-2xl overflow-hidden shadow-md border border-gray-200 group">
+                <img
+                  src={service.image || "https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&q=80&w=800"}
+                  alt="Restored finish"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                 />
+                <div className="absolute inset-0 bg-gradient-to-t from-dark/60 via-transparent to-transparent" />
+                <div className="absolute left-3 bottom-3 bg-[#F4B400] text-dark font-heading font-bold text-[10px] uppercase tracking-wider py-1 px-3 rounded-full shadow">
+                  ✨ Verified Detailing Finish
+                </div>
               </div>
-
-              <p className="text-[11px] text-gray-500 leading-relaxed bg-gray-50 p-3.5 rounded-xl border border-gray-100">
-                💡 <strong>Interactive Slider:</strong> Hover mouse over the frame above to view before & after paint transformation.
-              </p>
             </div>
 
             {/* Guarantee Shield Card */}

@@ -43,7 +43,7 @@ service cloud.firestore {
 
     // Bookings Collection
     match /bookings/{bookingId} {
-      allow create: if true; // Public doorstep bookings
+      allow create: if isAuthenticated() && request.resource.data.keys().hasAll(['customerId', 'serviceId', 'price']);
       allow read: if isAuthenticated() && (
         isAdmin() ||
         resource.data.customerId == request.auth.uid ||
@@ -87,13 +87,13 @@ service cloud.firestore {
 
     // Job Applications
     match /job_applications/{appId} {
-      allow create: if true; // Public job applies
+      allow create: if true && request.resource.data.keys().hasAll(['name', 'email', 'phone']);
       allow read, write: if isAdmin();
     }
 
     // Payments Collection
     match /payments/{paymentId} {
-      allow create: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.customerId == request.auth.uid;
       allow read: if isAdmin() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
       allow update, delete: if isAdmin();
     }
@@ -101,7 +101,7 @@ service cloud.firestore {
     // Reviews Collection
     match /reviews/{reviewId} {
       allow read: if true;
-      allow create: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.customerId == request.auth.uid;
       allow update: if isAdmin() || (isAuthenticated() && resource.data.customerId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stars', 'review', 'images', 'videos', 'updatedAt']));
       allow delete: if isAdmin();
     }
@@ -114,7 +114,7 @@ service cloud.firestore {
         resource.data.user == 'system' ||
         isAdmin()
       );
-      allow create: if true; // System & customer notifications
+      allow create: if isAuthenticated() && (request.resource.data.user == request.auth.uid || isAdmin());
       allow update: if isAuthenticated() && (resource.data.user == request.auth.uid || isAdmin());
       allow delete: if isAdmin() || (isAuthenticated() && resource.data.user == request.auth.uid);
     }
@@ -127,7 +127,7 @@ service cloud.firestore {
 
     // Contact Messages
     match /contact_messages/{msgId} {
-      allow create: if true;
+      allow create: if true && request.resource.data.keys().hasAll(['name', 'email', 'message']);
       allow read, write: if isAdmin();
     }
 
@@ -149,9 +149,28 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Loyalty Settings Collection
+    match /loyalty_settings/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Loyalty Transactions Collection
+    match /loyalty_transactions/{txId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && (request.resource.data.userId == request.auth.uid || isAdmin());
+      allow update, delete: if isAdmin();
+    }
+
+    // Before & After Gallery Showcase
+    match /before_after_gallery/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // Audit Logs
     match /audit_logs/{logId} {
-      allow create: if true;
+      allow create: if isAuthenticated() && (request.resource.data.userId == request.auth.uid || isAdmin());
       allow read: if isAdmin();
       allow update, delete: if false; // Audit logs are immutable
     }

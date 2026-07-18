@@ -26,10 +26,20 @@ import {
   Sliders,
   Star
 } from "lucide-react";
-import { logAuditAction, getBookingsByCustomer, dbBooking, getAllReviews, dbReview } from "../services/dbService";
+import {
+  logAuditAction,
+  getBookingsByCustomer,
+  dbBooking,
+  getAllReviews,
+  dbReview,
+  getUserLoyaltyPoints,
+  getUserLoyaltyHistory,
+  dbLoyaltyTransaction
+} from "../services/dbService";
 import { getCartoonAvatar, handleAvatarError } from "../utils/avatar";
 import ReviewModal from "../components/modals/ReviewModal";
 import EmployeeDashboard from "./crew/EmployeeDashboard";
+import { GoogleMapEmbed } from "../components/location/LocationPickerMap";
 
 
 export default function Account() {
@@ -48,11 +58,32 @@ export default function Account() {
 
   const navigate = useNavigate();
 
-  // Tab Manager: "crew_dashboard" | "profile" | "vehicles" | "addresses" | "bookings" | "security"
+  // Tab Manager: "crew_dashboard" | "profile" | "vehicles" | "addresses" | "bookings" | "loyalty" | "security"
   const isCrewUser = profile?.role === "staff" || profile?.role === "crew";
-  const [activeSection, setActiveSection] = useState<"crew_dashboard" | "profile" | "vehicles" | "addresses" | "bookings" | "security">(
-    isCrewUser ? "crew_dashboard" : "profile"
+  const [activeSection, setActiveSection] = useState<"crew_dashboard" | "profile" | "vehicles" | "addresses" | "bookings" | "loyalty" | "security">(
+    isCrewUser ? "crew_dashboard" : "bookings"
   );
+
+  const [userLoyaltyPts, setUserLoyaltyPts] = useState<number>(0);
+  const [loyaltyHistoryList, setLoyaltyHistoryList] = useState<dbLoyaltyTransaction[]>([]);
+
+  const fetchLoyaltyData = useCallback(async () => {
+    if (!user) return;
+    try {
+      const pts = await getUserLoyaltyPoints(user.uid);
+      const hist = await getUserLoyaltyHistory(user.uid);
+      setUserLoyaltyPts(pts);
+      setLoyaltyHistoryList(hist);
+    } catch (e) {
+      console.warn("Could not fetch user loyalty info:", e);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      fetchLoyaltyData();
+    }
+  }, [user, fetchLoyaltyData]);
 
   useEffect(() => {
     if (profile?.role === "staff" || profile?.role === "crew") {
@@ -171,12 +202,12 @@ export default function Account() {
   // Filter out duplicate legacy appointments matching the same date, time slot, and service name
   const allBookings: Partial<dbBooking>[] = [
     ...bookings,
-    ...profileAppointments.filter(pa => 
-      !bookings.some(b => 
-        b.id === pa.id || 
-        (b.scheduledDate === pa.scheduledDate && 
-         b.timeSlot === pa.timeSlot && 
-         b.serviceName === pa.serviceName)
+    ...profileAppointments.filter(pa =>
+      !bookings.some(b =>
+        b.id === pa.id ||
+        (b.scheduledDate === pa.scheduledDate &&
+          b.timeSlot === pa.timeSlot &&
+          b.serviceName === pa.serviceName)
       )
     )
   ];
@@ -227,127 +258,172 @@ export default function Account() {
   };
 
   return (
-    <div className="pt-24 min-h-screen bg-[#F8FAFC] pb-24 relative overflow-hidden flex">
-      <div className="container mx-auto px-4 md:px-6 relative z-10 flex flex-col lg:flex-row gap-8">
-        
-        {/* LEFT Sidebar Menu */}
-        <div className="w-full lg:w-72 shrink-0 bg-white border border-gray-100 rounded-3xl p-6 shadow-sm h-fit space-y-6">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-primary/20 shrink-0">
-              <img
-                src={user.photoURL || getCartoonAvatar(user.email || user.displayName || user.uid)}
-                onError={(e) => handleAvatarError(e, user.email || user.displayName || user.uid)}
-                alt="User Profile"
-                className="w-full h-full object-cover"
-              />
+    <div className="min-h-screen bg-[#F8FAFC] pb-24 relative overflow-hidden flex flex-col">
+      {/* Dark Header Banner */}
+      <div className="bg-[#070C16] text-white pt-24 pb-10 md:pt-28 md:pb-12 relative overflow-hidden mb-8">
+        <div className="absolute inset-0 bg-primary/10" />
+        <div className="container mx-auto px-4 md:px-6 relative z-10">
+          <span className="text-[#F4B400] font-heading font-semibold tracking-wider uppercase text-[11px] mb-1 block">
+            — USER PORTAL —
+          </span>
+          <h1 className="text-2xl md:text-4xl font-heading font-extrabold text-white tracking-tight">
+            My Account & Profile
+          </h1>
+        </div>
+      </div>
+
+      <div className="container mx-auto px-4 md:px-6 relative z-10 space-y-6">
+
+        {/* MINIMAL TOP USER & NAVIGATION HEADER BAR */}
+        <div className="bg-white border border-gray-100 rounded-3xl p-4 md:p-5 shadow-sm space-y-4">
+
+          {/* User info & quick actions row */}
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-primary/20 shrink-0 shadow-xs">
+                <img
+                  src={user.photoURL || getCartoonAvatar(user.email || user.displayName || user.uid)}
+                  onError={(e) => handleAvatarError(e, user.email || user.displayName || user.uid)}
+                  alt="User Profile"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <h4 className="font-heading font-extrabold text-dark tracking-tight text-sm md:text-base">{user.displayName || "Valued Customer"}</h4>
+                  <span className={`text-[9px] font-black uppercase tracking-wider py-0.5 px-2 rounded border ${profile?.role === "admin"
+                      ? "bg-amber-50 text-amber-600 border-amber-100"
+                      : profile?.role === "staff"
+                        ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                        : "bg-blue-50 text-blue-600 border-blue-100"
+                    }`}>
+                    {profile?.role === "staff" ? "crew" : (profile?.role || "customer")}
+                  </span>
+                </div>
+                <p className="text-gray-400 text-xs">{user.email}</p>
+              </div>
             </div>
-            <div className="space-y-1 overflow-hidden">
-              <span className={`text-[9px] font-black uppercase tracking-wider py-0.5 px-2 rounded border ${
-                profile?.role === "admin"
-                  ? "bg-amber-50 text-amber-600 border-amber-100"
-                  : profile?.role === "staff"
-                  ? "bg-emerald-50 text-emerald-600 border-emerald-100"
-                  : "bg-blue-50 text-blue-600 border-blue-100"
-              }`}>
-                {profile?.role === "staff" ? "crew" : (profile?.role || "customer")}
-              </span>
-              <h4 className="font-heading font-extrabold text-dark tracking-tight truncate">{user.displayName || "Valued Customer"}</h4>
-              <p className="text-gray-400 text-[10px] truncate">{user.email}</p>
+
+            <div className="flex items-center gap-2.5 ml-auto sm:ml-0">
+              <button
+                onClick={() => setActiveSection("loyalty")}
+                className="flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100/80 border border-amber-200/60 px-3 py-1.5 rounded-xl text-xs font-black text-amber-800 transition-all cursor-pointer"
+                title="Loyalty Points"
+              >
+                <Gift size={14} className="text-amber-600" />
+                <span>{userLoyaltyPts} Pts</span>
+              </button>
+
+              <button
+                onClick={handleSignOut}
+                className="flex items-center gap-1.5 text-xs font-bold text-rose-500 hover:bg-rose-50 border border-rose-100 px-3 py-1.5 rounded-xl transition-all cursor-pointer"
+                title="Sign Out"
+              >
+                <LogOut size={14} />
+                <span className="hidden sm:inline">Sign Out</span>
+              </button>
             </div>
           </div>
 
-          <nav className="flex flex-col gap-1 text-xs font-bold text-gray-500 border-t border-gray-100 pt-4">
-            {(profile?.role === "staff" || profile?.role === "crew") && (
-              <button
-                onClick={() => setActiveSection("crew_dashboard")}
-                className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${
-                  activeSection === "crew_dashboard"
-                    ? "bg-emerald-600 text-white shadow shadow-emerald-600/20 font-black"
-                    : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-extrabold"
-                }`}
-              >
-                <Briefcase size={16} />
-                🛠️ Crew Control Panel
-              </button>
-            )}
-            <button
-              onClick={() => setActiveSection("profile")}
-              className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${
-                activeSection === "profile" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
-              }`}
-            >
-              <User size={16} />
-              Personal Profile
-            </button>
-            <button
-              onClick={() => setActiveSection("vehicles")}
-              className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${
-                activeSection === "vehicles" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
-              }`}
-            >
-              <Car size={16} />
-              My Vehicles ({profile?.vehicles?.length || 0})
-            </button>
-            <button
-              onClick={() => setActiveSection("addresses")}
-              className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${
-                activeSection === "addresses" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
-              }`}
-            >
-              <MapPin size={16} />
-              Saved Addresses ({profile?.addresses?.length || 0})
-            </button>
-            <button
-              onClick={() => setActiveSection("bookings")}
-              className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${
-                activeSection === "bookings" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
-              }`}
-            >
-              <Calendar size={16} />
-              Booking History
-            </button>
-            <button
-              onClick={() => setActiveSection("security")}
-              className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${
-                activeSection === "security" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
-              }`}
-            >
-              <Shield size={16} />
-              Account Security
-            </button>
-          </nav>
+          {/* MINIMAL RESPONSIVE ICON TAB BAR (SMALL ICONS, CLEAN & MINIMAL FOR SMARTPHONE & PC) */}
+          <div className="border-t border-gray-100 pt-3">
+            <nav className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none no-scrollbar text-xs font-bold">
+              {profile?.role === "admin" && (
+                <Link
+                  to="/admin"
+                  className="flex items-center gap-2 py-2 px-3.5 rounded-xl transition-all bg-primary/10 hover:bg-primary/20 text-primary font-black shrink-0 text-xs shadow-2xs"
+                  title="Admin Dashboard"
+                >
+                  <ShieldAlert size={15} />
+                  <span>Admin</span>
+                </Link>
+              )}
 
-          <div className="pt-4 border-t border-gray-100 flex flex-col gap-2">
-            {profile?.role === "admin" && (
-              <Link
-                to="/admin"
-                className="flex items-center gap-2 bg-primary/10 hover:bg-primary/20 text-primary py-2.5 px-4 rounded-xl text-xs font-bold transition-all justify-center"
+              {(profile?.role === "staff" || profile?.role === "crew") && (
+                <button
+                  onClick={() => setActiveSection("crew_dashboard")}
+                  className={`flex items-center gap-2 py-2 px-3.5 rounded-xl transition-all cursor-pointer shrink-0 text-xs ${activeSection === "crew_dashboard"
+                      ? "bg-emerald-600 text-white shadow-2xs font-black"
+                      : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-extrabold"
+                    }`}
+                  title="Crew Control Panel"
+                >
+                  <Briefcase size={15} />
+                  <span>Crew</span>
+                </button>
+              )}
+
+              <button
+                onClick={() => setActiveSection("bookings")}
+                className={`flex items-center gap-2 py-2 px-3.5 rounded-xl transition-all cursor-pointer shrink-0 text-xs ${activeSection === "bookings"
+                    ? "bg-primary text-white shadow-2xs font-black"
+                    : "bg-gray-50 text-gray-600 hover:bg-gray-100 font-bold"
+                  }`}
               >
-                <ShieldAlert size={16} />
-                Admin Panel
-              </Link>
-            )}
-            {profile?.role === "staff" && (
-              <Link
-                to="/employee"
-                className="flex items-center gap-2 bg-[#34A853]/10 hover:bg-[#34A853]/20 text-[#34A853] py-2.5 px-4 rounded-xl text-xs font-bold transition-all justify-center"
+                <Calendar size={15} />
+                <span>Bookings</span>
+              </button>
+
+              <button
+                onClick={() => setActiveSection("profile")}
+                className={`flex items-center gap-2 py-2 px-3.5 rounded-xl transition-all cursor-pointer shrink-0 text-xs ${activeSection === "profile"
+                    ? "bg-primary text-white shadow-2xs font-black"
+                    : "bg-gray-50 text-gray-600 hover:bg-gray-100 font-bold"
+                  }`}
               >
-                <Calendar size={16} />
-                Crew Dashboard
-              </Link>
-            )}
-            <button
-              onClick={handleSignOut}
-              className="w-full flex items-center gap-2 border border-rose-100 text-rose-500 hover:bg-rose-50 py-2.5 px-4 rounded-xl text-xs font-bold transition-colors cursor-pointer justify-center"
-            >
-              <LogOut size={16} />
-              Sign Out
-            </button>
+                <User size={15} />
+                <span>Profile</span>
+              </button>
+
+              <button
+                onClick={() => setActiveSection("vehicles")}
+                className={`flex items-center gap-2 py-2 px-3.5 rounded-xl transition-all cursor-pointer shrink-0 text-xs ${activeSection === "vehicles"
+                    ? "bg-primary text-white shadow-2xs font-black"
+                    : "bg-gray-50 text-gray-600 hover:bg-gray-100 font-bold"
+                  }`}
+              >
+                <Car size={15} />
+                <span>Vehicles ({profile?.vehicles?.length || 0})</span>
+              </button>
+
+              <button
+                onClick={() => setActiveSection("addresses")}
+                className={`flex items-center gap-2 py-2 px-3.5 rounded-xl transition-all cursor-pointer shrink-0 text-xs ${activeSection === "addresses"
+                    ? "bg-primary text-white shadow-2xs font-black"
+                    : "bg-gray-50 text-gray-600 hover:bg-gray-100 font-bold"
+                  }`}
+              >
+                <MapPin size={15} />
+                <span>Addresses ({profile?.addresses?.length || 0})</span>
+              </button>
+
+              <button
+                onClick={() => setActiveSection("loyalty")}
+                className={`flex items-center gap-2 py-2 px-3.5 rounded-xl transition-all cursor-pointer shrink-0 text-xs ${activeSection === "loyalty"
+                    ? "bg-primary text-white shadow-2xs font-black"
+                    : "bg-gray-50 text-gray-600 hover:bg-gray-100 font-bold"
+                  }`}
+              >
+                <Gift size={15} />
+                <span>Rewards</span>
+              </button>
+
+              <button
+                onClick={() => setActiveSection("security")}
+                className={`flex items-center gap-2 py-2 px-3.5 rounded-xl transition-all cursor-pointer shrink-0 text-xs ${activeSection === "security"
+                    ? "bg-primary text-white shadow-2xs font-black"
+                    : "bg-gray-50 text-gray-600 hover:bg-gray-100 font-bold"
+                  }`}
+              >
+                <Shield size={15} />
+                <span>Security</span>
+              </button>
+            </nav>
           </div>
         </div>
 
-        {/* RIGHT main content panel */}
-        <div className="flex-1 space-y-6">
+        {/* MAIN CONTENT AREA */}
+        <div className="space-y-6">
           {/* CREW CONTROL PANEL TAB (EMBEDDED DIRECTLY IN ACCOUNT PAGE) */}
           {activeSection === "crew_dashboard" && (
             <EmployeeDashboard embedded={true} />
@@ -685,17 +761,16 @@ export default function Account() {
 
                         <div className="flex items-center gap-2 shrink-0">
                           <span className="text-sm font-black text-dark">₹{appt.price}</span>
-                          <span className={`text-[9px] uppercase font-bold py-1 px-2.5 rounded-full border ${
-                            appt.bookingStatus === "Completed"
+                          <span className={`text-[9px] uppercase font-bold py-1 px-2.5 rounded-full border ${appt.bookingStatus === "Completed"
                               ? "bg-emerald-50 text-emerald-600 border-emerald-100"
                               : appt.bookingStatus === "Pending"
-                              ? "bg-amber-50 text-amber-600 border-amber-100"
-                              : appt.bookingStatus === "Cancelled"
-                              ? "bg-rose-50 text-rose-500 border-rose-100"
-                              : appt.bookingStatus === "In Progress"
-                              ? "bg-purple-50 text-purple-600 border-purple-100"
-                              : "bg-blue-50 text-blue-600 border-blue-100"
-                          }`}>
+                                ? "bg-amber-50 text-amber-600 border-amber-100"
+                                : appt.bookingStatus === "Cancelled"
+                                  ? "bg-rose-50 text-rose-500 border-rose-100"
+                                  : appt.bookingStatus === "In Progress"
+                                    ? "bg-purple-50 text-purple-600 border-purple-100"
+                                    : "bg-blue-50 text-blue-600 border-blue-100"
+                            }`}>
                             {appt.bookingStatus}
                           </span>
                         </div>
@@ -710,21 +785,81 @@ export default function Account() {
                           <span>Slot: {appt.timeSlot}</span>
                         </div>
 
-                        {appt.crewArrivingDate ? (
-                          <div className="bg-[#0f3b94]/5 border border-[#0f3b94]/10 rounded-xl p-2.5 space-y-1 mt-1 text-[#0f3b94]">
-                            <div className="text-[10px] font-black uppercase tracking-wider">Detailing Crew Dispatch Details</div>
-                            <div className="font-bold">Crew: <span className="font-extrabold">{appt.assignedEmployeeName}</span></div>
-                            <div className="font-bold">Estimated Arrival: <span className="font-black underline">{appt.crewArrivingDate} at {appt.crewArrivingTime}</span></div>
+                        {/* Assigned Crew Details */}
+                        {(appt.assignedEmployee || appt.assignedEmployeeName) ? (
+                          <div className="bg-gradient-to-r from-blue-50/80 to-indigo-50/40 border border-blue-200/80 rounded-2xl p-3.5 space-y-2 mt-1 text-left">
+                            <div className="flex justify-between items-center border-b border-blue-200/50 pb-2">
+                              <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs shrink-0">
+                                  <User size={14} />
+                                </div>
+                                <div>
+                                  <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block">Assigned Detailer Crew</span>
+                                  <span className="font-heading font-extrabold text-dark text-xs">{appt.assignedEmployeeName || "Mobile Detailing Squad"}</span>
+                                </div>
+                              </div>
+
+                              <span className="text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                                <CheckCircle2 size={10} /> {appt.bookingStatus || "Accepted"}
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] pt-0.5">
+                              {appt.assignedEmployeePhone && (
+                                <div className="flex items-center gap-1.5 font-bold text-gray-700">
+                                  <Phone size={12} className="text-primary shrink-0" />
+                                  <span>Call Crew: </span>
+                                  <a href={`tel:${appt.assignedEmployeePhone}`} className="text-primary font-extrabold hover:underline">
+                                    {appt.assignedEmployeePhone}
+                                  </a>
+                                </div>
+                              )}
+
+                              {appt.crewArrivingDate ? (
+                                <div className="flex items-center gap-1.5 font-bold text-gray-700">
+                                  <Clock size={12} className="text-amber-500 shrink-0" />
+                                  <span>Est. Arrival: </span>
+                                  <span className="text-dark font-extrabold">{appt.crewArrivingDate} at {appt.crewArrivingTime || appt.timeSlot}</span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1.5 text-gray-500 font-semibold">
+                                  <Clock size={12} className="text-amber-500 shrink-0" />
+                                  <span>Schedule: </span>
+                                  <span className="text-dark font-bold">{appt.scheduledDate} ({appt.timeSlot})</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         ) : (
-                          <div className="bg-gray-50 border border-gray-100 rounded-xl p-2.5 text-gray-400 text-[10px] font-bold uppercase tracking-wider mt-1 text-center">
-                            Crew Assignment: Pending
+                          <div className="bg-amber-50/60 border border-amber-200/60 rounded-xl p-2.5 text-amber-900 text-[11px] font-semibold flex items-center gap-2 mt-1">
+                            <Clock size={14} className="text-amber-500 shrink-0" />
+                            <span>Crew Assignment: Finding nearest available detailing squad...</span>
                           </div>
                         )}
 
-                        {/* Flipkart Style Review Section for Completed Bookings */}
+                        {/* Google Maps Location Preview */}
+                        {(appt.customerLatitude || appt.crewLatitude) && (
+                          <div className="pt-2 space-y-1.5">
+                            <div className="flex justify-between items-center text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                              <span>📍 Doorstep Location (Google Maps)</span>
+                              {appt.crewLatitude && (
+                                <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-extrabold">
+                                  Live Crew GPS Active
+                                </span>
+                              )}
+                            </div>
+                            <GoogleMapEmbed
+                              latitude={appt.crewLatitude || appt.customerLatitude || 26.4499}
+                              longitude={appt.crewLongitude || appt.customerLongitude || 80.3319}
+                              title="Booking Location Map"
+                              className="h-36 w-full rounded-xl overflow-hidden shadow-sm border border-gray-100"
+                            />
+                          </div>
+                        )}
+
+                        {/*    Style Review Section for Completed Bookings */}
                         {appt.bookingStatus === "Completed" && (() => {
-                          const existingReview = reviewsList.find((r) => r.bookingId === appt.id || (r.customerId === user.uid && r.serviceName === appt.serviceName));
+                          const existingReview = reviewsList.find((r) => r.bookingId === appt.id);
 
                           if (existingReview) {
                             return (
@@ -739,7 +874,7 @@ export default function Account() {
                                   <span className="text-[9px] text-gray-400 font-bold uppercase">Reviewed</span>
                                 </div>
                                 <p className="text-xs text-dark font-medium italic">"{existingReview.review}"</p>
-                                
+
                                 {/* Uploaded Photos & Videos Preview */}
                                 {(existingReview.images?.length || existingReview.videos?.length) ? (
                                   <div className="flex gap-2 pt-1 overflow-x-auto">
@@ -765,10 +900,10 @@ export default function Account() {
                           return (
                             <button
                               onClick={() => setSelectedBookingForReview(appt)}
-                              className="w-full flex items-center justify-center gap-2 py-2.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white rounded-xl text-xs font-extrabold uppercase tracking-wider shadow cursor-pointer transition-all mt-1"
+                              className="w-full flex items-center justify-center gap-2 py-2.5 bg-dark hover:bg-gray-800 text-white rounded-xl text-xs font-bold transition-all mt-1 cursor-pointer shadow-sm"
                             >
-                              <Star size={14} className="fill-white" />
-                              Leave Flipkart-Style Review (Photos & Video)
+                              <Star size={14} className="fill-white/30 text-white" />
+                              Rate & Review Service
                             </button>
                           );
                         })()}
@@ -791,7 +926,7 @@ export default function Account() {
           {activeSection === "security" && (
             <div className="bg-white border border-gray-100 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
               <h3 className="font-heading font-extrabold text-dark text-lg">Account Security Logs</h3>
-              
+
               <div className="space-y-5">
                 <div className="p-5 border border-gray-100 bg-gray-50/20 rounded-2xl space-y-4">
                   <h4 className="text-dark font-heading font-bold text-sm flex items-center gap-2">
@@ -835,6 +970,73 @@ export default function Account() {
             </div>
           )}
 
+          {/* LOYALTY & REWARDS TAB */}
+          {activeSection === "loyalty" && (
+            <div className="space-y-6">
+              {/* Balance Banner */}
+              <div className="bg-gradient-to-br from-[#0B1220] to-dark p-6 md:p-8 rounded-3xl text-white space-y-4 shadow-xl relative overflow-hidden border border-white/10 text-left">
+                <div className="absolute -right-8 -bottom-8 w-40 h-40 bg-[#F4B400]/10 rounded-full blur-2xl pointer-events-none" />
+
+                <div className="flex flex-wrap justify-between items-start gap-4 relative z-10">
+                  <div className="space-y-1">
+                    <span className="text-[#F4B400] font-heading font-extrabold text-[11px] uppercase tracking-wider block">
+                      — VA REWARDS & LOYALTY CLUB —
+                    </span>
+                    <h3 className="font-heading font-extrabold text-2xl md:text-3xl text-white tracking-tight">
+                      {userLoyaltyPts} <span className="text-amber-400 text-lg font-bold">Loyalty Points Available</span>
+                    </h3>
+                    <p className="text-gray-400 text-xs max-w-md leading-relaxed">
+                      Redeem your earned points at checkout to receive instant cash discounts on your doorstep detailing bookings.
+                    </p>
+                  </div>
+
+                  <Link to="/book">
+                    <button className="bg-[#F4B400] hover:bg-[#ffe258] text-dark font-extrabold py-3 px-6 rounded-2xl text-xs uppercase tracking-wider shadow-lg cursor-pointer transition-all border-none">
+                      Book & Redeem Points
+                    </button>
+                  </Link>
+                </div>
+              </div>
+
+              {/* Transactions History */}
+              <div className="bg-white border border-gray-100 rounded-3xl p-6 md:p-8 shadow-sm space-y-6 text-left">
+                <h4 className="font-heading font-extrabold text-dark text-lg flex items-center gap-2">
+                  <Gift size={20} className="text-[#F4B400]" />
+                  Loyalty Points Transaction History
+                </h4>
+
+                {loyaltyHistoryList.length === 0 ? (
+                  <div className="text-center py-12 space-y-3">
+                    <div className="w-12 h-12 bg-amber-50 text-[#F4B400] rounded-full flex items-center justify-center mx-auto border border-amber-200">
+                      <Gift size={24} />
+                    </div>
+                    <h5 className="font-heading font-extrabold text-dark text-sm">No Points History Yet</h5>
+                    <p className="text-gray-400 text-xs max-w-xs mx-auto">
+                      Earn loyalty points on every booking service completed or receive special welcome & bonus rewards!
+                    </p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-100">
+                    {loyaltyHistoryList.map((tx) => (
+                      <div key={tx.id} className="py-3.5 flex justify-between items-center text-xs">
+                        <div className="space-y-0.5">
+                          <span className="font-bold text-dark block">{tx.description}</span>
+                          <span className="text-[10px] text-gray-400 font-mono">
+                            {new Date(tx.createdAt).toLocaleDateString()} at {new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+
+                        <span className={`font-black text-sm ${tx.points >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                          {tx.points >= 0 ? `+${tx.points}` : tx.points} pts
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
         </div>
 
       </div>
@@ -865,15 +1067,14 @@ export default function Account() {
                 </div>
                 <div className="text-right">
                   <div className="text-[10px] text-gray-400 font-bold uppercase">Status</div>
-                  <span className={`inline-block text-[9px] font-black uppercase tracking-wider py-0.5 px-2 rounded-full border ${
-                    viewingBookingDetails.bookingStatus === "Completed"
+                  <span className={`inline-block text-[9px] font-black uppercase tracking-wider py-0.5 px-2 rounded-full border ${viewingBookingDetails.bookingStatus === "Completed"
                       ? "bg-emerald-50 text-emerald-600 border-emerald-100"
                       : viewingBookingDetails.bookingStatus === "Pending"
-                      ? "bg-amber-50 text-amber-600 border-amber-100"
-                      : viewingBookingDetails.bookingStatus === "Cancelled"
-                      ? "bg-rose-50 text-rose-600 border-rose-100"
-                      : "bg-blue-50 text-blue-600 border-blue-100"
-                  }`}>
+                        ? "bg-amber-50 text-amber-600 border-amber-100"
+                        : viewingBookingDetails.bookingStatus === "Cancelled"
+                          ? "bg-rose-50 text-rose-600 border-rose-100"
+                          : "bg-blue-50 text-blue-600 border-blue-100"
+                    }`}>
                     {viewingBookingDetails.bookingStatus}
                   </span>
                 </div>
@@ -939,28 +1140,50 @@ export default function Account() {
               {/* Detailing Crew Assignment */}
               <div className="space-y-3">
                 <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-gray-100 pb-1">4. Dispatch & Crew Assignment</h4>
-                {viewingBookingDetails.crewArrivingDate ? (
-                  <div className="bg-[#0f3b94]/5 border border-[#0f3b94]/10 rounded-2xl p-4 space-y-2 text-[#0f3b94]">
-                    <div className="grid grid-cols-2 gap-3">
+                {(viewingBookingDetails.assignedEmployee || viewingBookingDetails.assignedEmployeeName) ? (
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50/60 border border-blue-200/80 rounded-2xl p-4 space-y-3 text-left">
+                    <div className="flex justify-between items-center border-b border-blue-200/60 pb-2">
                       <div>
-                        <span className="opacity-80 block font-semibold">Assigned Detailer</span>
-                        <span className="font-black text-sm">{viewingBookingDetails.assignedEmployeeName}</span>
+                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Assigned Detailer Squad</span>
+                        <span className="font-heading font-extrabold text-dark text-base">{viewingBookingDetails.assignedEmployeeName || "Mobile Detailing Squad"}</span>
                       </div>
-                      <div className="col-span-2 pt-1 border-t border-[#0f3b94]/10 flex justify-between">
+                      <span className="text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                        {viewingBookingDetails.bookingStatus || "Accepted"}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      {viewingBookingDetails.assignedEmployeePhone && (
                         <div>
-                          <span className="opacity-80 block font-semibold">Expected Arrival Date</span>
-                          <span className="font-extrabold">{viewingBookingDetails.crewArrivingDate}</span>
+                          <span className="text-gray-400 block text-[10px] font-bold uppercase">Crew Phone Contact</span>
+                          <a href={`tel:${viewingBookingDetails.assignedEmployeePhone}`} className="font-extrabold text-primary hover:underline">
+                            {viewingBookingDetails.assignedEmployeePhone}
+                          </a>
                         </div>
-                        <div className="text-right">
-                          <span className="opacity-80 block font-semibold">Arrival Time Slot</span>
-                          <span className="font-extrabold">{viewingBookingDetails.crewArrivingTime}</span>
-                        </div>
+                      )}
+
+                      <div>
+                        <span className="text-gray-400 block text-[10px] font-bold uppercase">Scheduled Date</span>
+                        <span className="font-extrabold text-dark">{viewingBookingDetails.scheduledDate}</span>
                       </div>
+
+                      {viewingBookingDetails.crewArrivingDate && (
+                        <div className="col-span-2 pt-1 border-t border-blue-200/50 flex justify-between">
+                          <div>
+                            <span className="text-gray-400 block text-[10px] font-bold uppercase">Estimated Arrival Date</span>
+                            <span className="font-extrabold text-dark">{viewingBookingDetails.crewArrivingDate}</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-gray-400 block text-[10px] font-bold uppercase">Arrival Time Slot</span>
+                            <span className="font-extrabold text-dark">{viewingBookingDetails.crewArrivingTime || viewingBookingDetails.timeSlot}</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 text-center text-gray-400 font-semibold uppercase tracking-wider">
-                    Crew Assignment: Pending
+                  <div className="bg-amber-50/60 border border-amber-200/60 rounded-2xl p-4 text-center text-amber-900 font-semibold text-xs">
+                    Crew Assignment: Finding nearest available mobile detailing squad...
                   </div>
                 )}
               </div>

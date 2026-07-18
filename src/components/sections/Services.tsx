@@ -54,70 +54,74 @@ export default function Services() {
           </Link>
         </div>
 
-        {/* Services Cards Horizontal Grid scrollable or flex wrap */}
+        {/* Services Cards Horizontal Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
           {services.map((service, index) => {
             const iconInfo = getIcon(service.id);
             return (
-              <Link
+              <motion.div
                 key={service.id}
-                to={`/book?service=${service.id}`}
-                className="flex"
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 }}
+                className="bg-white rounded-3xl overflow-hidden shadow-2xl transition-all duration-300 group hover:-translate-y-2 flex flex-col justify-between w-full"
               >
-                <motion.div
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.1 }}
-                  className="bg-white rounded-3xl overflow-hidden shadow-2xl transition-all duration-300 group hover:-translate-y-2 cursor-pointer flex flex-col justify-between w-full"
-                >
-                  {/* Image with icon overlay */}
-                  <div className="relative h-44 overflow-hidden shrink-0">
-                    <img 
-                      src={service.image} 
-                      alt={service.name} 
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                    
-                    {/* Floating Circle Icon */}
-                    <div className={`absolute -bottom-4 left-6 w-10 h-10 ${iconInfo.bg} rounded-full flex items-center justify-center border-2 border-white shadow-md z-10 group-hover:rotate-12 transition-transform`}>
-                      {iconInfo.icon}
-                    </div>
+                {/* Image with icon overlay */}
+                <Link to={`/services/${service.id}`} className="relative h-44 overflow-hidden shrink-0 block">
+                  <img 
+                    src={service.image} 
+                    alt={service.name} 
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                  
+                  {/* Floating Circle Icon */}
+                  <div className={`absolute -bottom-4 left-6 w-10 h-10 ${iconInfo.bg} rounded-full flex items-center justify-center border-2 border-white shadow-md z-10 group-hover:rotate-12 transition-transform`}>
+                    {iconInfo.icon}
                   </div>
+                </Link>
 
-                  {/* Service description details */}
-                  <div className="p-6 pt-8 flex-1 flex flex-col justify-between text-dark">
-                    <div className="space-y-2 mb-4 text-left">
+                {/* Service description details */}
+                <div className="p-6 pt-8 flex-1 flex flex-col justify-between text-dark">
+                  <div className="space-y-2 mb-4 text-left">
+                    <Link to={`/services/${service.id}`} className="block">
                       <h3 className="text-lg font-heading font-extrabold tracking-tight group-hover:text-primary transition-colors">
                         {service.name}
                       </h3>
-                      <p className="text-gray-500 text-xs leading-relaxed">
-                        {service.description}
-                      </p>
-                    </div>
+                    </Link>
+                    <p className="text-gray-500 text-xs leading-relaxed">
+                      {service.description}
+                    </p>
+                  </div>
 
-                    <div className="flex justify-between items-end pt-3 border-t border-gray-100">
-                      <div className="text-left">
+                  <div className="flex flex-col gap-3 pt-3 border-t border-gray-100">
+                    <div className="flex justify-between items-center text-left">
+                      <div>
                         <span className="block text-[15px] font-heading font-black text-dark">
                           ₹{service.price}
                         </span>
-                        <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">
+                        <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">
                           Starting From
                         </span>
                       </div>
-
                       <Link
                         to={`/services/${service.id}`}
-                        className="text-xs font-bold text-primary hover:text-dark flex items-center gap-1 transition-colors bg-primary/5 px-3 py-1.5 rounded-xl border border-primary/10"
+                        className="text-[11px] font-bold text-primary hover:text-dark flex items-center gap-1 transition-colors bg-primary/5 px-2.5 py-1 rounded-lg border border-primary/10"
                       >
-                        Details & Terms →
+                        Details →
                       </Link>
                     </div>
-                  </div>
 
-                </motion.div>
-              </Link>
+                    <Link to={`/book?service=${service.id}`} className="w-full">
+                      <Button className="w-full text-[10px] uppercase tracking-wider h-8.5 rounded-xl font-bold bg-[#F4B400] text-dark hover:bg-[#ffe258] border-none shadow">
+                        Book Service
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+
+              </motion.div>
             );
           })}
         </div>

@@ -38,6 +38,10 @@ import ApplyNow from "./pages/jobs/ApplyNow";
 import Benefits from "./pages/jobs/Benefits";
 import WorkWithUs from "./pages/jobs/WorkWithUs";
 
+import DynamicLandingPage from "./pages/seo/DynamicLandingPage";
+import BlogIndex from "./pages/blog/BlogIndex";
+import BlogPost from "./pages/blog/BlogPost";
+
 function AnimatedRoutes() {
   const location = useLocation();
 
@@ -53,15 +57,15 @@ function AnimatedRoutes() {
           <Route path="book" element={<Book />} />
           <Route path="contact" element={<Contact />} />
           
-          {/* Specific Service Subpages */}
-          <Route path="services/:serviceId" element={<ServiceDetailPage />} />
-          <Route path="services/exterior-wash" element={<ExteriorWash />} />
-          <Route path="services/interior-cleaning" element={<InteriorCleaning />} />
-          <Route path="services/foam-wash" element={<FoamWash />} />
-          <Route path="services/wax-polish" element={<WaxPolish />} />
-          <Route path="services/dashboard-cleaning" element={<DashboardCleaning />} />
-          <Route path="services/tyre-dressing" element={<TyreDressing />} />
-          
+          {/* Blog Routes */}
+          <Route path="blog" element={<BlogIndex />} />
+          <Route path="blog/:slug" element={<BlogPost />} />
+
+          {/* Dynamic SEO Routes for Content Scaling */}
+          <Route path="services/:serviceSlug" element={<DynamicLandingPage type="service" />} />
+          <Route path="kanpur/:locationSlug" element={<DynamicLandingPage type="location" />} />
+          <Route path="services/:serviceSlug/kanpur/:locationSlug" element={<DynamicLandingPage type="combined" />} />
+
           {/* Specific Jobs/Careers Subpages */}
           <Route path="jobs/part-time" element={<PartTimeJob />} />
           <Route path="jobs/apply" element={<ApplyNow />} />
@@ -103,6 +107,9 @@ function AnimatedRoutes() {
               </ProtectedRoute>
             } 
           />
+          {/* Fallback Catch-all for Dynamic SEO Location Routes */}
+          {/* Note: This must be placed after all defined routes but before 404/NotFound if one exists */}
+          <Route path=":slug" element={<DynamicLandingPage />} />
         </Route>
       </Routes>
   );

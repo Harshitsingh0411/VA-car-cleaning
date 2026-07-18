@@ -28,6 +28,7 @@ import {
   updateBookingStatus,
   dbBooking
 } from "../../services/dbService";
+import { CrewLocationBroadcaster } from "../../components/location/LocationPickerMap";
 
 export default function EmployeeDashboard({ embedded = false }: { embedded?: boolean }) {
   const { user, profile } = useAuth();
@@ -478,6 +479,18 @@ export default function EmployeeDashboard({ embedded = false }: { embedded?: boo
                     {selectedJobDetails.notes || selectedJobDetails.address || "Doorstep location provided"}
                   </div>
                 </div>
+
+                {/* Google Maps Live Location & Navigation Panel */}
+                <CrewLocationBroadcaster
+                  bookingId={selectedJobDetails.id}
+                  customerLat={selectedJobDetails.customerLatitude}
+                  customerLng={selectedJobDetails.customerLongitude}
+                  customerAddress={selectedJobDetails.notes || selectedJobDetails.address}
+                  crewLat={selectedJobDetails.crewLatitude}
+                  crewLng={selectedJobDetails.crewLongitude}
+                  crewLocationUpdatedAt={selectedJobDetails.crewLocationUpdatedAt}
+                  onLocationUpdated={() => loadDashboardData()}
+                />
               </div>
 
               <button
@@ -494,7 +507,7 @@ export default function EmployeeDashboard({ embedded = false }: { embedded?: boo
 
   if (embedded) return content;
   return (
-    <div className="pt-24 min-h-screen bg-[#F8FAFC] pb-24">
+    <div className="pt-24 min-h-screen bg-[#070C16] pb-24">
       {content}
     </div>
   );

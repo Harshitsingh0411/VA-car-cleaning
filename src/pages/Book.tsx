@@ -1,12 +1,21 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useForm } from "react-hook-form";
-import { CheckCircle, Calendar, Sparkles, Car, ShieldCheck, User, Phone, Mail, Clock, MapPin, ArrowRight } from "lucide-react";
+import { CheckCircle, Calendar, Sparkles, Car, ShieldCheck, User, Phone, Mail, Clock, MapPin, ArrowRight, Gift, Star } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { useAuth } from "../context/AuthContext";
 import { servicePrices } from "../lib/prices";
-import { createBooking, getAllServices, dbService } from "../services/dbService";
+import {
+  createBooking,
+  getAllServices,
+  dbService,
+  getLoyaltySettings,
+  getUserLoyaltyPoints,
+  grantOrAdjustLoyaltyPoints,
+  dbLoyaltySettings
+} from "../services/dbService";
+import { CustomerLocationPicker, LocationCoords } from "../components/location/LocationPickerMap";
 
 interface BookingInputs {
   name: string;
@@ -29,10 +38,21 @@ export default function BookPage() {
   const [isBooked, setIsBooked] = useState(false);
   const [bookedDetails, setBookedDetails] = useState<any>(null);
   const [services, setServices] = useState<dbService[]>([]);
+  const [loyaltySettings, setLoyaltySettings] = useState<dbLoyaltySettings | null>(null);
+  const [userLoyaltyPoints, setUserLoyaltyPoints] = useState<number>(0);
+  const [redeemLoyalty, setRedeemLoyalty] = useState<boolean>(false);
+  const [pointsToRedeemInput, setPointsToRedeemInput] = useState<number>(0);
 
   useEffect(() => {
     getAllServices().then(setServices).catch(console.error);
-  }, []);
+    getLoyaltySettings().then(setLoyaltySettings).catch(console.error);
+    if (user) {
+      getUserLoyaltyPoints(user.uid).then((pts) => {
+        setUserLoyaltyPoints(pts);
+        setPointsToRedeemInput(pts);
+      }).catch(console.error);
+    }
+  }, [user]);
 
   // Read service package query parameter (default to 'foam')
   const queryService = searchParams.get("service") || "foam";
@@ -69,10 +89,29 @@ export default function BookPage() {
 
   // Lookup service details from dynamic services list
   const matchedService = services.find(s => s.id === selectedServiceKey);
+  const rawServicePrice = matchedService ? matchedService.price : 1999;
+
+  // Loyalty calculations
+  const pointValue = loyaltySettings?.pointRedemptionValue || 1;
+  const maxDiscountPercent = loyaltySettings?.maxDiscountPercent || 50;
+  const maxAllowedPoints = Math.min(
+    userLoyaltyPoints,
+    Math.floor((rawServicePrice * (maxDiscountPercent / 100)) / pointValue)
+  );
+
+  const activeRedeemedPoints = (redeemLoyalty && loyaltySettings?.enabled)
+    ? Math.min(pointsToRedeemInput > 0 ? pointsToRedeemInput : userLoyaltyPoints, maxAllowedPoints)
+    : 0;
+  const loyaltyDiscount = activeRedeemedPoints * pointValue;
+  const finalPayablePrice = Math.max(0, rawServicePrice - loyaltyDiscount);
+  const estimatedEarnedPoints = Math.floor((finalPayablePrice / 100) * (loyaltySettings?.pointsPer100Spent || 10));
+
   const serviceInfo = {
     name: matchedService ? matchedService.name : "Premium Detailing",
-    price: matchedService ? `₹${matchedService.price}` : "₹1999",
-    rawPrice: matchedService ? matchedService.price : 1999
+    price: `₹${finalPayablePrice}`,
+    rawPrice: rawServicePrice,
+    discount: loyaltyDiscount,
+    finalPrice: finalPayablePrice
   };
 
   const nextStep = async () => {
@@ -90,6 +129,8 @@ export default function BookPage() {
     setStep((prev) => prev - 1);
   };
 
+  const [pinnedLocation, setPinnedLocation] = useState<LocationCoords | null>(null);
+
   const onSubmit = async (data: BookingInputs) => {
     let finalVehicle = "";
     if (user && profile?.vehicles && profile.vehicles.length > 0) {
@@ -105,7 +146,7 @@ export default function BookPage() {
 
     // Save to user appointment history & centralized bookings db
     if (user) {
-      await createBooking({
+      const newBookingId = await createBooking({
         customerId: user.uid,
         customerName: data.name,
         customerPhone: data.phone,
@@ -115,11 +156,26 @@ export default function BookPage() {
         serviceName: serviceName,
         scheduledDate: data.bookingDate,
         timeSlot: data.bookingTime,
-        price: servicePrice,
+        price: finalPayablePrice,
         notes: data.notes,
-        address: data.address
+        address: data.address,
+        customerLatitude: pinnedLocation?.latitude,
+        customerLongitude: pinnedLocation?.longitude,
+        customerLocationUrl: pinnedLocation?.mapsUrl,
+        loyaltyPointsRedeemed: activeRedeemedPoints,
+        loyaltyPointsDiscount: loyaltyDiscount,
+        loyaltyPointsEarned: estimatedEarnedPoints
       });
-      await addAppointment(serviceName, finalVehicle, data.bookingDate, data.bookingTime, `₹${servicePrice}`);
+
+      await addAppointment(serviceName, finalVehicle, data.bookingDate, data.bookingTime, `₹${finalPayablePrice}`);
+
+      // Deduct redeemed points & grant earned points
+      if (activeRedeemedPoints > 0) {
+        await grantOrAdjustLoyaltyPoints(user.uid, -activeRedeemedPoints, "redeemed", `Redeemed ${activeRedeemedPoints} pts on ${serviceName}`, newBookingId);
+      }
+      if (estimatedEarnedPoints > 0) {
+        await grantOrAdjustLoyaltyPoints(user.uid, estimatedEarnedPoints, "earned", `Earned ${estimatedEarnedPoints} pts on ${serviceName}`, newBookingId);
+      }
     }
 
     setBookedDetails({
@@ -134,9 +190,9 @@ export default function BookPage() {
   };
 
   return (
-    <div className="pt-24 min-h-screen bg-[#F8FAFC]">
+    <div className="min-h-screen bg-[#F8FAFC]">
       {/* Upper header */}
-      <div className="bg-[#070C16] text-white py-10 md:py-12 relative overflow-hidden">
+      <div className="bg-[#070C16] text-white pt-24 pb-10 md:pt-28 md:pb-12 relative overflow-hidden">
         <div className="absolute inset-0 bg-primary/10" />
         <div className="container mx-auto px-4 md:px-6 relative z-10 text-center">
           <span className="text-[#F4B400] font-heading font-semibold tracking-wider uppercase text-[11px] mb-1.5 block">
@@ -325,7 +381,97 @@ export default function BookPage() {
                         {errors.address && (
                           <p className="text-red-500 text-[10px] font-bold">{errors.address.message}</p>
                         )}
+
+                        <CustomerLocationPicker
+                          onLocationSelected={(loc) => {
+                            setPinnedLocation(loc);
+                            if (loc.addressText) {
+                              setValue("address", loc.addressText);
+                            }
+                          }}
+                        />
                       </div>
+
+                      {/* Loyalty Points Option & Redemption Box */}
+                      {loyaltySettings?.enabled !== false && (
+                        <div className="p-4 bg-gradient-to-br from-amber-50 to-amber-100/60 border border-amber-200/80 rounded-2xl space-y-3 text-left shadow-xs">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-amber-900 font-heading font-extrabold text-xs">
+                              <Gift size={18} className="text-[#F4B400]" />
+                              <span>VA Rewards & Loyalty Points</span>
+                            </div>
+                            {user && (
+                              <span className="text-[10px] font-black text-amber-900 bg-amber-200/80 px-2.5 py-0.5 rounded-full border border-amber-300/60">
+                                Balance: {userLoyaltyPoints} pts
+                              </span>
+                            )}
+                          </div>
+
+                          {!user ? (
+                            <div className="text-xs text-amber-950 font-semibold space-y-1">
+                              <p>Log in to apply your earned loyalty points for instant cash discounts on this booking.</p>
+                              <Link to="/login" className="inline-block text-[11px] font-bold text-primary hover:underline">
+                                → Log In or Register Now
+                              </Link>
+                            </div>
+                          ) : userLoyaltyPoints >= (loyaltySettings?.minPointsToRedeem || 50) ? (
+                            <div className="space-y-3">
+                              <label className="flex items-center gap-2.5 cursor-pointer pt-0.5 select-none">
+                                <input
+                                  type="checkbox"
+                                  checked={redeemLoyalty}
+                                  onChange={(e) => {
+                                    setRedeemLoyalty(e.target.checked);
+                                    if (e.target.checked && pointsToRedeemInput <= 0) {
+                                      setPointsToRedeemInput(maxAllowedPoints);
+                                    }
+                                  }}
+                                  className="w-4 h-4 rounded text-primary focus:ring-primary accent-[#F4B400] cursor-pointer"
+                                />
+                                <span className="text-xs font-extrabold text-dark">
+                                  Use Loyalty Points for instant discount (Save up to ₹{maxAllowedPoints * (loyaltySettings?.pointRedemptionValue || 1)})
+                                </span>
+                              </label>
+
+                              {redeemLoyalty && (
+                                <div className="space-y-2 pt-2 border-t border-amber-200/80 text-xs">
+                                  <div className="flex justify-between items-center text-amber-950">
+                                    <span className="font-bold">Points to Redeem:</span>
+                                    <div className="flex items-center gap-2">
+                                      <input
+                                        type="number"
+                                        min={loyaltySettings?.minPointsToRedeem || 50}
+                                        max={maxAllowedPoints}
+                                        value={pointsToRedeemInput}
+                                        onChange={(e) => setPointsToRedeemInput(Math.min(maxAllowedPoints, Math.max(0, parseInt(e.target.value) || 0)))}
+                                        className="w-24 bg-white border border-amber-300 rounded-xl px-3 py-1 font-bold text-dark text-right focus:outline-none focus:ring-2 focus:ring-primary"
+                                      />
+                                      <span className="text-[10px] text-gray-500 font-bold">pts</span>
+                                    </div>
+                                  </div>
+                                  <div className="flex justify-between text-xs font-bold text-amber-900 bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl">
+                                    <span className="text-emerald-800 font-extrabold">Instant Loyalty Discount Applied:</span>
+                                    <span className="font-black text-emerald-600 text-sm">-₹{loyaltyDiscount}</span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="text-xs text-amber-900 font-medium space-y-1">
+                              <p>
+                                You have <strong>{userLoyaltyPoints} points</strong>. Minimum <strong>{loyaltySettings?.minPointsToRedeem || 50} points</strong> required to redeem instant cash discount.
+                              </p>
+                            </div>
+                          )}
+
+                          {estimatedEarnedPoints > 0 && (
+                            <div className="text-[11px] text-amber-900 font-bold flex items-center gap-1.5 pt-1 border-t border-amber-200/50">
+                              <Star size={13} className="fill-amber-400 text-amber-500" />
+                              <span>You will earn <strong className="text-amber-950">+{estimatedEarnedPoints} bonus loyalty points</strong> upon booking completion!</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       <div className="flex justify-between items-center pt-4 border-t border-gray-100">
                         <div className="text-xs text-gray-400 font-bold">
@@ -443,6 +589,26 @@ export default function BookPage() {
                             {...register("notes")}
                             className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 font-semibold text-dark text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition-all resize-none"
                           />
+                        </div>
+                      </div>
+
+                      {/* Price Summary Breakdown */}
+                      <div className="p-4 bg-gray-50 border border-gray-100 rounded-2xl space-y-2 text-xs text-left">
+                        <div className="flex justify-between text-gray-500 font-semibold">
+                          <span>Base Package Fee ({serviceInfo.name}):</span>
+                          <span className="font-bold text-dark">₹{rawServicePrice}</span>
+                        </div>
+
+                        {loyaltyDiscount > 0 && (
+                          <div className="flex justify-between text-emerald-600 font-bold bg-emerald-50 p-2 rounded-xl border border-emerald-200">
+                            <span>Loyalty Points Cash Discount:</span>
+                            <span className="font-extrabold">-₹{loyaltyDiscount}</span>
+                          </div>
+                        )}
+
+                        <div className="flex justify-between text-dark font-extrabold text-sm pt-2 border-t border-gray-200">
+                          <span>Total Payable Amount:</span>
+                          <span className="text-primary text-base font-black">₹{finalPayablePrice}</span>
                         </div>
                       </div>
 

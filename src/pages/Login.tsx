@@ -47,7 +47,7 @@ export default function Login() {
   };
 
   return (
-    <div className="pt-24 min-h-screen bg-[#F8FAFC] pb-24 flex items-center justify-center relative overflow-hidden">
+    <div className="pt-24 min-h-screen bg-[#070C16] pb-24 flex items-center justify-center relative overflow-hidden">
       <div className="absolute top-20 left-[-10%] w-[35vw] h-[35vw] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
 
       <div className="container mx-auto px-4 relative z-10 w-full max-w-md">

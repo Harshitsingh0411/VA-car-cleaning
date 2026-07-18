@@ -1,14 +1,9 @@
+import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { CheckCircle, Award, Users, MapPin, Sparkles, Droplets, ShieldCheck, ClipboardCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "../ui/Button";
-
-const stats = [
-  { count: "1000+", label: "Cars Cleaned", icon: <Award size={20} className="text-[#F4B400]" /> },
-  { count: "500+", label: "Happy Customers", icon: <ShieldCheck size={20} className="text-[#F4B400]" /> },
-  { count: "50+", label: "Team Members", icon: <Users size={20} className="text-[#F4B400]" /> },
-  { count: "10+", label: "Cities We Serve", icon: <MapPin size={20} className="text-[#F4B400]" /> }
-];
+import { getRealtimeCompanyStats, RealtimeCompanyStats } from "../../services/dbService";
 
 const features = [
   { label: "Eco Friendly Products", icon: <Droplets size={16} className="text-primary" /> },
@@ -27,6 +22,28 @@ const jobsChecklist = [
 ];
 
 export default function JobOpportunity() {
+  const [realtimeStats, setRealtimeStats] = useState<RealtimeCompanyStats>({
+    carsCleaned: "1000+",
+    topRating: "4.9",
+    satisfaction: "100%",
+    teamMembers: "50+",
+    totalBookingsCount: 0,
+    completedBookingsCount: 0,
+    averageRating: 4.9,
+    totalReviewsCount: 0,
+    activeCrewCount: 0
+  });
+
+  useEffect(() => {
+    getRealtimeCompanyStats().then(setRealtimeStats).catch(console.warn);
+  }, []);
+
+  const stats = [
+    { count: realtimeStats.carsCleaned, label: "Cars Cleaned", icon: <Award size={20} className="text-[#F4B400]" /> },
+    { count: `${realtimeStats.completedBookingsCount + 500}+`, label: "Happy Customers", icon: <ShieldCheck size={20} className="text-[#F4B400]" /> },
+    { count: realtimeStats.teamMembers, label: "Team Members", icon: <Users size={20} className="text-[#F4B400]" /> },
+    { count: "10+", label: "Cities We Serve", icon: <MapPin size={20} className="text-[#F4B400]" /> }
+  ];
   return (
     <section className="py-24 bg-white text-dark relative border-t border-gray-100" id="jobs">
       <div className="container mx-auto px-4 md:px-6">

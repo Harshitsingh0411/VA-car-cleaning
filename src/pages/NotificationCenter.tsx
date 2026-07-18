@@ -145,7 +145,20 @@ export default function NotificationCenter() {
   };
 
   return (
-    <div className="pt-24 min-h-screen bg-[#F8FAFC] pb-24 relative overflow-hidden">
+    <div className="min-h-screen bg-[#F8FAFC] pb-24 relative overflow-hidden">
+      {/* Dark Header Banner */}
+      <div className="bg-[#070C16] text-white pt-24 pb-10 md:pt-28 md:pb-12 relative overflow-hidden mb-8">
+        <div className="absolute inset-0 bg-primary/10" />
+        <div className="container mx-auto px-4 md:px-6 relative z-10 max-w-4xl">
+          <span className="text-[#F4B400] font-heading font-semibold tracking-wider uppercase text-[11px] mb-1 block">
+            — UPDATES & ALERTS —
+          </span>
+          <h1 className="text-2xl md:text-4xl font-heading font-extrabold text-white tracking-tight">
+            Notification Center
+          </h1>
+        </div>
+      </div>
+
       <div className="container mx-auto px-4 md:px-6 relative z-10 max-w-4xl space-y-6">
         
         {/* Header toolbar */}

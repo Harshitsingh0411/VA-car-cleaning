@@ -1,15 +1,34 @@
+import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { Button } from "../ui/Button";
 import { Link } from "react-router-dom";
 import { Star, Shield, Car, Users } from "lucide-react";
+import { getRealtimeCompanyStats, RealtimeCompanyStats } from "../../services/dbService";
 
 export default function Hero() {
+  const [realtimeStats, setRealtimeStats] = useState<RealtimeCompanyStats>({
+    carsCleaned: "1000+",
+    topRating: "4.9",
+    satisfaction: "100%",
+    teamMembers: "50+",
+    totalBookingsCount: 0,
+    completedBookingsCount: 0,
+    averageRating: 4.9,
+    totalReviewsCount: 0,
+    activeCrewCount: 0
+  });
+
+  useEffect(() => {
+    getRealtimeCompanyStats()
+      .then(setRealtimeStats)
+      .catch((err) => console.warn("Could not sync realtime hero stats:", err));
+  }, []);
 
   const stats = [
-    { icon: <Car size={20} className="text-[#F4B400]" />, count: "1000+", label: "Cars Cleaned" },
-    { icon: <Star size={20} className="text-[#F4B400] fill-[#F4B400]" />, count: "4.9", label: "Top Rating" },
-    { icon: <Shield size={20} className="text-[#F4B400]" />, count: "100%", label: "Satisfaction" },
-    { icon: <Users size={20} className="text-[#F4B400]" />, count: "50+", label: "Team Members" },
+    { icon: <Car size={20} className="text-[#F4B400]" />, count: realtimeStats.carsCleaned, label: "Cars Cleaned" },
+    { icon: <Star size={20} className="text-[#F4B400] fill-[#F4B400]" />, count: realtimeStats.topRating, label: "Top Rating" },
+    { icon: <Shield size={20} className="text-[#F4B400]" />, count: realtimeStats.satisfaction, label: "Satisfaction" },
+    { icon: <Users size={20} className="text-[#F4B400]" />, count: realtimeStats.teamMembers, label: "Team Members" },
   ];
 
   return (

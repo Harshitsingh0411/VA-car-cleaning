@@ -2,6 +2,9 @@ import { motion } from "motion/react";
 import { Droplets, Sparkles, Wind, ShieldCheck, Settings, Car, Flame, CheckCircle, ShieldAlert } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { Link } from "react-router-dom";
+import BookingSection from "../components/sections/BookingSection";
+import SEO from "../components/seo/SEO";
+import SeoTextSection from "../components/seo/SeoTextSection";
 
 const detailedServices = [
   {
@@ -62,9 +65,13 @@ const detailedServices = [
 
 export default function ServicesPage() {
   return (
-    <div className="pt-24 min-h-screen bg-light">
+    <div className="min-h-screen bg-light">
+      <SEO 
+        title="Our Services | Car Wash & Detailing in Kanpur"
+        description="Explore our wide range of car cleaning services including foam wash, ceramic coating, interior detailing, and engine cleaning in Kanpur."
+      />
       {/* Hero Header */}
-      <div className="bg-dark text-white py-12 md:py-14 relative overflow-hidden">
+      <div className="bg-[#070C16] text-white pt-24 pb-12 md:pt-28 md:pb-14 relative overflow-hidden">
         <div className="absolute inset-0 bg-primary/10" />
         <div className="container mx-auto px-4 md:px-6 relative z-10 text-center">
           <motion.span
@@ -174,6 +181,31 @@ export default function ServicesPage() {
           ))}
         </div>
       </div>
+      <BookingSection />
+
+      <SeoTextSection 
+        heading="Comprehensive Car Detailing Services in Kanpur"
+        contentBlocks={[
+          {
+            title: "Why Choose Our Professional Car Cleaning Services?",
+            body: <p>Our doorstep car detailing services are designed to restore your vehicle to its showroom condition. From basic exterior foam washes that strip away road grime to intensive interior dry cleaning that eliminates bacteria and odors, our certified detailers handle it all. We use state-of-the-art equipment, including high-pressure washers, steam cleaners, and industrial extractors.</p>
+          },
+          {
+            title: "Advanced 9H Ceramic Coating",
+            body: <p>Protect your car's paint from UV rays, acid rain, and minor scratches with our premium 9H Ceramic Coating service. This liquid polymer chemically bonds with your vehicle's factory paint, creating a protective layer that lasts for years. The hydrophobic properties ensure water beads up and rolls off, keeping your car cleaner for longer and making future washes a breeze.</p>
+          }
+        ]}
+        faqs={[
+          {
+            q: "Do you offer subscription-based monthly car cleaning?",
+            a: "Yes! We offer discounted monthly packages that include weekly exterior washes and a bi-weekly interior vacuum to keep your car looking pristine year-round."
+          },
+          {
+            q: "What is the difference between a normal wash and a foam wash?",
+            a: "A normal wash usually involves applying soap with a sponge, which can trap dirt and scratch the paint. Our foam wash uses a snow foam cannon that encapsulates dirt and lifts it off the surface safely before we even touch the paint."
+          }
+        ]}
+      />
     </div>
   );
 }

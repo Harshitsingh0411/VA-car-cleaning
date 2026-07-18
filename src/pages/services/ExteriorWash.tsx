@@ -25,18 +25,21 @@ export default function ExteriorWash() {
   ];
 
   return (
-    <div className="pt-24 min-h-screen bg-[#F8FAFC] pb-24 relative overflow-hidden">
-      <div className="absolute top-20 left-[-10%] w-[35vw] h-[35vw] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
+    <div className="min-h-screen bg-[#F8FAFC] pb-24 relative overflow-hidden">
+      {/* Dark Header Top */}
+      <div className="bg-[#070C16] pt-24 pb-6 mb-8">
+        <div className="container mx-auto px-4 md:px-6 relative z-10 max-w-5xl">
+          <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+            <Link to="/" className="hover:text-white transition-colors">Home</Link>
+            <span className="mx-2">/</span>
+            <Link to="/services" className="hover:text-white transition-colors">Services</Link>
+            <span className="mx-2">/</span>
+            <span className="text-[#F4B400]">Exterior Wash</span>
+          </div>
+        </div>
+      </div>
 
       <div className="container mx-auto px-4 md:px-6 relative z-10 max-w-5xl">
-        {/* Breadcrumb */}
-        <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">
-          <Link to="/" className="hover:text-primary transition-colors">Home</Link>
-          <span className="mx-2">/</span>
-          <Link to="/services" className="hover:text-primary transition-colors">Services</Link>
-          <span className="mx-2">/</span>
-          <span className="text-primary">Exterior Wash</span>
-        </div>
 
         {/* Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
@@ -91,44 +94,16 @@ export default function ExteriorWash() {
               Interactive Paint Shine Review
             </h3>
 
-            <div
-              ref={containerRef}
-              onMouseMove={handleMouseMove}
-              className="relative h-80 rounded-3xl overflow-hidden shadow-2xl border border-gray-200 cursor-ew-resize select-none"
-            >
-              {/* After: Clean shiny */}
-              <div className="absolute inset-0">
-                <img
-                  src="https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&q=80&w=800"
-                  alt="Shiny car paint"
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute right-4 bottom-4 bg-[#F4B400] text-dark font-heading font-bold text-[10px] uppercase tracking-wider py-1 px-2.5 rounded shadow">
-                  Clean Paint
-                </div>
-              </div>
-
-              {/* Before: Dirty */}
-              <div
-                className="absolute inset-y-0 left-0 h-full overflow-hidden"
-                style={{ width: `${sliderPos}%` }}
-              >
-                <img
-                  src="https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&q=80&w=800"
-                  alt="Dusty car paint"
-                  className="absolute inset-0 h-full object-cover filter saturate-[0.3] brightness-[0.6] sepia-[0.3] blur-[1px]"
-                  style={{ width: containerRef.current?.getBoundingClientRect().width || "400px", maxWidth: "none" }}
-                />
-                <div className="absolute left-4 bottom-4 bg-black/60 text-white font-heading font-bold text-[10px] uppercase tracking-wider py-1 px-2.5 rounded shadow">
-                  Dirty Paint
-                </div>
-              </div>
-
-              {/* Handle */}
-              <div
-                className="absolute inset-y-0 w-1 bg-white shadow z-10"
-                style={{ left: `${sliderPos}%` }}
+            <div className="relative h-80 rounded-3xl overflow-hidden shadow-2xl border border-gray-200 group">
+              <img
+                src="https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&q=80&w=800"
+                alt="Shiny car paint"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
               />
+              <div className="absolute inset-0 bg-gradient-to-t from-dark/70 via-transparent to-transparent" />
+              <div className="absolute left-4 bottom-4 bg-[#F4B400] text-dark font-heading font-bold text-[10px] uppercase tracking-wider py-1 px-3 rounded-full shadow">
+                ✨ High-Pressure Hydrophobic Polish Finish
+              </div>
             </div>
 
             <div className="p-4 bg-white border border-gray-100 rounded-2xl shadow-sm text-xs text-gray-500 leading-relaxed">

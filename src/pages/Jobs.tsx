@@ -46,9 +46,9 @@ export default function JobsPage() {
   };
 
   return (
-    <div className="pt-24 min-h-screen bg-light">
+    <div className="min-h-screen bg-light">
       {/* Banner */}
-      <div className="bg-dark text-white py-12 md:py-14 relative overflow-hidden">
+      <div className="bg-[#070C16] text-white pt-24 pb-12 md:pt-28 md:pb-14 relative overflow-hidden">
         <div className="absolute inset-0 bg-primary/10" />
         <div className="container mx-auto px-4 md:px-6 relative z-10 text-center">
           <motion.span

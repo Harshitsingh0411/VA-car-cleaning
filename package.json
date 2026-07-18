@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node node_modules/vite/bin/vite.js --port=3000 --host=0.0.0.0",
-    "build": "node node_modules/vite/bin/vite.js build",
+    "build": "node node_modules/vite/bin/vite.js build && node node_modules/tsx/dist/cli.mjs scripts/generate-sitemap.ts",
     "preview": "node node_modules/vite/bin/vite.js preview",
     "clean": "rm -rf dist server.js",
     "lint": "node node_modules/typescript/lib/tsc.js --noEmit"
@@ -22,6 +22,7 @@
     "motion": "^12.23.24",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
+    "react-helmet-async": "^3.0.0",
     "react-hook-form": "^7.81.0",
     "react-router-dom": "^7.18.1",
     "swiper": "^14.0.5",

@@ -25,7 +25,7 @@ export default function FoamWash() {
   ];
 
   return (
-    <div className="pt-24 min-h-screen bg-[#F8FAFC] pb-24 relative overflow-hidden">
+    <div className="min-h-screen bg-[#F8FAFC] pb-24 relative overflow-hidden">
       {/* Floating bubbles background animation */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         {[1, 2, 3, 4, 5, 6].map((b) => (
@@ -51,15 +51,20 @@ export default function FoamWash() {
         ))}
       </div>
 
-      <div className="container mx-auto px-4 md:px-6 relative z-10 max-w-5xl">
-        {/* Breadcrumb */}
-        <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">
-          <Link to="/" className="hover:text-primary transition-colors">Home</Link>
-          <span className="mx-2">/</span>
-          <Link to="/services" className="hover:text-primary transition-colors">Services</Link>
-          <span className="mx-2">/</span>
-          <span className="text-primary">Foam Wash</span>
+      {/* Dark Header Top */}
+      <div className="bg-[#070C16] pt-24 pb-6 mb-8">
+        <div className="container mx-auto px-4 md:px-6 relative z-10 max-w-5xl">
+          <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+            <Link to="/" className="hover:text-white transition-colors">Home</Link>
+            <span className="mx-2">/</span>
+            <Link to="/services" className="hover:text-white transition-colors">Services</Link>
+            <span className="mx-2">/</span>
+            <span className="text-[#F4B400]">Foam Wash</span>
+          </div>
         </div>
+      </div>
+
+      <div className="container mx-auto px-4 md:px-6 relative z-10 max-w-5xl">
 
         {/* Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
@@ -114,47 +119,16 @@ export default function FoamWash() {
               Interactive Foam Coverage
             </h3>
 
-            <div
-              ref={containerRef}
-              onMouseMove={handleMouseMove}
-              className="relative h-80 rounded-3xl overflow-hidden shadow-2xl border border-gray-200 cursor-ew-resize select-none"
-            >
-              {/* After: Clean shiny */}
-              <div className="absolute inset-0">
-                <img
-                  src="https://images.unsplash.com/photo-1552930294-6b595f4c2974?auto=format&fit=crop&q=80&w=800"
-                  alt="Foamed car paint clean"
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute right-4 bottom-4 bg-[#F4B400] text-dark font-heading font-bold text-[10px] uppercase tracking-wider py-1 px-2.5 rounded shadow">
-                  Rinsed
-                </div>
-              </div>
-
-              {/* Before: Foamy */}
-              <div
-                className="absolute inset-y-0 left-0 h-full overflow-hidden"
-                style={{ width: `${sliderPos}%` }}
-              >
-                <div className="absolute inset-0 bg-white/40 backdrop-blur-[1px] pointer-events-none" />
-                <img
-                  src="https://images.unsplash.com/photo-1552930294-6b595f4c2974?auto=format&fit=crop&q=80&w=800"
-                  alt="Foamed car paint lather"
-                  className="absolute inset-0 h-full object-cover filter saturate-[0.1] brightness-[1.2]"
-                  style={{ width: containerRef.current?.getBoundingClientRect().width || "400px", maxWidth: "none" }}
-                />
-                {/* Simulated suds layout overlay */}
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.8)_0%,transparent_70%)]" />
-                <div className="absolute left-4 bottom-4 bg-black/60 text-white font-heading font-bold text-[10px] uppercase tracking-wider py-1 px-2.5 rounded shadow">
-                  Thick Snow Foam
-                </div>
-              </div>
-
-              {/* Handle */}
-              <div
-                className="absolute inset-y-0 w-1 bg-white shadow z-10"
-                style={{ left: `${sliderPos}%` }}
+            <div className="relative h-80 rounded-3xl overflow-hidden shadow-2xl border border-gray-200 group">
+              <img
+                src="https://images.unsplash.com/photo-1552930294-6b595f4c2974?auto=format&fit=crop&q=80&w=800"
+                alt="Foamed car paint lather"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
               />
+              <div className="absolute inset-0 bg-gradient-to-t from-dark/70 via-transparent to-transparent" />
+              <div className="absolute left-4 bottom-4 bg-[#F4B400] text-dark font-heading font-bold text-[10px] uppercase tracking-wider py-1 px-3 rounded-full shadow">
+                ✨ Deep Snow Foam Bath Treatment
+              </div>
             </div>
 
             <div className="p-4 bg-white border border-gray-100 rounded-2xl shadow-sm text-xs text-gray-500 leading-relaxed">

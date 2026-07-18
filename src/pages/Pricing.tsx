@@ -5,6 +5,8 @@ import { Button } from "../components/ui/Button";
 import { Link } from "react-router-dom";
 import { getAllPricingPlans, dbPricingPlan, DEFAULT_PRICING_PLANS } from "../services/dbService";
 
+import SEO from "../components/seo/SEO";
+
 export default function PricingPage() {
   const [billingCycle, setBillingCycle] = useState<"one-time" | "subscription">("one-time");
   const [plans, setPlans] = useState<dbPricingPlan[]>(DEFAULT_PRICING_PLANS);
@@ -45,9 +47,13 @@ export default function PricingPage() {
   };
 
   return (
-    <div className="pt-24 min-h-screen bg-light">
+    <div className="min-h-screen bg-light">
+      <SEO 
+        title="Car Cleaning Pricing & Packages | VaCar Kanpur"
+        description="Affordable and transparent pricing for doorstep car washing, interior detailing, and ceramic coating in Kanpur. Choose one-time or subscription packages."
+      />
       {/* Header Banner */}
-      <div className="bg-dark text-white py-12 md:py-14 relative overflow-hidden">
+      <div className="bg-[#070C16] text-white pt-24 pb-12 md:pt-28 md:pb-14 relative overflow-hidden">
         <div className="absolute inset-0 bg-primary/10" />
         <div className="container mx-auto px-4 md:px-6 relative z-10 text-center">
           <motion.span
