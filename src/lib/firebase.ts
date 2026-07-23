@@ -98,24 +98,42 @@ function wrapQuerySnapshot(snap: any) {
   };
 }
 
+function sanitizeFirestoreData(data: any): any {
+  if (data === null || data === undefined) return null;
+  if (typeof data !== "object") return data;
+  if (data instanceof Date) return data;
+  if (Array.isArray(data)) {
+    return data.map(sanitizeFirestoreData).filter((item) => item !== undefined);
+  }
+  const clean: Record<string, any> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value !== undefined) {
+      clean[key] = sanitizeFirestoreData(value);
+    }
+  }
+  return clean;
+}
+
 function makeDocCompat(firestoreDb: Firestore, fullPath: string) {
   const docRef = buildDocRef(firestoreDb, fullPath);
   return {
     id: docRef.id,
     get: async () => wrapSnapshot(await getDoc(docRef)),
     set: async (data: any, options?: { merge?: boolean }) => {
+      const cleanData = sanitizeFirestoreData(data);
       if (options?.merge) {
-        await setDoc(docRef, data, { merge: true });
+        await setDoc(docRef, cleanData, { merge: true });
       } else {
-        await setDoc(docRef, data);
+        await setDoc(docRef, cleanData);
       }
     },
     update: async (data: any) => {
+      const cleanData = sanitizeFirestoreData(data);
       try {
-        await updateDoc(docRef, data);
+        await updateDoc(docRef, cleanData);
       } catch {
         // doc might not exist yet — fall back to set with merge
-        await setDoc(docRef, data, { merge: true });
+        await setDoc(docRef, cleanData, { merge: true });
       }
     },
     delete: async () => deleteDoc(docRef),
@@ -136,7 +154,8 @@ function makeCollectionCompat(firestoreDb: Firestore, collPath: string) {
       return makeDocCompat(firestoreDb, `${collPath}/${autoRef.id}`);
     },
     add: async (data: any) => {
-      const ref = await addDoc(collRef, data);
+      const cleanData = sanitizeFirestoreData(data);
+      const ref = await addDoc(collRef, cleanData);
       return { id: ref.id };
     },
     get: async () => wrapQuerySnapshot(await getDocs(collRef)),

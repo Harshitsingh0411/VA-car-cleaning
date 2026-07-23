@@ -31,10 +31,8 @@ export default function BookingSection() {
         return "Sedan (Car)";
       case "suv":
         return "SUV / MUV (Car)";
-      case "bike":
-        return "Motorcycle / Scooter (Bike)";
-      case "superbike":
-        return "Premium Superbike (Bike)";
+      case "luxury":
+        return "Luxury / Premium (Car)";
       default:
         return val;
     }
@@ -191,8 +189,7 @@ export default function BookingSection() {
                         <option value="hatchback">Hatchback (Car)</option>
                         <option value="sedan">Sedan (Car)</option>
                         <option value="suv">SUV / MUV (Car)</option>
-                        <option value="bike">Motorcycle / Scooter (Bike)</option>
-                        <option value="superbike">Premium Superbike (Bike)</option>
+                        <option value="luxury">Luxury / Premium (Car)</option>
                       </select>
                       <Settings size={16} className="absolute right-3.5 top-[50%] -translate-y-1/2 text-gray-400 pointer-events-none" />
                     </div>

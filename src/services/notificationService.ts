@@ -128,9 +128,11 @@ export const requestNotificationPermission = async (userId: string): Promise<str
         localStorage.setItem("sim_device_tokens", JSON.stringify(storedTokens));
       }
 
-      // Sync device registration to Firestore if online
+      // Sync device registration to Firestore if user is authenticated and matches userId
       try {
-        await db.collection("users").doc(userId).collection("devices").doc(deviceId).set(deviceInfo, { merge: true });
+        if (userId && auth.currentUser && auth.currentUser.uid === userId) {
+          await db.collection("users").doc(userId).collection("devices").doc(deviceId).set(deviceInfo, { merge: true });
+        }
       } catch (e) {
         // local fallback
       }
@@ -142,7 +144,9 @@ export const requestNotificationPermission = async (userId: string): Promise<str
       }
 
       console.log("Multi-Device Notification Permission granted for device:", deviceId);
-      await logAuditAction(`Multi-Device Notification permission granted for user: ${userId} on device: ${deviceId}`);
+      try {
+        await logAuditAction(`Multi-Device Notification permission granted for user: ${userId} on device: ${deviceId}`);
+      } catch (e) {}
       return simulatedToken;
     }
   } catch (err) {

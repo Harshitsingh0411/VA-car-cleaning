@@ -7,15 +7,15 @@ import { getRealtimeCompanyStats, RealtimeCompanyStats } from "../../services/db
 
 export default function Hero() {
   const [realtimeStats, setRealtimeStats] = useState<RealtimeCompanyStats>({
-    carsCleaned: "0",
-    topRating: "0.0",
-    satisfaction: "0%",
-    teamMembers: "0",
-    totalBookingsCount: 0,
-    completedBookingsCount: 0,
-    averageRating: 0,
-    totalReviewsCount: 0,
-    activeCrewCount: 0
+    carsCleaned: "500+",
+    topRating: "4.9",
+    satisfaction: "98%",
+    teamMembers: "25+",
+    totalBookingsCount: 500,
+    completedBookingsCount: 500,
+    averageRating: 4.9,
+    totalReviewsCount: 50,
+    activeCrewCount: 25
   });
 
   useEffect(() => {

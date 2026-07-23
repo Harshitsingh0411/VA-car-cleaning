@@ -40,15 +40,14 @@ export default function JobOpportunity() {
 
   const stats = [
     { count: realtimeStats.carsCleaned, label: "Cars Cleaned", icon: <Award size={20} className="text-[#F4B400]" /> },
-    { count: `${realtimeStats.completedBookingsCount + 500}+`, label: "Happy Customers", icon: <ShieldCheck size={20} className="text-[#F4B400]" /> },
+    { count: `${realtimeStats.completedBookingsCount}+`, label: "Happy Customers", icon: <ShieldCheck size={20} className="text-[#F4B400]" /> },
     { count: realtimeStats.teamMembers, label: "Team Members", icon: <Users size={20} className="text-[#F4B400]" /> },
-    { count: "10+", label: "Cities We Serve", icon: <MapPin size={20} className="text-[#F4B400]" /> }
   ];
   return (
     <section className="py-24 bg-white text-dark relative border-t border-gray-100" id="jobs">
       <div className="container mx-auto px-4 md:px-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-          
+
           {/* LEFT COLUMN: Achievements */}
           <div className="lg:col-span-6 space-y-10">
             <div className="space-y-4">
@@ -105,7 +104,7 @@ export default function JobOpportunity() {
               <div className="absolute inset-0 bg-[radial-gradient(#ffffff05_1px,transparent_1px)] bg-[size:16px_16px]" />
 
               <div className="relative z-10 flex flex-col md:flex-row gap-6 justify-between items-start">
-                
+
                 {/* Job Info Checklist */}
                 <div className="space-y-6 flex-1">
                   <div>
