@@ -71,7 +71,8 @@ import {
   Bell,
   Plus,
   UserCheck,
-  Phone
+  Phone,
+  Loader2
 } from "lucide-react";
 import { servicePrices } from "../lib/prices";
 
@@ -219,6 +220,7 @@ export default function Admin() {
   const [beforeAfterItems, setBeforeAfterItems] = useState<dbBeforeAfterItem[]>([]);
   const [showBaModal, setShowBaModal] = useState(false);
   const [editingBaItem, setEditingBaItem] = useState<dbBeforeAfterItem | null>(null);
+  const [isSavingBa, setIsSavingBa] = useState(false);
 
   const [baFormId, setBaFormId] = useState("");
   const [baFormTitle, setBaFormTitle] = useState("");
@@ -260,24 +262,33 @@ export default function Admin() {
 
   const handleSaveBeforeAfterItem = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!baFormTitle || !baFormBeforeImage || !baFormAfterImage) {
-      alert("Please fill in Title, Before Image, and After Image.");
+    if (!baFormTitle) {
+      alert("Please fill in Title.");
       return;
     }
 
-    const item: dbBeforeAfterItem = {
-      id: baFormId || `ba-${Date.now()}`,
-      title: baFormTitle,
-      category: baFormCategory,
-      beforeImage: baFormBeforeImage,
-      afterImage: baFormAfterImage,
-      description: baFormDesc,
-      displayOrder: editingBaItem ? editingBaItem.displayOrder : beforeAfterItems.length + 1
-    };
+    setIsSavingBa(true);
+    try {
+      const item: dbBeforeAfterItem = {
+        id: baFormId || `ba-${Date.now()}`,
+        title: baFormTitle,
+        category: baFormCategory || "Exterior Wash",
+        beforeImage: baFormBeforeImage || "",
+        afterImage: baFormAfterImage || "",
+        description: baFormDesc || "",
+        displayOrder: editingBaItem ? editingBaItem.displayOrder : beforeAfterItems.length + 1
+      };
 
-    await createOrUpdateBeforeAfterItem(item);
-    setShowBaModal(false);
-    fetchBeforeAfterGallery();
+      await createOrUpdateBeforeAfterItem(item);
+      setShowBaModal(false);
+      resetBaForm();
+      await fetchBeforeAfterGallery();
+    } catch (err: any) {
+      console.error("Error saving Before & After card:", err);
+      alert("Error saving showcase card: " + (err?.message || "Failed to update card."));
+    } finally {
+      setIsSavingBa(false);
+    }
   };
 
   const handleDeleteBeforeAfterItem = async (id: string) => {
@@ -1866,13 +1877,21 @@ export default function Admin() {
                             <div className="space-y-1">
                               <span className="text-[10px] font-bold text-gray-400 uppercase">Before Detailing</span>
                               <div className="h-32 rounded-2xl overflow-hidden border border-gray-200 bg-gray-900">
-                                <img src={ba.beforeImage} alt="Before" className="w-full h-full object-cover" />
+                                {ba.beforeImage ? (
+                                  <img src={ba.beforeImage} alt="Before" className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-gray-500 text-[10px] font-bold">No Image</div>
+                                )}
                               </div>
                             </div>
                             <div className="space-y-1">
                               <span className="text-[10px] font-bold text-emerald-600 uppercase">After VA Detailing</span>
                               <div className="h-32 rounded-2xl overflow-hidden border border-emerald-300 bg-gray-900">
-                                <img src={ba.afterImage} alt="After" className="w-full h-full object-cover" />
+                                {ba.afterImage ? (
+                                  <img src={ba.afterImage} alt="After" className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-emerald-500 text-[10px] font-bold">No Image</div>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -3426,9 +3445,17 @@ export default function Admin() {
 
               <button
                 type="submit"
-                className="w-full bg-primary hover:bg-[#0b327b] text-white font-bold py-3 rounded-2xl text-xs uppercase tracking-wider shadow cursor-pointer transition-all mt-4"
+                disabled={isSavingBa}
+                className="w-full bg-primary hover:bg-[#0b327b] disabled:opacity-50 text-white font-bold py-3 rounded-2xl text-xs uppercase tracking-wider shadow cursor-pointer transition-all mt-4 flex items-center justify-center gap-2"
               >
-                {editingBaItem ? "Update Showcase Card" : "Save Showcase Card"}
+                {isSavingBa ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin text-white" />
+                    <span>Saving Showcase Card...</span>
+                  </>
+                ) : (
+                  <span>{editingBaItem ? "Update Showcase Card" : "Save Showcase Card"}</span>
+                )}
               </button>
             </form>
           </motion.div>

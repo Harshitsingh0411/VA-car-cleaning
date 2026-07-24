@@ -1928,20 +1928,7 @@ export const getBeforeAfterItems = async (): Promise<dbBeforeAfterItem[]> => {
 };
 
 const ensureCompactImage = async (urlStr?: string): Promise<string> => {
-  if (!urlStr) return "";
-  if (urlStr.startsWith("data:image/") && urlStr.length > 200000) {
-    try {
-      const { compressImage } = await import("../utils/imageCompressor");
-      const res = await fetch(urlStr);
-      const blob = await res.blob();
-      const file = new File([blob], "compressed.jpg", { type: "image/jpeg" });
-      const comp = await compressImage(file, { maxWidth: 600, maxHeight: 600, quality: 0.65 });
-      return comp.dataUrl;
-    } catch (e) {
-      console.warn("Could not compress oversized dataUrl:", e);
-    }
-  }
-  return urlStr;
+  return urlStr || "";
 };
 
 export const createOrUpdateBeforeAfterItem = async (item: dbBeforeAfterItem): Promise<void> => {

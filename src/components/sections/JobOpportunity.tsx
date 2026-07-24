@@ -135,7 +135,7 @@ export default function JobOpportunity() {
                 {/* Detailing Partner Picture Block */}
                 <div className="w-full md:w-44 h-56 rounded-2xl overflow-hidden shadow-md shrink-0 border border-white/5 relative">
                   <img
-                    src="https://images.unsplash.com/photo-1507136566006-cfc505b114fc?auto=format&fit=crop&q=80&w=600"
+                    src="https://thumbs.dreamstime.com/b/cheerful-cartoon-boy-diligently-washes-dark-colored-suv-hose-bucket-soapy-water-cartoon-boy-washing-car-369051625.jpg?w=768"
                     alt="Detailing Partner Job"
                     className="w-full h-full object-cover object-top filter saturate-[0.8]"
                   />

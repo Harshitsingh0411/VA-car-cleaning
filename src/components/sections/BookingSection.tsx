@@ -17,26 +17,10 @@ export default function BookingSection() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [service, setService] = useState("");
-  const [vehicleType, setVehicleType] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [isBooked, setIsBooked] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-
-  const getVehicleLabel = (val: string) => {
-    switch (val) {
-      case "hatchback":
-        return "Hatchback (Car)";
-      case "sedan":
-        return "Sedan (Car)";
-      case "suv":
-        return "SUV / MUV (Car)";
-      case "luxury":
-        return "Luxury / Premium (Car)";
-      default:
-        return val;
-    }
-  };
 
   const getTimeSlotLabel = (val: string) => {
     switch (val) {
@@ -53,7 +37,7 @@ export default function BookingSection() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !phone || !service || !vehicleType || !date || !time) {
+    if (!name || !phone || !service || !date || !time) {
       alert("Please fill in all booking details!");
       return;
     }
@@ -63,7 +47,7 @@ export default function BookingSection() {
       const matchedService = services.find(s => s.id === service);
       const serviceName = matchedService ? matchedService.name : service;
       const servicePrice = matchedService ? matchedService.price : 0;
-      const vehicleLabel = getVehicleLabel(vehicleType);
+      const vehicleLabel = "Car / Vehicle Detailing";
       const timeSlotLabel = getTimeSlotLabel(time);
       const cId = user ? user.uid : "guest-" + Math.random().toString(36).substring(2, 9);
 
@@ -157,7 +141,7 @@ export default function BookingSection() {
                   </div>
 
                   {/* Select Service */}
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 md:col-span-2">
                     <label className="text-xs font-bold text-gray-400 uppercase">Select Service</label>
                     <div className="relative">
                       <select
@@ -170,26 +154,6 @@ export default function BookingSection() {
                         {services.map(s => (
                           <option key={s.id} value={s.id}>{s.name} - ₹{s.price}</option>
                         ))}
-                      </select>
-                      <Settings size={16} className="absolute right-3.5 top-[50%] -translate-y-1/2 text-gray-400 pointer-events-none" />
-                    </div>
-                  </div>
-
-                  {/* Vehicle Type */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-400 uppercase">Vehicle Type</label>
-                    <div className="relative">
-                      <select
-                        required
-                        value={vehicleType}
-                        onChange={(e) => setVehicleType(e.target.value)}
-                        className="w-full bg-[#0B1220] border border-white/10 rounded-2xl py-3.5 pl-4 pr-10 text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-[#F4B400] transition-all appearance-none cursor-pointer"
-                      >
-                        <option value="" disabled>Select vehicle type</option>
-                        <option value="hatchback">Hatchback (Car)</option>
-                        <option value="sedan">Sedan (Car)</option>
-                        <option value="suv">SUV / MUV (Car)</option>
-                        <option value="luxury">Luxury / Premium (Car)</option>
                       </select>
                       <Settings size={16} className="absolute right-3.5 top-[50%] -translate-y-1/2 text-gray-400 pointer-events-none" />
                     </div>

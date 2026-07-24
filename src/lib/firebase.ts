@@ -1,6 +1,7 @@
 import { initializeApp, getApp, getApps } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import {
+  initializeFirestore,
   getFirestore,
   collection,
   doc,
@@ -195,7 +196,14 @@ if (isFirebaseConfigured) {
   try {
     app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
     auth = getAuth(app);
-    const firestoreDb = getFirestore(app);
+    let firestoreDb: Firestore;
+    try {
+      firestoreDb = initializeFirestore(app, {
+        experimentalAutoDetectLongPolling: true,
+      });
+    } catch {
+      firestoreDb = getFirestore(app);
+    }
     // Expose v8-compat wrapper — all of dbService.ts works without changes
     db = createCompatDb(firestoreDb);
     googleProvider = new GoogleAuthProvider();
