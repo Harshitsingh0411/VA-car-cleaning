@@ -104,6 +104,7 @@ function AnimatedRoutes() {
   );
 }
 
+import ErrorBoundary from "./components/common/ErrorBoundary";
 import { ImageLightboxProvider } from "./context/ImageLightboxContext";
 
 export default function App() {
@@ -115,7 +116,9 @@ export default function App() {
         {isLoading && <Loader onComplete={() => setIsLoading(false)} />}
         {!isLoading && (
           <Router>
-            <AnimatedRoutes />
+            <ErrorBoundary>
+              <AnimatedRoutes />
+            </ErrorBoundary>
           </Router>
         )}
       </AuthProvider>

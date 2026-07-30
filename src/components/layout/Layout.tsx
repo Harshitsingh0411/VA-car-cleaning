@@ -8,6 +8,8 @@ import { ArrowUp, Phone, MessageCircle, CalendarClock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { getContactSettings, dbContactSettings, DEFAULT_CONTACT_SETTINGS } from "../../services/dbService";
 
+import ErrorBoundary from "../common/ErrorBoundary";
+
 export default function Layout() {
   const location = useLocation();
   const [showTopBtn, setShowTopBtn] = useState(false);
@@ -58,7 +60,9 @@ export default function Layout() {
             exit={{ opacity: 0, y: -15 }}
             transition={{ duration: 0.35, ease: "easeInOut" }}
           >
-            <Outlet />
+            <ErrorBoundary>
+              <Outlet />
+            </ErrorBoundary>
           </motion.div>
         </AnimatePresence>
       </main>

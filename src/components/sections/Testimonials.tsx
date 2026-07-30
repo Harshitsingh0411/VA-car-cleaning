@@ -4,6 +4,7 @@ import { Star, ChevronLeft, ChevronRight, Image as ImageIcon, Video as VideoIcon
 import { getAllReviews, dbReview } from "../../services/dbService";
 import { useImageLightbox } from "../../context/ImageLightboxContext";
 import { isLocalBlobUrl } from "../../utils/mediaUtils";
+import { getCartoonAvatar, handleAvatarError } from "../../utils/avatar";
 
 interface DisplayTestimonial {
   id: string;
