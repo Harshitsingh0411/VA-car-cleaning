@@ -3,13 +3,34 @@ import { Link } from "react-router-dom";
 import { Car, Facebook, Instagram, Twitter, Youtube, MapPin, Phone, Mail } from "lucide-react";
 import vaLogo from "@/assets/va logo.png";
 import { seoServices, seoLocations } from "../../data/seoData";
-import { getContactSettings, dbContactSettings, DEFAULT_CONTACT_SETTINGS } from "../../services/dbService";
+import { getContactSettings, dbContactSettings, DEFAULT_CONTACT_SETTINGS, getAllServices, subscribeToDataChanges } from "../../services/dbService";
 
 export default function Footer() {
   const [contactSettings, setContactSettings] = useState<dbContactSettings>(DEFAULT_CONTACT_SETTINGS);
+  const [servicesList, setServicesList] = useState<Array<{ name: string; id: string }>>([]);
 
   useEffect(() => {
-    getContactSettings().then(setContactSettings);
+    const reloadFooterData = () => {
+      getContactSettings().then(setContactSettings);
+      getAllServices().then((data) => {
+        if (data && data.length > 0) {
+          setServicesList(data.map(s => ({ name: s.name, id: s.id })));
+        } else {
+          setServicesList(seoServices.map(s => ({ name: s.name, id: s.slug })));
+        }
+      }).catch(() => {
+        setServicesList(seoServices.map(s => ({ name: s.name, id: s.slug })));
+      });
+    };
+
+    reloadFooterData();
+    const unsubscribe = subscribeToDataChanges((topic) => {
+      if (!topic || topic === "all" || topic === "services" || topic === "contact") {
+        reloadFooterData();
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
   return (
     <footer className="bg-[#0B1220] text-gray-400 py-16 border-t border-white/5 relative">
@@ -29,12 +50,12 @@ export default function Footer() {
                   VA
                 </span>
                 <span className="text-[8px] tracking-widest font-black text-[#F4B400]">
-                  CAR CLEANING
+                  CAR & BIKE CARE
                 </span>
               </div>
             </Link>
             <p className="text-xs leading-relaxed text-gray-400 max-w-[200px]">
-              We provide premium car cleaning & detailing services at your doorstep. Your car, our responsibility.
+              We provide premium doorstep car & bike cleaning & detailing services. Your vehicle, our responsibility.
             </p>
             <div className="flex items-center gap-3 pt-2">
               {contactSettings.facebook && (
@@ -76,9 +97,9 @@ export default function Footer() {
           <div>
             <h4 className="text-white font-heading font-bold mb-5 text-sm uppercase tracking-wider">Our Services</h4>
             <ul className="flex flex-col gap-2.5 text-xs">
-              {seoServices.slice(0, 6).map(service => (
-                <li key={service.slug}>
-                  <Link to={`/services/${service.slug}`} className="hover:text-[#F4B400] transition-colors">
+              {servicesList.map(service => (
+                <li key={service.id}>
+                  <Link to={`/services/${service.id}`} className="hover:text-[#F4B400] transition-colors">
                     {service.name}
                   </Link>
                 </li>

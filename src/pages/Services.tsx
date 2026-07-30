@@ -6,13 +6,13 @@ import { Link } from "react-router-dom";
 import BookingSection from "../components/sections/BookingSection";
 import SEO from "../components/seo/SEO";
 import SeoTextSection from "../components/seo/SeoTextSection";
-import { getAllServices, dbService } from "../services/dbService";
+import { getAllServices, dbService, subscribeToDataChanges } from "../services/dbService";
 
 export default function ServicesPage() {
   const [services, setServices] = useState<dbService[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchServices = () => {
     getAllServices()
       .then((data) => {
         setServices(data);
@@ -22,6 +22,16 @@ export default function ServicesPage() {
         console.error("Failed to load services:", err);
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    fetchServices();
+    const unsubscribe = subscribeToDataChanges((topic) => {
+      if (!topic || topic === "all" || topic === "services") {
+        fetchServices();
+      }
+    });
+    return () => unsubscribe();
   }, []);
 
   const getServiceIcon = (id: string, name: string) => {
@@ -34,6 +44,14 @@ export default function ServicesPage() {
 
   const getServiceBenefits = (name: string, desc: string) => {
     const lower = (name + " " + desc).toLowerCase();
+    if (lower.includes("bike") || lower.includes("scooter") || lower.includes("superbike")) {
+      return [
+        "Snow foam bath & pressure rinse",
+        "Tyre & wheel rim degreasing",
+        "Chain cleaning & lube application",
+        "Matte / Gloss spray polish"
+      ];
+    }
     if (lower.includes("subscription")) {
       return [
         "Daily cloth wipe",
@@ -53,8 +71,8 @@ export default function ServicesPage() {
   return (
     <div className="min-h-screen bg-light">
       <SEO 
-        title="Our Services | Car Wash & Detailing in Kanpur"
-        description="Explore our wide range of car cleaning services including foam wash, ceramic coating, interior detailing, and engine cleaning in Kanpur."
+        title="Car & Bike Detailing Services | Doorstep Cleaning In Budget"
+        description="Explore budget-friendly car and bike doorstep cleaning services in Kanpur including bike snow foam wash at ₹149, monthly bike subscriptions at ₹399, and superbike chain detailing."
       />
       {/* Hero Header */}
       <div className="bg-[#070C16] text-white pt-24 pb-12 md:pt-28 md:pb-14 relative overflow-hidden">
@@ -163,6 +181,9 @@ export default function ServicesPage() {
                         </span>
                       </div>
                       <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                        <Link to={`/services/${service.id}`} className="w-full sm:w-auto">
+                          <Button variant="outline" className="w-full sm:w-auto border-gray-200 hover:border-primary">View Webpage ↗</Button>
+                        </Link>
                         <Link to={`/book?service=${service.id}`} className="w-full sm:w-auto">
                           <Button className="w-full sm:w-auto">Book This Service</Button>
                         </Link>

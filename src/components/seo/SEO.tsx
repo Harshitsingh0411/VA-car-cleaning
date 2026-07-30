@@ -13,9 +13,9 @@ interface SEOProps {
 }
 
 export default function SEO({
-  title = 'Best Doorstep Car Cleaning & Detailing Service in Kanpur',
-  description = 'Premium mobile car cleaning, foam wash, interior dry cleaning, and ceramic coating at your doorstep in Kanpur. Book online for professional, eco-friendly car care.',
-  keywords = 'doorstep car cleaning, car wash kanpur, car detailing kanpur, foam wash, interior cleaning, mobile car wash',
+  title = 'Best Doorstep Car & Bike Cleaning & Detailing in Kanpur | In Budget',
+  description = 'Budget-friendly doorstep car & bike cleaning, snow foam wash, superbike detailing, and monthly subscription care in Kanpur. 100% Pay on delivery!',
+  keywords = 'doorstep car cleaning, bike wash kanpur, motorcycle detailing, budget bike wash, doorstep bike cleaning, car detailing kanpur, foam wash',
   canonicalUrl = 'https://vacarcleaningservice.com',
   type = 'website',
   image = 'https://vacarcleaningservice.com/assets/og-image.jpg',

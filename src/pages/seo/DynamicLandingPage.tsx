@@ -2,42 +2,72 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { seoLocations, seoServices } from '../../data/seoData';
 import SEO from '../../components/seo/SEO';
-import { CheckCircle2, Star, MapPin, Calendar, ArrowRight, ShieldCheck, FileText, User } from 'lucide-react';
-import { getAllReviews, dbReview } from '../../services/dbService';
+import { CheckCircle2, Star, MapPin, Calendar, ArrowRight, ShieldCheck, FileText, User, Sparkles } from 'lucide-react';
+import { getAllReviews, dbReview, getAllServices, dbService } from '../../services/dbService';
 
 interface DynamicLandingProps {
-  type: 'service' | 'location' | 'combined';
+  type?: 'service' | 'location' | 'combined';
 }
 
 export default function DynamicLandingPage({ type }: DynamicLandingProps) {
   const { slug, serviceSlug, locationSlug } = useParams<{ slug?: string, serviceSlug?: string, locationSlug?: string }>();
   const [reviews, setReviews] = useState<dbReview[]>([]);
+  const [dbServicesList, setDbServicesList] = useState<dbService[]>([]);
+
+  useEffect(() => {
+    getAllServices().then((loaded) => {
+      setDbServicesList(loaded);
+    }).catch(err => {
+      console.error("Failed to load db services in DynamicLandingPage:", err);
+    });
+  }, []);
 
   const normalizeSlug = (str?: string) => (str || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 
-  // Parse slug like "foam-car-wash-kanpur" or "ceramic-coating-kakadeo"
-  let matchedService = null;
-  let matchedLocation = null;
+  // Combine dynamic database services + static seoServices
+  const combinedServiceList = [
+    ...dbServicesList.map(ds => ({
+      id: ds.id,
+      name: ds.name,
+      slug: ds.id || ds.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+      description: ds.description || `Professional doorstep ${ds.name} for your vehicle in Kanpur.`,
+      price: String(ds.price),
+      image: ds.image || "https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&q=80&w=800",
+      features: [
+        "100% Doorstep Service at your location",
+        "Trained professional detailing technician",
+        "High-pressure foam & eco-friendly products",
+        "Pay on delivery — zero upfront payment needed"
+      ]
+    })),
+    ...seoServices.filter(s => !dbServicesList.some(ds => ds.id === s.slug || ds.name.toLowerCase() === s.name.toLowerCase()))
+  ];
 
-  if (type === 'service' && serviceSlug) {
-    const normReq = normalizeSlug(serviceSlug);
-    matchedService = seoServices.find(s => normalizeSlug(s.slug) === normReq || normalizeSlug(s.name) === normReq);
+  // Parse slug like "foam-car-wash-kanpur" or "ceramic-coating-kakadeo"
+  let matchedService: any = null;
+  let matchedLocation: any = null;
+
+  const targetServiceKey = serviceSlug || slug;
+
+  if ((type === 'service' || !type) && targetServiceKey) {
+    const normReq = normalizeSlug(targetServiceKey);
+    matchedService = combinedServiceList.find(s => normalizeSlug(s.slug) === normReq || normalizeSlug(s.id) === normReq || normalizeSlug(s.name) === normReq);
     matchedLocation = seoLocations[0]; // Default to Kanpur
   } else if (type === 'location' && locationSlug) {
     const normLoc = normalizeSlug(locationSlug);
     matchedLocation = seoLocations.find(l => normalizeSlug(l.slug) === normLoc);
-    matchedService = seoServices[0]; // Default to Doorstep Cleaning
+    matchedService = combinedServiceList[0] || seoServices[0];
   } else if (type === 'combined' && serviceSlug && locationSlug) {
     const normReq = normalizeSlug(serviceSlug);
     const normLoc = normalizeSlug(locationSlug);
-    matchedService = seoServices.find(s => normalizeSlug(s.slug) === normReq || normalizeSlug(s.name) === normReq);
+    matchedService = combinedServiceList.find(s => normalizeSlug(s.slug) === normReq || normalizeSlug(s.id) === normReq || normalizeSlug(s.name) === normReq);
     matchedLocation = seoLocations.find(l => normalizeSlug(l.slug) === normLoc);
   } else if (slug) {
     const normSlug = normalizeSlug(slug);
-    for (const service of seoServices) {
-      if (normSlug.startsWith(normalizeSlug(service.slug))) {
-        matchedService = service;
-        const locationPart = slug.replace(`${service.slug}-`, '');
+    for (const serviceItem of combinedServiceList) {
+      if (normSlug.startsWith(normalizeSlug(serviceItem.slug))) {
+        matchedService = serviceItem;
+        const locationPart = slug.replace(`${serviceItem.slug}-`, '');
         matchedLocation = seoLocations.find(l => normalizeSlug(l.slug) === normalizeSlug(locationPart));
         break;
       }
@@ -45,17 +75,25 @@ export default function DynamicLandingPage({ type }: DynamicLandingProps) {
   }
 
   // Fallback to generic if not matched properly
-  const service = matchedService || (serviceSlug ? {
-    name: serviceSlug.replace(/[-()]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).trim(),
-    slug: serviceSlug,
-    description: `Doorstep car detailing and cleaning for ${serviceSlug.replace(/[-()]/g, ' ')}.`,
-    price: "299"
-  } : seoServices[0]);
+  const service = matchedService || (targetServiceKey ? {
+    id: targetServiceKey,
+    name: targetServiceKey.replace(/[-()]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).trim(),
+    slug: targetServiceKey,
+    description: `Doorstep car detailing and cleaning for ${targetServiceKey.replace(/[-()]/g, ' ')}.`,
+    price: "299",
+    image: "https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&q=80&w=800",
+    features: [
+      "100% Doorstep Service at your location",
+      "Trained professional detailing technician",
+      "Pay on delivery — zero advance needed"
+    ]
+  } : (combinedServiceList[0] || seoServices[0]));
+
   const location = matchedLocation || seoLocations[0];
 
   useEffect(() => {
     getAllReviews().then(all => {
-      const filtered = all.filter(r => r.serviceName === service.name);
+      const filtered = all.filter(r => r.serviceName === service.name || r.serviceName?.toLowerCase().includes(service.name.toLowerCase()));
       filtered.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
       setReviews(filtered);
     }).catch(console.error);

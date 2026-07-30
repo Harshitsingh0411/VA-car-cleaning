@@ -14,21 +14,7 @@ import {
 import { getCartoonAvatar, handleAvatarError } from "../../utils/avatar";
 
 import { seoServices, seoLocations } from "../../data/seoData";
-
-const navLinks = [
-  { name: "Home", path: "/" },
-  { 
-    name: "Services", 
-    path: "/services",
-    dropdown: seoServices.slice(0, 6).map(s => ({ name: s.name, path: `/services/${s.slug}` })) 
-  },
-  { 
-    name: "Locations", 
-    path: "#",
-    dropdown: seoLocations.slice(0, 8).map(l => ({ name: l.name, path: `/kanpur/${l.slug}` }))
-  },
-  { name: "About Us", path: "/about" },
-];
+import { getAllServices, dbService, subscribeToDataChanges } from "../../services/dbService";
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -36,6 +22,50 @@ export default function Navbar() {
   const location = useLocation();
   const { user, profile } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [dynamicServices, setDynamicServices] = useState<Array<{ name: string; path: string }>>([]);
+
+  useEffect(() => {
+    const reloadServices = () => {
+      getAllServices().then((data) => {
+        if (data && data.length > 0) {
+          const mapped = data.map((s) => ({
+            name: s.name,
+            path: `/services/${s.id}`
+          }));
+          setDynamicServices(mapped);
+        } else {
+          setDynamicServices(seoServices.map(s => ({ name: s.name, path: `/services/${s.slug}` })));
+        }
+      }).catch((err) => {
+        console.warn("Could not load dynamic services in Navbar:", err);
+        setDynamicServices(seoServices.map(s => ({ name: s.name, path: `/services/${s.slug}` })));
+      });
+    };
+
+    reloadServices();
+    const unsubscribe = subscribeToDataChanges((topic) => {
+      if (!topic || topic === "all" || topic === "services") {
+        reloadServices();
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const navLinks = [
+    { name: "Home", path: "/" },
+    { 
+      name: "Services", 
+      path: "/services",
+      dropdown: dynamicServices.length > 0 ? dynamicServices : seoServices.map(s => ({ name: s.name, path: `/services/${s.slug}` }))
+    },
+    { 
+      name: "Locations", 
+      path: "#",
+      dropdown: seoLocations.slice(0, 8).map(l => ({ name: l.name, path: `/kanpur/${l.slug}` }))
+    },
+    { name: "About Us", path: "/about" },
+  ];
 
   const isInnerPage = location.pathname !== "/";
   const shouldStyleScrolled = isScrolled || isInnerPage;
@@ -98,7 +128,7 @@ export default function Navbar() {
           </div>
           <div className="flex flex-col">
             <span className="text-[9px] tracking-widest font-black text-[#F4B400]">
-              CAR CLEANING
+              CAR & BIKE CARE
             </span>
           </div>
         </Link>
@@ -127,20 +157,20 @@ export default function Navbar() {
 
               {/* Dropdown Menu */}
               {link.dropdown && (
-                <div className="absolute top-full left-0 mt-0 w-64 bg-white rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 translate-y-4 group-hover:translate-y-0 border border-gray-100 overflow-hidden z-50">
-                  <div className="p-2 grid grid-cols-1 gap-1">
+                <div className="absolute top-full left-0 mt-0 w-72 bg-white rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 translate-y-4 group-hover:translate-y-0 border border-gray-100 overflow-hidden z-50">
+                  <div className="p-2.5 max-h-[360px] overflow-y-auto grid grid-cols-1 gap-1">
                     {link.dropdown.map(dropItem => (
                       <Link 
                         key={dropItem.name} 
                         to={dropItem.path}
-                        className="block px-4 py-3 text-sm font-semibold text-gray-700 hover:text-primary hover:bg-blue-50 rounded-lg transition-colors"
+                        className="block px-3.5 py-2.5 text-xs font-bold text-gray-700 hover:text-primary hover:bg-blue-50 rounded-xl transition-colors truncate"
                       >
                         {dropItem.name}
                       </Link>
                     ))}
                     {link.name === "Services" && (
-                      <Link to="/services" className="block px-4 py-3 text-xs font-bold text-primary text-center hover:bg-gray-50 border-t border-gray-100 mt-1">
-                        View All Services
+                      <Link to="/services" className="block px-4 py-2.5 text-xs font-black text-primary text-center hover:bg-gray-50 border-t border-gray-100 mt-1 uppercase tracking-wider">
+                        View All Services →
                       </Link>
                     )}
                   </div>

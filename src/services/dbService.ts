@@ -1343,7 +1343,28 @@ export const defaultServices: dbService[] = [
     name: "One time (Full Wash)",
     price: 299,
     image: "",
-    description: "Enjoy a professional one-time exterior car wash using high-pressure foam and premium cleaning products. This service includes exterior body wash, tyre & wheel cleaning, dashboard dust cleaning, glass cleaning, and microfiber drying for a spotless finish."
+    description: "Enjoy a professional one-time exterior car wash using high-pressure foam and premium cleaning products. Includes body wash, tyre & wheel cleaning, dashboard dust cleaning, glass cleaning, and microfiber drying."
+  },
+  {
+    id: "bike-foam-wash",
+    name: "Bike & Scooter Foam Wash",
+    price: 149,
+    image: "https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&q=80&w=800",
+    description: "Budget-friendly doorstep bike and scooter cleaning. Includes thick snow foam bath, high-pressure water rinse, tyre degreasing, spray gloss polish, and chain lube."
+  },
+  {
+    id: "bike-subscription",
+    name: "Monthly Bike Care Subscription",
+    price: 399,
+    image: "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?auto=format&fit=crop&q=80&w=800",
+    description: "1 month budget plan for your motorcycle or scooter. Includes daily microfiber cloth wipe-down, weekly doorstep snow foam wash, and bi-weekly chain clean & lube."
+  },
+  {
+    id: "superbike-detail",
+    name: "Superbike Detailing & Chain Lube",
+    price: 499,
+    image: "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&q=80&w=800",
+    description: "Comprehensive detailing for sports bikes & premium motorcycles. Deep chain degreasing, Motul lube, engine block wash, and hydrophobic ceramic shine spray."
   }
 ];
 
@@ -1466,6 +1487,7 @@ export const createOrUpdateService = async (service: dbService): Promise<void> =
   } catch (e) {
     console.error("Local storage service backup failed:", e);
   }
+  notifyGlobalDataChange("services");
 };
 
 export const deleteServiceProfile = async (id: string): Promise<void> => {
@@ -1492,6 +1514,7 @@ export const deleteServiceProfile = async (id: string): Promise<void> => {
   } catch (e) {
     console.error("Local storage delete backup failed:", e);
   }
+  notifyGlobalDataChange("services");
 };
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -2135,9 +2158,51 @@ export const createOrUpdateBlogPost = async (post: dbBlogPost): Promise<void> =>
     updatedAt: new Date().toISOString()
   }, { merge: true });
   await logAuditAction("Update Blog Post", null, { title: post.title });
+  notifyGlobalDataChange("blogs");
 };
 
 export const deleteBlogPost = async (id: string): Promise<void> => {
   await db.collection("blogs").doc(id).delete();
   await logAuditAction("Delete Blog Post", null, { postId: id });
+  notifyGlobalDataChange("blogs");
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   GLOBAL REALTIME EVENT BROADCASTER
+   Synchronizes all Admin updates across all open tabs, windows & user/crew sessions
+   ───────────────────────────────────────────────────────────────────────────── */
+
+export const notifyGlobalDataChange = (topic: string = "all") => {
+  try {
+    const payload = JSON.stringify({ topic, timestamp: Date.now() });
+    localStorage.setItem("va_global_sync_timestamp", payload);
+    window.dispatchEvent(new CustomEvent("va_data_change", { detail: { topic, timestamp: Date.now() } }));
+  } catch (e) {
+    console.warn("Could not broadcast global data change event:", e);
+  }
+};
+
+export const subscribeToDataChanges = (callback: (topic?: string) => void): (() => void) => {
+  const handleCustomEvent = (e: any) => {
+    callback(e.detail?.topic);
+  };
+
+  const handleStorageEvent = (e: StorageEvent) => {
+    if (e.key === "va_global_sync_timestamp" && e.newValue) {
+      try {
+        const parsed = JSON.parse(e.newValue);
+        callback(parsed.topic);
+      } catch {
+        callback("all");
+      }
+    }
+  };
+
+  window.addEventListener("va_data_change", handleCustomEvent);
+  window.addEventListener("storage", handleStorageEvent);
+
+  return () => {
+    window.removeEventListener("va_data_change", handleCustomEvent);
+    window.removeEventListener("storage", handleStorageEvent);
+  };
 };

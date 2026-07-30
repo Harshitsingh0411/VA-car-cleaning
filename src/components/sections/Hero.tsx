@@ -25,7 +25,7 @@ export default function Hero() {
   }, []);
 
   const stats = [
-    { icon: <Car size={20} className="text-[#F4B400]" />, count: realtimeStats.carsCleaned, label: "Cars Cleaned" },
+    { icon: <Car size={20} className="text-[#F4B400]" />, count: realtimeStats.carsCleaned, label: "Vehicles Cleaned" },
     { icon: <Star size={20} className="text-[#F4B400] fill-[#F4B400]" />, count: realtimeStats.topRating, label: "Top Rating" },
     { icon: <Shield size={20} className="text-[#F4B400]" />, count: realtimeStats.satisfaction, label: "Satisfaction" },
     { icon: <Users size={20} className="text-[#F4B400]" />, count: realtimeStats.teamMembers, label: "Team Members" },
@@ -56,14 +56,14 @@ export default function Hero() {
               className="space-y-3"
             >
               <span className="text-[#F4B400] font-heading font-semibold tracking-widest text-[11px] uppercase block">
-                — PREMIUM CAR CARE —
+                — PREMIUM CAR & BIKE CARE IN BUDGET —
               </span>
               <h1 className="text-3xl sm:text-4xl lg:text-[3.25rem] font-heading font-extrabold text-white leading-[1.1] tracking-tight max-w-2xl">
-                Professional Car Cleaning<br />
-                <span className="text-[#F4B400] font-extrabold">At Your Doorstep</span>
+                Doorstep Car & Bike Cleaning<br />
+                <span className="text-[#F4B400] font-extrabold">Professional & Budget Friendly</span>
               </h1>
               <p className="text-sm sm:text-base text-gray-300 max-w-lg leading-relaxed font-normal">
-                We bring the shine back to your car with premium cleaning & detailing services. 100% water conservation doorstep service.
+                We bring the showroom shine back to your car, motorcycle & scooter with eco foam washing & detailing right in your driveway. Bike wash starting at just ₹149!
               </p>
             </motion.div>
 

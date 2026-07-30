@@ -742,6 +742,15 @@ export default function Admin() {
     }
   };
 
+  const fetchServicesList = async () => {
+    try {
+      const data = await getAllServices();
+      setServicesList(data);
+    } catch (err) {
+      console.error("Failed to load services list:", err);
+    }
+  };
+
   const fetchPricingPlans = async () => {
     setPricingLoading(true);
     try {
@@ -1047,13 +1056,34 @@ export default function Admin() {
     setIsBlogModalOpen(true);
   };
 
-  const fetchServicesList = async () => {
-    try {
-      const data = await getAllServices();
-      setServicesList(data);
-    } catch (err) {
-      console.error("Failed to load services list:", err);
-    }
+  const openAddServiceModal = () => {
+    setEditingService(null);
+    setServiceFormId("");
+    setServiceFormName("");
+    setServiceFormPrice(0);
+    setServiceFormImage("");
+    setServiceFormDesc("");
+    setIsAddingService(true);
+  };
+
+  const closeServiceModal = () => {
+    setIsAddingService(false);
+    setEditingService(null);
+    setServiceFormId("");
+    setServiceFormName("");
+    setServiceFormPrice(0);
+    setServiceFormImage("");
+    setServiceFormDesc("");
+  };
+
+  const openEditServiceModal = (s: dbService) => {
+    setEditingService(s);
+    setServiceFormId(s.id);
+    setServiceFormName(s.name);
+    setServiceFormPrice(s.price);
+    setServiceFormImage(s.image || "");
+    setServiceFormDesc(s.description || "");
+    setIsAddingService(true);
   };
 
   const handleCreateOrUpdateService = async (e: React.FormEvent) => {
@@ -1073,17 +1103,8 @@ export default function Admin() {
         isCustom: editingService ? editingService.isCustom : true
       });
 
-      alert("Service saved successfully!");
-      setIsAddingService(false);
-      setEditingService(null);
-
-      // Reset form states
-      setServiceFormId("");
-      setServiceFormName("");
-      setServiceFormPrice(0);
-      setServiceFormImage("");
-      setServiceFormDesc("");
-
+      alert(editingService ? "Service updated successfully!" : "New service created successfully!");
+      closeServiceModal();
       fetchServicesList();
     } catch (err) {
       console.error("Failed to save service:", err);
@@ -1105,25 +1126,7 @@ export default function Admin() {
     }
   };
 
-  const openAddServiceModal = () => {
-    setEditingService(null);
-    setServiceFormId("");
-    setServiceFormName("");
-    setServiceFormPrice(0);
-    setServiceFormImage("");
-    setServiceFormDesc("");
-    setIsAddingService(true);
-  };
 
-  const openEditServiceModal = (s: dbService) => {
-    setEditingService(s);
-    setServiceFormId(s.id);
-    setServiceFormName(s.name);
-    setServiceFormPrice(s.price);
-    setServiceFormImage(s.image);
-    setServiceFormDesc(s.description);
-    setIsAddingService(true);
-  };
 
   // Calculated Stats Metrics
   const totalRevenue = appointments
@@ -1741,7 +1744,7 @@ export default function Admin() {
                   <div>
                     {serviceSubTab === "catalog" && (
                       <button
-                        onClick={() => setIsAddingService(true)}
+                        onClick={openAddServiceModal}
                         className="bg-primary hover:bg-[#0b327b] text-white font-bold py-2 px-4 rounded-xl text-xs uppercase tracking-wider shadow cursor-pointer transition-all flex items-center gap-1.5"
                       >
                         <Plus size={15} />
@@ -1786,22 +1789,32 @@ export default function Admin() {
                             <p className="text-xs text-gray-500 leading-relaxed">{s.description}</p>
                           </div>
 
-                          {profile?.role !== "staff" && (
-                            <div className="flex gap-2 justify-end pt-2 border-t border-gray-100">
-                              <button
-                                onClick={() => openEditServiceModal(s)}
-                                className="bg-gray-100 hover:bg-gray-200 text-dark font-bold py-1.5 px-4 rounded-xl text-xs cursor-pointer"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => handleDeleteService(s.id)}
-                                className="bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold py-1.5 px-4 rounded-xl text-xs cursor-pointer"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          )}
+                          <div className="flex flex-wrap gap-2 justify-end pt-2 border-t border-gray-100">
+                            <a
+                              href={`/services/${s.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="bg-blue-50 hover:bg-blue-100 text-primary font-bold py-1.5 px-3 rounded-xl text-xs flex items-center gap-1 transition-colors"
+                            >
+                              View Webpage ↗
+                            </a>
+                            {profile?.role !== "staff" && (
+                              <>
+                                <button
+                                  onClick={() => openEditServiceModal(s)}
+                                  className="bg-gray-100 hover:bg-gray-200 text-dark font-bold py-1.5 px-3 rounded-xl text-xs cursor-pointer"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteService(s.id)}
+                                  className="bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold py-1.5 px-3 rounded-xl text-xs cursor-pointer"
+                                >
+                                  Delete
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -3138,7 +3151,7 @@ export default function Admin() {
                 {editingService ? "Edit Service Package" : "Add New Detailing Service"}
               </h3>
               <button
-                onClick={() => setIsAddingService(false)}
+                onClick={closeServiceModal}
                 className="text-gray-400 hover:text-dark text-xs font-bold uppercase transition-colors cursor-pointer"
               >
                 Cancel
