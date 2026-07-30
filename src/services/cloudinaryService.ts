@@ -1,4 +1,5 @@
 import { compressImage } from "../utils/imageCompressor";
+import { compressVideo } from "../utils/videoCompressor";
 
 export interface UploadMediaResult {
   url: string;
@@ -10,8 +11,8 @@ export interface UploadMediaResult {
 }
 
 /**
- * Uploads media (images/videos) to Cloudinary with automatic client-side image compression.
- * If Cloudinary environment variables are not set, it gracefully returns an optimized Data URL.
+ * Uploads media (images/videos) to Cloudinary with automatic client-side compression.
+ * If Cloudinary environment variables are not set, it gracefully returns an optimized Object/Data URL.
  */
 export async function uploadMediaToCloudinary(
   file: File,
@@ -28,7 +29,7 @@ export async function uploadMediaToCloudinary(
   let compressedSize = file.size;
   let reductionPercentage = 0;
 
-  // 1. Client-side Image Size Reducer pipeline for photos
+  // 1. Client-side Image & Video Reducer pipeline
   if (!isVideo && file.type.startsWith("image/")) {
     try {
       const compResult = await compressImage(file, {
@@ -45,8 +46,21 @@ export async function uploadMediaToCloudinary(
       console.warn("Image compression fallback to raw file:", err);
     }
   } else if (isVideo) {
-    // For video, create preview URL
-    dataUrlPreview = URL.createObjectURL(file);
+    try {
+      const vidResult = await compressVideo(file, {
+        maxWidth: 1280,
+        maxHeight: 720,
+        targetBitrate: 1500000
+      }, onProgress);
+      fileToUpload = vidResult.compressedFile;
+      dataUrlPreview = vidResult.previewUrl;
+      originalSize = vidResult.originalSize;
+      compressedSize = vidResult.compressedSize;
+      reductionPercentage = vidResult.reductionPercentage;
+    } catch (err) {
+      console.warn("Video compression fallback to raw file:", err);
+      dataUrlPreview = URL.createObjectURL(file);
+    }
   }
 
   // 2. Upload to Cloudinary API if valid Cloud Name and Preset exist

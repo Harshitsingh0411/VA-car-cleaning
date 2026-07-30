@@ -4,6 +4,7 @@ import { Star, Upload, X, CheckCircle2, Image as ImageIcon, Video as VideoIcon, 
 import { dbBooking, submitReview } from "../../services/dbService";
 import { uploadMediaToCloudinary } from "../../services/cloudinaryService";
 import { compressImage } from "../../utils/imageCompressor";
+import { compressVideo } from "../../utils/videoCompressor";
 
 interface ReviewModalProps {
   isOpen: boolean;
@@ -36,6 +37,7 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
   const [reviewText, setReviewText] = useState("");
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [isCompressing, setIsCompressing] = useState(false);
+  const [compressionStatus, setCompressionStatus] = useState("Compressing media...");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -46,12 +48,15 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files: File[] = Array.from(e.target.files);
+    if (!files.length) return;
+
     setIsCompressing(true);
     setErrorMsg("");
 
     const newMediaItems: MediaItem[] = [];
 
-    for (const file of files) {
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
       const isVideo = file.type.startsWith("video/");
       const isImage = file.type.startsWith("image/");
 
@@ -61,18 +66,39 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
       }
 
       if (isVideo) {
-        // Video preview
-        newMediaItems.push({
-          id: Math.random().toString(36).substring(2, 9),
-          file,
-          previewUrl: URL.createObjectURL(file),
-          type: "video",
-          originalSize: file.size,
-          compressedSize: file.size,
-          reductionPercentage: 0
-        });
+        setCompressionStatus(`Compressing video ${i + 1}/${files.length} (HD 720p codec)...`);
+        try {
+          const compVid = await compressVideo(file, {
+            maxWidth: 1280,
+            maxHeight: 720,
+            targetBitrate: 1500000
+          }, (progress) => {
+            setCompressionStatus(`Compressing HD video ${i + 1}/${files.length}: ${progress}%`);
+          });
+
+          newMediaItems.push({
+            id: Math.random().toString(36).substring(2, 9),
+            file: compVid.compressedFile,
+            previewUrl: compVid.previewUrl,
+            type: "video",
+            originalSize: compVid.originalSize,
+            compressedSize: compVid.compressedSize,
+            reductionPercentage: compVid.reductionPercentage
+          });
+        } catch (err) {
+          console.error("Video compression error, fallback to raw video:", err);
+          newMediaItems.push({
+            id: Math.random().toString(36).substring(2, 9),
+            file,
+            previewUrl: URL.createObjectURL(file),
+            type: "video",
+            originalSize: file.size,
+            compressedSize: file.size,
+            reductionPercentage: 0
+          });
+        }
       } else if (isImage) {
-        // Run Canvas Image Size Reducer before adding
+        setCompressionStatus(`Compressing photo ${i + 1}/${files.length}...`);
         try {
           const compResult = await compressImage(file, {
             maxWidth: 1200,
@@ -295,8 +321,8 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
 
               {isCompressing && (
                 <div className="flex items-center justify-center gap-2 p-3 bg-blue-50 text-blue-600 rounded-xl text-xs font-bold">
-                  <Loader2 size={16} className="animate-spin" />
-                  <span>Compressing photos to save storage & speed up upload...</span>
+                  <Loader2 size={16} className="animate-spin shrink-0" />
+                  <span>{compressionStatus}</span>
                 </div>
               )}
 
@@ -321,8 +347,9 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
                       </button>
 
                       {item.type === "video" ? (
-                        <span className="absolute bottom-1 left-1 bg-black/70 text-white text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1">
-                          <VideoIcon size={10} /> Video
+                        <span className="absolute bottom-1 left-1 bg-black/80 text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded flex items-center gap-1">
+                          <VideoIcon size={10} className="text-amber-400" />
+                          {item.reductionPercentage > 0 ? `-${item.reductionPercentage}% KB HD` : "HD Video"}
                         </span>
                       ) : (
                         item.reductionPercentage > 0 && (
