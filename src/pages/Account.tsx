@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { isLocalBlobUrl } from "../utils/mediaUtils";
 import { motion, AnimatePresence } from "motion/react";
 import { useAuth } from "../context/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
@@ -948,7 +949,13 @@ export default function Account() {
                                       <img key={i} src={imgUrl} alt="Review attachment" className="w-12 h-12 rounded-lg object-cover border border-amber-200 shrink-0" />
                                     ))}
                                     {existingReview.videos?.map((vidUrl, i) => (
-                                      <video key={i} src={vidUrl} className="w-12 h-12 rounded-lg object-cover border border-amber-200 shrink-0 bg-black" />
+                                      !isLocalBlobUrl(vidUrl) ? (
+                                        <video key={i} src={vidUrl} className="w-12 h-12 rounded-lg object-cover border border-amber-200 shrink-0 bg-black" />
+                                      ) : (
+                                        <div key={i} className="w-12 h-12 rounded-lg bg-gray-900 border border-amber-200 shrink-0 flex items-center justify-center text-amber-400 text-[8px] font-bold p-0.5 text-center">
+                                          Local Clip
+                                        </div>
+                                      )
                                     ))}
                                   </div>
                                 ) : null}

@@ -80,7 +80,7 @@ export default function CloudinaryUploader({
     };
 
     try {
-      const hasConfig = customCloudName && customCloudName.trim() !== "va-car-cleaning" && customUploadPreset && customUploadPreset.trim() !== "unsigned_reviews";
+      const hasConfig = Boolean(customCloudName && customCloudName.trim() && customUploadPreset && customUploadPreset.trim());
 
       if (hasConfig) {
         // Try Cloudinary Unsigned Upload

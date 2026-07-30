@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Star, ChevronLeft, ChevronRight, Image as ImageIcon, Video as VideoIcon } from "lucide-react";
 import { getAllReviews, dbReview } from "../../services/dbService";
 import { useImageLightbox } from "../../context/ImageLightboxContext";
-import { getCartoonAvatar } from "../../utils/avatar";
+import { isLocalBlobUrl } from "../../utils/mediaUtils";
 
 interface DisplayTestimonial {
   id: string;
@@ -150,7 +150,13 @@ export default function Testimonials() {
                         onClick={() => openLightbox({ url: vidUrl, type: "video", title: `Review Video by ${current.name}` })}
                         className="shrink-0 cursor-pointer group relative overflow-hidden rounded-xl border border-white/15 bg-black"
                       >
-                        <video src={vidUrl} className="w-24 h-16 object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                        {!isLocalBlobUrl(vidUrl) ? (
+                          <video src={vidUrl} className="w-24 h-16 object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                        ) : (
+                          <div className="w-24 h-16 bg-gray-900 flex items-center justify-center text-amber-400 text-[9px] font-bold p-1 text-center">
+                            Local Clip
+                          </div>
+                        )}
                         <div className="absolute inset-0 flex items-center justify-center">
                           <span className="w-8 h-8 rounded-full bg-[#F4B400] text-dark flex items-center justify-center font-bold text-xs shadow-md">
                             ▶

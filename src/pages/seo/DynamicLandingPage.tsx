@@ -5,6 +5,7 @@ import SEO from '../../components/seo/SEO';
 import { CheckCircle2, Star, MapPin, Calendar, ArrowRight, ShieldCheck, FileText, User, Sparkles } from 'lucide-react';
 import { getAllReviews, dbReview, getAllServices, getAllServicesSync, dbService, subscribeToDataChanges } from '../../services/dbService';
 import { useImageLightbox } from '../../context/ImageLightboxContext';
+import { isLocalBlobUrl } from '../../utils/mediaUtils';
 
 interface DynamicLandingProps {
   type?: 'service' | 'location' | 'combined';
@@ -383,7 +384,13 @@ export default function DynamicLandingPage({ type }: DynamicLandingProps) {
                             onClick={() => openLightbox({ url: vidUrl, type: "video", title: `Review Video by ${review.customerName}` })}
                             className="shrink-0 cursor-pointer group relative overflow-hidden rounded-xl border border-gray-200 bg-black"
                           >
-                            <video src={vidUrl} className="w-20 h-14 object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                            {!isLocalBlobUrl(vidUrl) ? (
+                              <video src={vidUrl} className="w-20 h-14 object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                            ) : (
+                              <div className="w-20 h-14 bg-gray-900 flex items-center justify-center text-amber-400 text-[8px] font-bold p-1 text-center">
+                                Local Clip
+                              </div>
+                            )}
                             <div className="absolute inset-0 flex items-center justify-center">
                               <span className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-[10px] shadow-sm">
                                 ▶

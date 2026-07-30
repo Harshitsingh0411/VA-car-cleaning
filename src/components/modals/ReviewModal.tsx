@@ -153,13 +153,17 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
       const imageUrls: string[] = [];
       const videoUrls: string[] = [];
 
-      // Upload each compressed photo/video to Cloudinary pipeline
+      // Upload each compressed photo/video to Cloudinary pipeline (or persistent Base64 Data URL)
       for (const item of mediaItems) {
         const uploadRes = await uploadMediaToCloudinary(item.file);
-        if (uploadRes.resourceType === "video") {
-          videoUrls.push(uploadRes.url);
-        } else {
-          imageUrls.push(uploadRes.url);
+        const validUrl = uploadRes.url;
+        // Never save temporary blob: URLs to database
+        if (validUrl && !validUrl.startsWith("blob:")) {
+          if (uploadRes.resourceType === "video") {
+            videoUrls.push(validUrl);
+          } else {
+            imageUrls.push(validUrl);
+          }
         }
       }
 

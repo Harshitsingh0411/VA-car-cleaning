@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { isLocalBlobUrl } from "../utils/mediaUtils";
 import { motion } from "motion/react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -2505,7 +2506,14 @@ export default function Admin() {
                             </a>
                           ))}
                           {r.videos?.map((vidUrl, i) => (
-                            <video key={i} src={vidUrl} controls className="w-24 h-16 rounded-xl object-cover border border-gray-200 shadow-sm bg-black" />
+                            !isLocalBlobUrl(vidUrl) ? (
+                              <video key={i} src={vidUrl} controls className="w-24 h-16 rounded-xl object-cover border border-gray-200 shadow-sm bg-black" />
+                            ) : (
+                              <div key={i} className="w-28 h-16 rounded-xl bg-amber-50 border border-amber-200 p-1 flex flex-col justify-center items-center text-center text-amber-800 text-[8px] font-bold">
+                                <span>⚠️ Local Session Blob</span>
+                                <span className="text-[7px] text-amber-600 font-normal">Re-upload required</span>
+                              </div>
+                            )
                           ))}
                         </div>
                       </div>

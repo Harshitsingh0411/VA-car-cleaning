@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize2, RotateCcw } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize2, RotateCcw, AlertTriangle } from "lucide-react";
+import { isLocalBlobUrl } from "../utils/mediaUtils";
 
 export interface LightboxMedia {
   url: string;
@@ -183,13 +184,30 @@ export const ImageLightboxProvider: React.FC<{ children: React.ReactNode }> = ({
                 className="transition-transform duration-200"
               >
                 {activeMedia.type === "video" ? (
-                  <video
-                    src={activeMedia.url}
-                    controls
-                    autoPlay
-                    playsInline
-                    className="max-h-[85vh] max-w-[92vw] rounded-2xl shadow-2xl object-contain border border-white/10"
-                  />
+                  isLocalBlobUrl(activeMedia.url) ? (
+                    <div className="bg-black/90 border border-amber-500/40 p-8 rounded-3xl max-w-md text-center space-y-4 shadow-2xl backdrop-blur-xl">
+                      <div className="w-14 h-14 bg-amber-500/20 text-amber-400 rounded-full flex items-center justify-center mx-auto">
+                        <AlertTriangle size={28} />
+                      </div>
+                      <div className="space-y-1 text-left">
+                        <h4 className="font-extrabold text-white text-base text-center">Local Browser Video Reference</h4>
+                        <p className="text-xs text-gray-300 leading-relaxed">
+                          This video was uploaded as a local browser session blob (`blob:http://...`). Browser security policies block cross-origin or cross-session streaming of local blob resources on deployed web sites.
+                        </p>
+                      </div>
+                      <div className="text-[10px] text-amber-300/80 font-mono bg-amber-950/40 p-2 rounded-xl break-all">
+                        {activeMedia.url}
+                      </div>
+                    </div>
+                  ) : (
+                    <video
+                      src={activeMedia.url}
+                      controls
+                      autoPlay
+                      playsInline
+                      className="max-h-[85vh] max-w-[92vw] rounded-2xl shadow-2xl object-contain border border-white/10"
+                    />
+                  )
                 ) : (
                   <img
                     src={activeMedia.url}

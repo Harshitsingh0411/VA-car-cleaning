@@ -65,22 +65,17 @@ export async function uploadMediaToCloudinary(
 
   // 2. Upload to Cloudinary API if valid Cloud Name and Preset exist
   const hasCloudinaryConfig =
-    cloudName &&
-    cloudName.trim().length > 0 &&
-    cloudName !== "va-car-cleaning" &&
-    uploadPreset &&
-    uploadPreset !== "unsigned_reviews";
+    Boolean(cloudName && cloudName.trim().length > 0 && uploadPreset && uploadPreset.trim().length > 0);
 
   if (hasCloudinaryConfig) {
     try {
       const resourceType = isVideo ? "video" : "image";
       const formData = new FormData();
       formData.append("file", fileToUpload);
-      formData.append("upload_preset", uploadPreset);
-      if (apiKey) {
-        formData.append("api_key", apiKey);
+      formData.append("upload_preset", uploadPreset.trim());
+      if (apiKey && apiKey.trim()) {
+        formData.append("api_key", apiKey.trim());
       }
-      formData.append("folder", "va_car_cleaning_reviews");
 
       const endpoint = `https://api.cloudinary.com/v1_1/${cloudName.trim()}/${resourceType}/upload`;
 
@@ -89,37 +84,40 @@ export async function uploadMediaToCloudinary(
         body: formData
       });
 
-      if (!response.ok) {
+      if (response.ok) {
+        const data = await response.json();
+        if (data.secure_url || data.url) {
+          return {
+            url: data.secure_url || data.url,
+            publicId: data.public_id,
+            resourceType,
+            originalSize,
+            compressedSize,
+            reductionPercentage
+          };
+        }
+      } else {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error?.message || `Cloudinary upload failed with status ${response.status}`);
+        console.warn("Cloudinary upload status notice:", response.status, errorData);
       }
-
-      const data = await response.json();
-
-      return {
-        url: data.secure_url || data.url,
-        publicId: data.public_id,
-        resourceType,
-        originalSize,
-        compressedSize,
-        reductionPercentage
-      };
     } catch (err) {
       console.warn("⚠️ Cloudinary network upload notice, using compressed fallback URL:", err);
     }
   }
 
-  // 3. Fallback: Return Data URL / Object URL
-  if (!dataUrlPreview) {
-    dataUrlPreview = await new Promise<string>((resolve) => {
+  // 3. Fallback: Return persistent Data URL (never a temporary local blob: URL)
+  let persistentDataUrl = dataUrlPreview;
+  if (!persistentDataUrl || persistentDataUrl.startsWith("blob:")) {
+    persistentDataUrl = await new Promise<string>((resolve) => {
       const reader = new FileReader();
-      reader.onload = (e) => resolve(e.target?.result as string);
+      reader.onload = (e) => resolve((e.target?.result as string) || "");
+      reader.onerror = () => resolve("");
       reader.readAsDataURL(fileToUpload);
     });
   }
 
   return {
-    url: dataUrlPreview,
+    url: persistentDataUrl,
     resourceType: isVideo ? "video" : "image",
     originalSize,
     compressedSize,
