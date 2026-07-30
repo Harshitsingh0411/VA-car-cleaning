@@ -960,7 +960,10 @@ export const getAllReviews = async (): Promise<dbReview[]> => {
   const snap = await db.collection("reviews").get();
   const list: dbReview[] = [];
   snap.forEach((doc: any) => {
-    list.push({ id: doc.id, ...doc.data() } as dbReview);
+    const data = doc.data() || {};
+    const images = (data.images || []).filter((url: string) => url && !url.startsWith("blob:"));
+    const videos = (data.videos || []).filter((url: string) => url && !url.startsWith("blob:"));
+    list.push({ id: doc.id, ...data, images, videos } as dbReview);
   });
   return list;
 };
