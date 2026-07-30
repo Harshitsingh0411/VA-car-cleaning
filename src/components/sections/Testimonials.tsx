@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Star, ChevronLeft, ChevronRight, Image as ImageIcon, Video as VideoIcon } from "lucide-react";
 import { getAllReviews, dbReview } from "../../services/dbService";
-import { getCartoonAvatar, handleAvatarError } from "../../utils/avatar";
+import { useImageLightbox } from "../../context/ImageLightboxContext";
+import { getCartoonAvatar } from "../../utils/avatar";
 
 interface DisplayTestimonial {
   id: string;
@@ -43,6 +44,7 @@ const defaultTestimonials: DisplayTestimonial[] = [
 ];
 
 export default function Testimonials() {
+  const { openLightbox } = useImageLightbox();
   const [testimonials, setTestimonials] = useState<DisplayTestimonial[]>(defaultTestimonials);
   const [index, setIndex] = useState(0);
 
@@ -129,12 +131,32 @@ export default function Testimonials() {
                 {(current.images?.length || current.videos?.length) ? (
                   <div className="flex gap-3 pt-2 overflow-x-auto">
                     {current.images?.map((imgUrl, i) => (
-                      <a key={i} href={imgUrl} target="_blank" rel="noopener noreferrer" className="shrink-0">
-                        <img src={imgUrl} alt="Review photo" className="w-16 h-16 rounded-xl object-cover border border-white/15 hover:scale-105 transition-transform" />
-                      </a>
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => openLightbox({ url: imgUrl, type: "image", title: `Review Photo by ${current.name}` })}
+                        className="shrink-0 cursor-pointer group relative overflow-hidden rounded-xl border border-white/15"
+                      >
+                        <img src={imgUrl} alt={`Photo by ${current.name}`} className="w-16 h-16 object-cover group-hover:scale-110 transition-transform duration-300" />
+                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-bold">
+                          View
+                        </div>
+                      </button>
                     ))}
                     {current.videos?.map((vidUrl, i) => (
-                      <video key={i} src={vidUrl} controls className="w-24 h-16 rounded-xl object-cover border border-white/15 bg-black shrink-0" />
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => openLightbox({ url: vidUrl, type: "video", title: `Review Video by ${current.name}` })}
+                        className="shrink-0 cursor-pointer group relative overflow-hidden rounded-xl border border-white/15 bg-black"
+                      >
+                        <video src={vidUrl} className="w-24 h-16 object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="w-8 h-8 rounded-full bg-[#F4B400] text-dark flex items-center justify-center font-bold text-xs shadow-md">
+                            ▶
+                          </span>
+                        </div>
+                      </button>
                     ))}
                   </div>
                 ) : null}

@@ -1341,7 +1341,7 @@ export const defaultServices: dbService[] = [
   {
     id: "one-time-full",
     name: "One time (Full Wash)",
-    price: 299,
+    price: 0,
     image: "",
     description: "Enjoy a professional one-time exterior car wash using high-pressure foam and premium cleaning products. Includes body wash, tyre & wheel cleaning, dashboard dust cleaning, glass cleaning, and microfiber drying."
   },
@@ -1368,12 +1368,63 @@ export const defaultServices: dbService[] = [
   }
 ];
 
-export const getAllServices = async (): Promise<dbService[]> => {
+let cachedServicesMap: dbService[] | null = null;
+
+export const getAllServicesSync = (): dbService[] => {
+  if (cachedServicesMap) return cachedServicesMap;
+
   const servicesMap = new Map<string, dbService>();
   defaultServices.forEach(s => servicesMap.set(s.id, { ...s }));
 
   try {
-    const snap = await db.collection("services").get();
+    const priceOverrides = JSON.parse(localStorage.getItem("admin_pricing_overrides") || "{}");
+    const imageOverrides = JSON.parse(localStorage.getItem("admin_service_images") || "{}");
+    const descOverrides = JSON.parse(localStorage.getItem("admin_service_descriptions") || "{}");
+    const customServicesRaw = JSON.parse(localStorage.getItem("admin_custom_services") || "[]");
+    const defaultDeleted = JSON.parse(localStorage.getItem("admin_default_deleted_services") || "[]");
+
+    defaultDeleted.forEach((id: string) => {
+      servicesMap.delete(id);
+    });
+
+    servicesMap.forEach((s, sId) => {
+      const priceKey = sId === "exterior" ? "exteriorWash"
+        : sId === "interior" ? "interiorCleaning"
+          : sId === "foam" ? "foamWash"
+            : sId === "wax" ? "waxPolish"
+              : sId === "dashboard" ? "dashboardCleaning"
+                : sId === "tyre" ? "tyreDressing"
+                  : sId === "premium" ? "premiumDetailing" : sId;
+
+      if (priceOverrides[priceKey] !== undefined) s.price = Number(priceOverrides[priceKey]);
+      if (imageOverrides[sId] !== undefined) s.image = imageOverrides[sId];
+      if (descOverrides[sId] !== undefined) s.description = descOverrides[sId];
+    });
+
+    customServicesRaw.forEach((cs: any) => {
+      if (cs.isDeleted) {
+        servicesMap.delete(cs.id);
+      } else {
+        servicesMap.set(cs.id, cs);
+      }
+    });
+  } catch (e) {
+    console.error("Error reading service overrides from local storage:", e);
+  }
+
+  cachedServicesMap = Array.from(servicesMap.values());
+  return cachedServicesMap;
+};
+
+export const getAllServices = async (): Promise<dbService[]> => {
+  const syncData = getAllServicesSync();
+
+  // Background async refresh from Firestore
+  db.collection("services").get().then((snap) => {
+    if (!snap || snap.empty) return;
+    const servicesMap = new Map<string, dbService>();
+    defaultServices.forEach(s => servicesMap.set(s.id, { ...s }));
+
     snap.forEach((doc: any) => {
       const data = doc.data() as Partial<dbService>;
       const sId = doc.id;
@@ -1391,51 +1442,35 @@ export const getAllServices = async (): Promise<dbService[]> => {
         });
       }
     });
-  } catch (err) {
-    console.warn("Could not fetch custom services from db, falling back to local storage overrides:", err);
-  }
 
-  // Fallback / merge local storage pricing/image/desc overrides
-  try {
-    const priceOverrides = JSON.parse(localStorage.getItem("admin_pricing_overrides") || "{}");
-    const imageOverrides = JSON.parse(localStorage.getItem("admin_service_images") || "{}");
-    const descOverrides = JSON.parse(localStorage.getItem("admin_service_descriptions") || "{}");
-    const customServicesRaw = JSON.parse(localStorage.getItem("admin_custom_services") || "[]");
-    const defaultDeleted = JSON.parse(localStorage.getItem("admin_default_deleted_services") || "[]");
+    try {
+      const priceOverrides = JSON.parse(localStorage.getItem("admin_pricing_overrides") || "{}");
+      const imageOverrides = JSON.parse(localStorage.getItem("admin_service_images") || "{}");
+      const descOverrides = JSON.parse(localStorage.getItem("admin_service_descriptions") || "{}");
+      const customServicesRaw = JSON.parse(localStorage.getItem("admin_custom_services") || "[]");
+      const defaultDeleted = JSON.parse(localStorage.getItem("admin_default_deleted_services") || "[]");
 
-    // Remove deleted default services
-    defaultDeleted.forEach((id: string) => {
-      servicesMap.delete(id);
-    });
+      defaultDeleted.forEach((id: string) => servicesMap.delete(id));
+      servicesMap.forEach((s, sId) => {
+        const priceKey = sId === "exterior" ? "exteriorWash" : sId;
+        if (priceOverrides[priceKey] !== undefined) s.price = Number(priceOverrides[priceKey]);
+        if (imageOverrides[sId] !== undefined) s.image = imageOverrides[sId];
+        if (descOverrides[sId] !== undefined) s.description = descOverrides[sId];
+      });
+      customServicesRaw.forEach((cs: any) => {
+        if (cs.isDeleted) servicesMap.delete(cs.id);
+        else servicesMap.set(cs.id, cs);
+      });
+    } catch {}
 
-    // Apply overrides to default services
-    servicesMap.forEach((s, sId) => {
-      const priceKey = sId === "exterior" ? "exteriorWash"
-        : sId === "interior" ? "interiorCleaning"
-          : sId === "foam" ? "foamWash"
-            : sId === "wax" ? "waxPolish"
-              : sId === "dashboard" ? "dashboardCleaning"
-                : sId === "tyre" ? "tyreDressing"
-                  : sId === "premium" ? "premiumDetailing" : sId;
+    const freshList = Array.from(servicesMap.values());
+    if (JSON.stringify(freshList) !== JSON.stringify(cachedServicesMap)) {
+      cachedServicesMap = freshList;
+      notifyGlobalDataChange("services");
+    }
+  }).catch(() => {});
 
-      if (priceOverrides[priceKey] !== undefined) s.price = Number(priceOverrides[priceKey]);
-      if (imageOverrides[sId] !== undefined) s.image = imageOverrides[sId];
-      if (descOverrides[sId] !== undefined) s.description = descOverrides[sId];
-    });
-
-    // Load custom services from localStorage
-    customServicesRaw.forEach((cs: any) => {
-      if (cs.isDeleted) {
-        servicesMap.delete(cs.id);
-      } else {
-        servicesMap.set(cs.id, cs);
-      }
-    });
-  } catch (e) {
-    console.error("Error reading service overrides from local storage:", e);
-  }
-
-  return Array.from(servicesMap.values());
+  return syncData;
 };
 
 export const createOrUpdateService = async (service: dbService): Promise<void> => {

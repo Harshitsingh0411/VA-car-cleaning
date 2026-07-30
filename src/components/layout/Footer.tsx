@@ -3,11 +3,17 @@ import { Link } from "react-router-dom";
 import { Car, Facebook, Instagram, Twitter, Youtube, MapPin, Phone, Mail } from "lucide-react";
 import vaLogo from "@/assets/va logo.png";
 import { seoServices, seoLocations } from "../../data/seoData";
-import { getContactSettings, dbContactSettings, DEFAULT_CONTACT_SETTINGS, getAllServices, subscribeToDataChanges } from "../../services/dbService";
+import { getContactSettings, dbContactSettings, DEFAULT_CONTACT_SETTINGS, getAllServices, getAllServicesSync, subscribeToDataChanges } from "../../services/dbService";
 
 export default function Footer() {
   const [contactSettings, setContactSettings] = useState<dbContactSettings>(DEFAULT_CONTACT_SETTINGS);
-  const [servicesList, setServicesList] = useState<Array<{ name: string; id: string }>>([]);
+  const [servicesList, setServicesList] = useState<Array<{ name: string; id: string }>>(() => {
+    const syncData = getAllServicesSync();
+    if (syncData && syncData.length > 0) {
+      return syncData.map(s => ({ name: s.name, id: s.id }));
+    }
+    return seoServices.map(s => ({ name: s.name, id: s.slug }));
+  });
 
   useEffect(() => {
     const reloadFooterData = () => {

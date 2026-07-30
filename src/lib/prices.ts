@@ -16,9 +16,9 @@ const defaultPrices: Record<string, PriceConfig> = {
     formatted: "₹1500"
   },
   "one-time-full": {
-    price: 299,
-    label: "299",
-    formatted: "₹299"
+    price: 0,
+    label: "",
+    formatted: ""
   }
 };
 

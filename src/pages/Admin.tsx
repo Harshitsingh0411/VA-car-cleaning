@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "motion/react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -212,6 +212,82 @@ export default function Admin() {
   const [planFeaturesText, setPlanFeaturesText] = useState("");
   const [planPopular, setPlanPopular] = useState(false);
   const [planCta, setPlanCta] = useState("Book Now");
+
+  // Bookings Sorting, Searching & Filtering State
+  const [bookingStatusFilter, setBookingStatusFilter] = useState<string>("all");
+  const [bookingSortOption, setBookingSortOption] = useState<string>("date_desc");
+  const [bookingSearchQuery, setBookingSearchQuery] = useState<string>("");
+
+  const filteredAndSortedAppointments = useMemo(() => {
+    let result = [...appointments];
+
+    if (bookingSearchQuery.trim()) {
+      const q = bookingSearchQuery.toLowerCase();
+      result = result.filter(
+        (a) =>
+          a.name.toLowerCase().includes(q) ||
+          a.phone.toLowerCase().includes(q) ||
+          a.service.toLowerCase().includes(q) ||
+          a.vehicle.toLowerCase().includes(q) ||
+          a.id.toLowerCase().includes(q)
+      );
+    }
+
+    if (bookingStatusFilter !== "all") {
+      result = result.filter((a) => a.status.toLowerCase() === bookingStatusFilter.toLowerCase());
+    }
+
+    result.sort((a, b) => {
+      if (bookingSortOption === "date_desc") {
+        return new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime();
+      }
+      if (bookingSortOption === "date_asc") {
+        return new Date(a.createdAt || a.date).getTime() - new Date(b.createdAt || b.date).getTime();
+      }
+      if (bookingSortOption === "status_cancelled") {
+        if (a.status === "Cancelled" && b.status !== "Cancelled") return -1;
+        if (a.status !== "Cancelled" && b.status === "Cancelled") return 1;
+      }
+      if (bookingSortOption === "status_completed") {
+        if (a.status === "Completed" && b.status !== "Completed") return -1;
+        if (a.status !== "Completed" && b.status === "Completed") return 1;
+      }
+      if (bookingSortOption === "status_inprogress") {
+        if (a.status === "In Progress" && b.status !== "In Progress") return -1;
+        if (a.status !== "In Progress" && b.status === "In Progress") return 1;
+      }
+      if (bookingSortOption === "status_pending") {
+        if (a.status === "Pending" && b.status !== "Pending") return -1;
+        if (a.status !== "Pending" && b.status === "Pending") return 1;
+      }
+      if (bookingSortOption === "price_desc") {
+        const pA = Number((a.price || "").replace(/[^\d]/g, "")) || 0;
+        const pB = Number((b.price || "").replace(/[^\d]/g, "")) || 0;
+        return pB - pA;
+      }
+      if (bookingSortOption === "price_asc") {
+        const pA = Number((a.price || "").replace(/[^\d]/g, "")) || 0;
+        const pB = Number((b.price || "").replace(/[^\d]/g, "")) || 0;
+        return pA - pB;
+      }
+      if (bookingSortOption === "name_asc") {
+        return a.name.localeCompare(b.name);
+      }
+      return 0;
+    });
+
+    return result;
+  }, [appointments, bookingStatusFilter, bookingSortOption, bookingSearchQuery]);
+
+  const bookingCounts = useMemo(() => {
+    return {
+      total: appointments.length,
+      pending: appointments.filter((a) => a.status === "Pending").length,
+      inProgress: appointments.filter((a) => a.status === "In Progress").length,
+      completed: appointments.filter((a) => a.status === "Completed").length,
+      cancelled: appointments.filter((a) => a.status === "Cancelled").length
+    };
+  }, [appointments]);
 
   // Single unified management sub-tab for Services, Pricing, Before & After, About & Contact
   const [serviceSubTab, setServiceSubTab] = useState<"catalog" | "pricing" | "before_after" | "about" | "contact">("catalog");
@@ -1366,12 +1442,107 @@ export default function Admin() {
           {/* APPOINTMENTS PANEL */}
           {activeTab === "appointments" && (
             <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm space-y-6">
-              <h3 className="font-heading font-extrabold text-dark text-lg">Active Bookings & Appointments</h3>
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-gray-100 pb-4">
+                <div>
+                  <h3 className="font-heading font-extrabold text-dark text-lg flex items-center gap-2">
+                    <Calendar size={20} className="text-primary" />
+                    Bookings & Appointments Sequence
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Sequence listing of customer bookings with sorting by date, status, price, and customer details.
+                  </p>
+                </div>
+
+                {/* Status Badges & Quick Filter Buttons */}
+                <div className="flex flex-wrap gap-2 text-xs font-bold">
+                  <button
+                    onClick={() => setBookingStatusFilter("all")}
+                    className={`px-3 py-1 rounded-full border transition-all cursor-pointer ${bookingStatusFilter === "all" ? "bg-dark text-white border-dark shadow" : "bg-gray-100 text-gray-700 border-gray-200"}`}
+                  >
+                    All: {bookingCounts.total}
+                  </button>
+                  <button
+                    onClick={() => setBookingStatusFilter("pending")}
+                    className={`px-3 py-1 rounded-full border transition-all cursor-pointer ${bookingStatusFilter === "pending" ? "bg-amber-500 text-white border-amber-500 shadow" : "bg-amber-50 text-amber-600 border-amber-200"}`}
+                  >
+                    Pending: {bookingCounts.pending}
+                  </button>
+                  <button
+                    onClick={() => setBookingStatusFilter("in progress")}
+                    className={`px-3 py-1 rounded-full border transition-all cursor-pointer ${bookingStatusFilter === "in progress" ? "bg-blue-600 text-white border-blue-600 shadow" : "bg-blue-50 text-blue-600 border-blue-200"}`}
+                  >
+                    In Progress: {bookingCounts.inProgress}
+                  </button>
+                  <button
+                    onClick={() => setBookingStatusFilter("completed")}
+                    className={`px-3 py-1 rounded-full border transition-all cursor-pointer ${bookingStatusFilter === "completed" ? "bg-emerald-600 text-white border-emerald-600 shadow" : "bg-emerald-50 text-emerald-600 border-emerald-200"}`}
+                  >
+                    Completed: {bookingCounts.completed}
+                  </button>
+                  <button
+                    onClick={() => setBookingStatusFilter("cancelled")}
+                    className={`px-3 py-1 rounded-full border transition-all cursor-pointer ${bookingStatusFilter === "cancelled" ? "bg-rose-600 text-white border-rose-600 shadow" : "bg-rose-50 text-rose-600 border-rose-200"}`}
+                  >
+                    Cancelled: {bookingCounts.cancelled}
+                  </button>
+                </div>
+              </div>
+
+              {/* Filters & Sorting Control Bar */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50/80 p-4 rounded-2xl border border-gray-100">
+                {/* Search Bar */}
+                <div>
+                  <input
+                    type="text"
+                    placeholder="Search by customer name, phone, vehicle or package..."
+                    value={bookingSearchQuery}
+                    onChange={(e) => setBookingSearchQuery(e.target.value)}
+                    className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-dark focus:ring-2 focus:ring-primary focus:outline-none"
+                  />
+                </div>
+
+                {/* Status Filter Dropdown */}
+                <div className="flex items-center gap-2">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider shrink-0">Filter Status:</label>
+                  <select
+                    value={bookingStatusFilter}
+                    onChange={(e) => setBookingStatusFilter(e.target.value)}
+                    className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-dark focus:ring-2 focus:ring-primary focus:outline-none cursor-pointer"
+                  >
+                    <option value="all">All Statuses ({bookingCounts.total})</option>
+                    <option value="pending">Pending ({bookingCounts.pending})</option>
+                    <option value="in progress">In Progress ({bookingCounts.inProgress})</option>
+                    <option value="completed">Completed ({bookingCounts.completed})</option>
+                    <option value="cancelled">Cancelled ({bookingCounts.cancelled})</option>
+                  </select>
+                </div>
+
+                {/* Sort Option Dropdown */}
+                <div className="flex items-center gap-2">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider shrink-0">Sort By:</label>
+                  <select
+                    value={bookingSortOption}
+                    onChange={(e) => setBookingSortOption(e.target.value)}
+                    className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-dark focus:ring-2 focus:ring-primary focus:outline-none cursor-pointer"
+                  >
+                    <option value="date_desc">📅 Date (Newest First)</option>
+                    <option value="date_asc">📅 Date (Oldest First)</option>
+                    <option value="status_pending">⏳ Sort by Pending First</option>
+                    <option value="status_inprogress">🚚 Sort by In Progress First</option>
+                    <option value="status_completed">✅ Sort by Completed First</option>
+                    <option value="status_cancelled">❌ Sort by Cancelled First</option>
+                    <option value="price_desc">💰 Price (High to Low)</option>
+                    <option value="price_asc">💰 Price (Low to High)</option>
+                    <option value="name_asc">👤 Customer Name (A-Z)</option>
+                  </select>
+                </div>
+              </div>
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs text-gray-500 border-collapse">
                   <thead>
                     <tr className="border-b border-gray-100 text-gray-400 font-bold uppercase tracking-wider">
+                      <th className="pb-3 pr-2 w-10 text-center">#</th>
                       <th className="pb-3 pr-4">Customer</th>
                       <th className="pb-3 pr-4">Service Package</th>
                       <th className="pb-3 pr-4">Vehicle</th>
@@ -1382,8 +1553,12 @@ export default function Admin() {
                     </tr>
                   </thead>
                   <tbody>
-                    {appointments.map((a) => (
-                      <tr key={a.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                    {filteredAndSortedAppointments.length > 0 ? (
+                      filteredAndSortedAppointments.map((a, idx) => (
+                        <tr key={a.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                          <td className="py-4 pr-2 text-center font-black text-gray-400 text-[11px] shrink-0">
+                            #{idx + 1}
+                          </td>
                         <td className="py-4 pr-4">
                           <button
                             onClick={() => setViewingBookingDetails(a)}
@@ -1503,7 +1678,26 @@ export default function Admin() {
                           )}
                         </td>
                       </tr>
-                    ))}
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={8} className="py-12 text-center text-gray-400">
+                        <div className="flex flex-col items-center justify-center space-y-2">
+                          <Calendar size={32} className="text-gray-300 stroke-1" />
+                          <p className="font-semibold text-sm">No bookings found matching filter criteria</p>
+                          <button
+                            onClick={() => {
+                              setBookingStatusFilter("all");
+                              setBookingSearchQuery("");
+                            }}
+                            className="text-xs text-primary font-bold hover:underline cursor-pointer"
+                          >
+                            Reset filters & search
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                   </tbody>
                 </table>
               </div>

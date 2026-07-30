@@ -3,23 +3,35 @@ import { useParams, Link } from 'react-router-dom';
 import { seoLocations, seoServices } from '../../data/seoData';
 import SEO from '../../components/seo/SEO';
 import { CheckCircle2, Star, MapPin, Calendar, ArrowRight, ShieldCheck, FileText, User, Sparkles } from 'lucide-react';
-import { getAllReviews, dbReview, getAllServices, dbService } from '../../services/dbService';
+import { getAllReviews, dbReview, getAllServices, getAllServicesSync, dbService, subscribeToDataChanges } from '../../services/dbService';
+import { useImageLightbox } from '../../context/ImageLightboxContext';
 
 interface DynamicLandingProps {
   type?: 'service' | 'location' | 'combined';
 }
 
 export default function DynamicLandingPage({ type }: DynamicLandingProps) {
+  const { openLightbox } = useImageLightbox();
   const { slug, serviceSlug, locationSlug } = useParams<{ slug?: string, serviceSlug?: string, locationSlug?: string }>();
   const [reviews, setReviews] = useState<dbReview[]>([]);
-  const [dbServicesList, setDbServicesList] = useState<dbService[]>([]);
+  const [dbServicesList, setDbServicesList] = useState<dbService[]>(() => getAllServicesSync());
 
-  useEffect(() => {
+  const fetchDbServices = () => {
     getAllServices().then((loaded) => {
       setDbServicesList(loaded);
     }).catch(err => {
       console.error("Failed to load db services in DynamicLandingPage:", err);
     });
+  };
+
+  useEffect(() => {
+    fetchDbServices();
+    const unsubscribe = subscribeToDataChanges((topic) => {
+      if (!topic || topic === "all" || topic === "services" || topic === "pricing") {
+        fetchDbServices();
+      }
+    });
+    return () => unsubscribe();
   }, []);
 
   const normalizeSlug = (str?: string) => (str || "").toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -40,7 +52,13 @@ export default function DynamicLandingPage({ type }: DynamicLandingProps) {
         "Pay on delivery — zero upfront payment needed"
       ]
     })),
-    ...seoServices.filter(s => !dbServicesList.some(ds => ds.id === s.slug || ds.name.toLowerCase() === s.name.toLowerCase()))
+    ...seoServices.map(s => {
+      const match = dbServicesList.find(ds => ds.id === s.slug || normalizeSlug(ds.name) === normalizeSlug(s.name));
+      return {
+        ...s,
+        price: match ? String(match.price) : s.price
+      };
+    }).filter(s => !dbServicesList.some(ds => ds.id === s.slug || normalizeSlug(ds.name) === normalizeSlug(s.name)))
   ];
 
   // Parse slug like "foam-car-wash-kanpur" or "ceramic-coating-kakadeo"
@@ -48,24 +66,22 @@ export default function DynamicLandingPage({ type }: DynamicLandingProps) {
   let matchedLocation: any = null;
 
   const targetServiceKey = serviceSlug || slug;
+  const normTargetKey = normalizeSlug(targetServiceKey);
 
   if ((type === 'service' || !type) && targetServiceKey) {
-    const normReq = normalizeSlug(targetServiceKey);
-    matchedService = combinedServiceList.find(s => normalizeSlug(s.slug) === normReq || normalizeSlug(s.id) === normReq || normalizeSlug(s.name) === normReq);
+    matchedService = combinedServiceList.find(s => normalizeSlug(s.slug) === normTargetKey || normalizeSlug(s.id) === normTargetKey || normalizeSlug(s.name) === normTargetKey);
     matchedLocation = seoLocations[0]; // Default to Kanpur
   } else if (type === 'location' && locationSlug) {
     const normLoc = normalizeSlug(locationSlug);
     matchedLocation = seoLocations.find(l => normalizeSlug(l.slug) === normLoc);
     matchedService = combinedServiceList[0] || seoServices[0];
   } else if (type === 'combined' && serviceSlug && locationSlug) {
-    const normReq = normalizeSlug(serviceSlug);
     const normLoc = normalizeSlug(locationSlug);
-    matchedService = combinedServiceList.find(s => normalizeSlug(s.slug) === normReq || normalizeSlug(s.id) === normReq || normalizeSlug(s.name) === normReq);
+    matchedService = combinedServiceList.find(s => normalizeSlug(s.slug) === normTargetKey || normalizeSlug(s.id) === normTargetKey || normalizeSlug(s.name) === normTargetKey);
     matchedLocation = seoLocations.find(l => normalizeSlug(l.slug) === normLoc);
   } else if (slug) {
-    const normSlug = normalizeSlug(slug);
     for (const serviceItem of combinedServiceList) {
-      if (normSlug.startsWith(normalizeSlug(serviceItem.slug))) {
+      if (normTargetKey.startsWith(normalizeSlug(serviceItem.slug))) {
         matchedService = serviceItem;
         const locationPart = slug.replace(`${serviceItem.slug}-`, '');
         matchedLocation = seoLocations.find(l => normalizeSlug(l.slug) === normalizeSlug(locationPart));
@@ -74,20 +90,22 @@ export default function DynamicLandingPage({ type }: DynamicLandingProps) {
     }
   }
 
+  const foundInDb = dbServicesList.find(ds => normalizeSlug(ds.id) === normTargetKey || normalizeSlug(ds.name) === normTargetKey);
+
   // Fallback to generic if not matched properly
-  const service = matchedService || (targetServiceKey ? {
-    id: targetServiceKey,
-    name: targetServiceKey.replace(/[-()]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).trim(),
-    slug: targetServiceKey,
-    description: `Doorstep car detailing and cleaning for ${targetServiceKey.replace(/[-()]/g, ' ')}.`,
-    price: "299",
-    image: "https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&q=80&w=800",
+  const service = matchedService || {
+    id: targetServiceKey || "service",
+    name: (targetServiceKey || "Detailing Service").replace(/[-()]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).trim(),
+    slug: targetServiceKey || "service",
+    description: foundInDb?.description || `Doorstep car & bike detailing and cleaning service.`,
+    price: foundInDb ? String(foundInDb.price) : "",
+    image: foundInDb?.image || "https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&q=80&w=800",
     features: [
       "100% Doorstep Service at your location",
       "Trained professional detailing technician",
       "Pay on delivery — zero advance needed"
     ]
-  } : (combinedServiceList[0] || seoServices[0]));
+  };
 
   const location = matchedLocation || seoLocations[0];
 
@@ -101,36 +119,23 @@ export default function DynamicLandingPage({ type }: DynamicLandingProps) {
 
   const getTerms = (slug: string) => {
     if (slug.includes('subscription')) {
-      return [
-        "1. Minimum Subscription Period: 1 Month.",
-        "2. Payment is required upfront via Pay on Delivery for the first visit.",
-        "3. Includes one full exterior foam wash per week and daily dry cloth wipe-down.",
-        "4. Non-refundable once the first wash is completed.",
-        "5. Customer must provide a safe parking space and remove valuables from the vehicle."
-      ];
-    } else {
-      return [
-        "1. Pay on Delivery: Pay only after you are 100% satisfied.",
-        "2. Service duration may vary depending on vehicle condition.",
-        "3. Customer must provide access to vehicle keys for interior cleaning.",
-        "4. Remove all valuables before handover; we are not responsible for lost items.",
-        "5. Booking cancellation is free up to 2 hours before the scheduled time."
-      ];
+      return ["Valid for 30 days from 1st wash", "Up to 4 washes per month", "Non-transferable"];
     }
+    return ["Doorstep service included", "Pay after service completion", "100% satisfaction guaranteed"];
   };
   const currentTerms = getTerms(service.slug);
 
   const pageTitle = `${service.name} in ${location.name} | Professional Doorstep Service`;
-  const pageDescription = `Looking for ${service.name.toLowerCase()} in ${location.name}? VaCar Cleaning Service offers premium, eco-friendly doorstep detailing at just ₹${service.price}. Book online today!`;
+  const pageDescription = `Looking for ${service.name.toLowerCase()} in ${location.name}? VaCar Cleaning Service offers premium, eco-friendly doorstep detailing${service.price ? ` at just ₹${service.price}` : ""}. Book online today!`;
 
   const faqData = [
     {
       question: `Do you provide ${service.name.toLowerCase()} at home in ${location.name}?`,
-      answer: `Yes, we provide 100% doorstep ${service.name.toLowerCase()} services anywhere in ${location.name}. Our professional crew comes fully equipped with water,  and premium   cleaning agents.`
+      answer: `Yes, we provide 100% doorstep ${service.name.toLowerCase()} services anywhere in ${location.name}. Our professional crew comes fully equipped with water, power tools, and premium cleaning agents.`
     },
     {
       question: `How much does ${service.name.toLowerCase()} cost in ${location.name}?`,
-      answer: `Our professional ${service.name.toLowerCase()} packages in ${location.name} start at just ₹${service.price}. We offer transparent pricing with no hidden charges.`
+      answer: `Our professional ${service.name.toLowerCase()} packages in ${location.name}${service.price ? ` start at just ₹${service.price}` : " offer transparent, budget-friendly rates"}. We offer transparent pricing with no hidden charges.`
     },
     {
       question: `How long does the service take?`,
@@ -156,7 +161,7 @@ export default function DynamicLandingPage({ type }: DynamicLandingProps) {
     "description": pageDescription,
     "offers": {
       "@type": "Offer",
-      "price": service.price,
+      "price": service.price || "0",
       "priceCurrency": "INR"
     },
     "areaServed": {
@@ -194,9 +199,9 @@ export default function DynamicLandingPage({ type }: DynamicLandingProps) {
             </p>
 
             <div className="flex flex-wrap gap-4 pt-4">
-              <Link to="/book" className="bg-[#F4B400] hover:bg-yellow-500 text-dark font-extrabold py-4 px-8 rounded-2xl flex items-center gap-2 transition-all hover:scale-105 shadow-xl shadow-yellow-500/20">
+              <Link to={`/book?service=${service.slug || service.id}`} className="bg-[#F4B400] hover:bg-yellow-500 text-dark font-extrabold py-4 px-8 rounded-2xl flex items-center gap-2 transition-all hover:scale-105 shadow-xl shadow-yellow-500/20">
                 <Calendar size={20} />
-                Book Now - ₹{service.price}
+                Book Now{service.price ? ` - ₹${service.price}` : ""}
               </Link>
               <a href="tel:+918090757262" className="bg-white/10 hover:bg-white/20 text-white border border-white/10 font-bold py-4 px-8 rounded-2xl flex items-center gap-2 transition-all">
                 Call Expert
@@ -335,11 +340,11 @@ export default function DynamicLandingPage({ type }: DynamicLandingProps) {
           {reviews.length > 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {reviews.map((review) => (
-                <div key={review.id} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between">
+                <div key={review.id} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between space-y-4">
                   <div>
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-primary/10 text-primary rounded-full flex items-center justify-center font-bold uppercase">
+                        <div className="w-10 h-10 bg-primary/10 text-primary rounded-full flex items-center justify-center font-bold uppercase shrink-0">
                           {review.customerName.charAt(0)}
                         </div>
                         <div>
@@ -353,7 +358,41 @@ export default function DynamicLandingPage({ type }: DynamicLandingProps) {
                         ))}
                       </div>
                     </div>
-                    <p className="text-gray-600 text-sm leading-relaxed italic">"{review.review}"</p>
+                    <p className="text-gray-600 text-sm leading-relaxed italic mb-3">"{review.review}"</p>
+
+                    {/* Customer attached review images & videos */}
+                    {(review.images?.length || review.videos?.length) ? (
+                      <div className="flex gap-2 pt-2 overflow-x-auto border-t border-gray-50 mt-2">
+                        {review.images?.map((imgUrl, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => openLightbox({ url: imgUrl, type: "image", title: `Review Photo by ${review.customerName}` })}
+                            className="shrink-0 cursor-pointer group relative overflow-hidden rounded-xl border border-gray-200"
+                          >
+                            <img src={imgUrl} alt={`Photo by ${review.customerName}`} className="w-14 h-14 object-cover group-hover:scale-110 transition-transform duration-300" />
+                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[9px] font-bold">
+                              View
+                            </div>
+                          </button>
+                        ))}
+                        {review.videos?.map((vidUrl, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => openLightbox({ url: vidUrl, type: "video", title: `Review Video by ${review.customerName}` })}
+                            className="shrink-0 cursor-pointer group relative overflow-hidden rounded-xl border border-gray-200 bg-black"
+                          >
+                            <video src={vidUrl} className="w-20 h-14 object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <span className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-[10px] shadow-sm">
+                                ▶
+                              </span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               ))}
@@ -374,7 +413,7 @@ export default function DynamicLandingPage({ type }: DynamicLandingProps) {
       <section className="py-16 bg-primary text-white text-center">
         <div className="container mx-auto px-4">
           <h2 className="text-2xl md:text-4xl font-heading font-extrabold mb-4">Ready to revitalize your vehicle in {location.name}?</h2>
-          <Link to="/book" className="inline-block bg-[#F4B400] text-dark font-extrabold py-4 px-10 rounded-full mt-4 hover:scale-105 transition-transform shadow-xl shadow-yellow-500/20">
+          <Link to={`/book?service=${service.slug || service.id}`} className="inline-block bg-[#F4B400] text-dark font-extrabold py-4 px-10 rounded-full mt-4 hover:scale-105 transition-transform shadow-xl shadow-yellow-500/20">
             Book {service.name} Now
           </Link>
         </div>

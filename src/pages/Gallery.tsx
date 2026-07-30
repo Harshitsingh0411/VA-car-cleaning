@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Camera, Star, Sparkles, X, Filter, Video as VideoIcon, CheckCircle2, Shield } from "lucide-react";
 import { getAllReviews, dbReview } from "../services/dbService";
+import { useImageLightbox } from "../context/ImageLightboxContext";
 
 interface GalleryItem {
   id: string;
@@ -62,6 +63,7 @@ const defaultShowcaseItems: GalleryItem[] = [
 ];
 
 export default function GalleryPage() {
+  const { openLightbox } = useImageLightbox();
   const [items, setItems] = useState<GalleryItem[]>(defaultShowcaseItems);
   const [activeFilter, setActiveFilter] = useState<"all" | "customer" | "exterior" | "interior" | "shine">("all");
   const [selectedMedia, setSelectedMedia] = useState<GalleryItem | null>(null);
@@ -232,7 +234,7 @@ export default function GalleryPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              onClick={() => setSelectedMedia(item)}
+              onClick={() => openLightbox({ url: item.url, type: item.type, title: item.title })}
               className="group bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all cursor-pointer relative flex flex-col justify-between"
             >
               <div className="relative aspect-video bg-black overflow-hidden">

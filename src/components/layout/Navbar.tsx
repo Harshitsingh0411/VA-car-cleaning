@@ -14,7 +14,7 @@ import {
 import { getCartoonAvatar, handleAvatarError } from "../../utils/avatar";
 
 import { seoServices, seoLocations } from "../../data/seoData";
-import { getAllServices, dbService, subscribeToDataChanges } from "../../services/dbService";
+import { getAllServices, getAllServicesSync, dbService, subscribeToDataChanges } from "../../services/dbService";
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -22,7 +22,13 @@ export default function Navbar() {
   const location = useLocation();
   const { user, profile } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
-  const [dynamicServices, setDynamicServices] = useState<Array<{ name: string; path: string }>>([]);
+  const [dynamicServices, setDynamicServices] = useState<Array<{ name: string; path: string }>>(() => {
+    const syncData = getAllServicesSync();
+    if (syncData && syncData.length > 0) {
+      return syncData.map((s) => ({ name: s.name, path: `/services/${s.id}` }));
+    }
+    return seoServices.map((s) => ({ name: s.name, path: `/services/${s.slug}` }));
+  });
 
   useEffect(() => {
     const reloadServices = () => {

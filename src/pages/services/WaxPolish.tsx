@@ -72,7 +72,7 @@ export default function WaxPolish() {
               </div>
             </div>
             
-            <Link to="/book" className="inline-block pt-2">
+            <Link to="/book?service=wax" className="inline-block pt-2">
               <Button className="bg-[#F4B400] hover:bg-[#ffe258] text-dark font-bold px-8 py-3.5 h-auto text-xs uppercase tracking-wider rounded-xl border-none shadow-lg">
                 Book This Service <ArrowRight size={14} className="ml-1" />
               </Button>

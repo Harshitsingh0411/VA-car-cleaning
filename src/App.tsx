@@ -104,17 +104,21 @@ function AnimatedRoutes() {
   );
 }
 
+import { ImageLightboxProvider } from "./context/ImageLightboxContext";
+
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
 
   return (
-    <AuthProvider>
-      {isLoading && <Loader onComplete={() => setIsLoading(false)} />}
-      {!isLoading && (
-        <Router>
-          <AnimatedRoutes />
-        </Router>
-      )}
-    </AuthProvider>
+    <ImageLightboxProvider>
+      <AuthProvider>
+        {isLoading && <Loader onComplete={() => setIsLoading(false)} />}
+        {!isLoading && (
+          <Router>
+            <AnimatedRoutes />
+          </Router>
+        )}
+      </AuthProvider>
+    </ImageLightboxProvider>
   );
 }
