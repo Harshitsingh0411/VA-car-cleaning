@@ -43,24 +43,13 @@ export default function BookPage() {
   const [redeemLoyalty, setRedeemLoyalty] = useState<boolean>(false);
   const [pointsToRedeemInput, setPointsToRedeemInput] = useState<number>(0);
 
-  useEffect(() => {
-    getAllServices().then(setServices).catch(console.error);
-    getLoyaltySettings().then(setLoyaltySettings).catch(console.error);
-    if (user) {
-      getUserLoyaltyPoints(user.uid).then((pts) => {
-        setUserLoyaltyPoints(pts);
-        setPointsToRedeemInput(pts);
-      }).catch(console.error);
-    }
-  }, [user]);
-
   // Read query parameters
   const queryService = searchParams.get("service");
   const isRevisit = searchParams.get("revisit") === "true";
 
   const { register, handleSubmit, formState: { errors }, watch, trigger, setValue } = useForm<BookingInputs>({
     defaultValues: {
-      serviceType: queryService || "foam",
+      serviceType: queryService || "subscription-small",
       bookingTime: "Morning (8:00 AM - 12:00 PM)",
       vehicleSelect: "",
       bookingDate: new Date().toISOString().split("T")[0]
@@ -70,6 +59,32 @@ export default function BookPage() {
   const selectedServiceKey = watch("serviceType");
   const selectedVehicleId = watch("vehicleSelect");
   const selectedAddress = watch("address");
+
+  useEffect(() => {
+    getAllServices().then((loadedServices) => {
+      setServices(loadedServices);
+      if (loadedServices.length > 0) {
+        const targetKey = queryService || selectedServiceKey;
+        const found = loadedServices.find(s =>
+          s.id === targetKey ||
+          s.id.toLowerCase() === targetKey?.toLowerCase() ||
+          s.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") === targetKey?.toLowerCase()
+        );
+        if (found) {
+          setValue("serviceType", found.id);
+        } else {
+          setValue("serviceType", loadedServices[0].id);
+        }
+      }
+    }).catch(console.error);
+    getLoyaltySettings().then(setLoyaltySettings).catch(console.error);
+    if (user) {
+      getUserLoyaltyPoints(user.uid).then((pts) => {
+        setUserLoyaltyPoints(pts);
+        setPointsToRedeemInput(pts);
+      }).catch(console.error);
+    }
+  }, [user, queryService, setValue]);
 
   // Autofill user details if logged in
   useEffect(() => {
@@ -89,8 +104,13 @@ export default function BookPage() {
   }, [user, profile, setValue]);
 
   // Lookup service details from dynamic services list
-  const matchedService = services.find(s => s.id === selectedServiceKey);
-  const rawServicePrice = isRevisit ? 0 : (matchedService ? matchedService.price : 1999);
+  const matchedService = services.find(s =>
+    s.id === selectedServiceKey ||
+    s.id.toLowerCase() === selectedServiceKey?.toLowerCase() ||
+    s.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") === selectedServiceKey?.toLowerCase()
+  );
+  const fallbackPrice = services.length > 0 ? services[0].price : 800;
+  const rawServicePrice = isRevisit ? 0 : (matchedService ? matchedService.price : fallbackPrice);
 
   // Loyalty calculations
   const pointValue = loyaltySettings?.pointRedemptionValue || 1;
@@ -108,7 +128,7 @@ export default function BookPage() {
   const estimatedEarnedPoints = Math.floor((finalPayablePrice / 100) * (loyaltySettings?.pointsPer100Spent || 10));
 
   const serviceInfo = {
-    name: isRevisit ? `Revisit Request (${matchedService?.name || "Service"})` : (matchedService ? matchedService.name : "Premium Detailing"),
+    name: isRevisit ? `Revisit Request (${matchedService?.name || "Service"})` : (matchedService ? matchedService.name : (services[0]?.name || "Car Cleaning Service")),
     price: isRevisit ? "Included in Plan" : `₹${finalPayablePrice}`,
     rawPrice: rawServicePrice,
     discount: loyaltyDiscount,
@@ -333,8 +353,8 @@ export default function BookPage() {
                           <div className="relative w-full bg-emerald-50/50 border border-emerald-200/60 rounded-2xl p-4 flex items-center justify-between shadow-sm">
                             <input type="hidden" {...register("serviceType")} value={queryService} />
                             <div className="flex flex-col">
-                              <span className="text-dark font-extrabold text-sm">{matchedService ? matchedService.name : "Premium Detailing"}</span>
-                              <span className="text-gray-500 text-xs font-semibold mt-0.5">₹{matchedService ? matchedService.price : 1999}</span>
+                              <span className="text-dark font-extrabold text-sm">{matchedService ? matchedService.name : (services[0]?.name || "Car Cleaning Service")}</span>
+                              <span className="text-gray-500 text-xs font-semibold mt-0.5">₹{matchedService ? matchedService.price : fallbackPrice}</span>
                             </div>
                             <div className="flex items-center gap-1.5 text-[11px] font-black text-emerald-600 bg-emerald-100/50 px-2.5 py-1 rounded-lg border border-emerald-200">
                               <CheckCircle size={14} className="stroke-[2.5]" />
