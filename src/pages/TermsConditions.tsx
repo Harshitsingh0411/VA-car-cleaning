@@ -5,11 +5,11 @@ import { ShieldCheck, FileText } from 'lucide-react';
 export default function TermsConditions() {
   return (
     <div className="min-h-screen bg-gray-50 pt-32 pb-20">
-      <SEO 
+      <SEO
         title="Terms & Conditions | VaCar Cleaning Service"
         description="Read the terms and conditions for booking our mobile car detailing services in Kanpur."
       />
-      
+
       <div className="container mx-auto px-4 max-w-4xl">
         <div className="text-center mb-12">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 text-primary mb-6 shadow-sm">
@@ -25,7 +25,7 @@ export default function TermsConditions() {
           prose-p:leading-relaxed prose-p:mb-6
           prose-li:my-2
         ">
-          
+
           <p className="lead text-xl text-gray-800 font-medium mb-8">
             Welcome to VaCar Cleaning Service. By booking our mobile detailing services, you agree to the following terms and conditions. Please read them carefully.
           </p>
@@ -67,7 +67,7 @@ export default function TermsConditions() {
               <ShieldCheck className="text-primary" size={24} /> Contact Us
             </h3>
             <p className="m-0 text-gray-700 text-sm">
-              If you have any questions or concerns regarding these terms, please contact us at <a href="mailto:support@vacar.in" className="text-primary font-bold hover:underline">support@vacar.in</a> or call us directly.
+              If you have any questions or concerns regarding these terms, please contact us at <a href="mailto:vacarcleanservice3@gmail.com" className="text-primary font-bold hover:underline">vacarcleanservice3@gmail.com</a> or call us directly.
             </p>
           </div>
 

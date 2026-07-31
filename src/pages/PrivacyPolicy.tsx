@@ -5,11 +5,11 @@ import { ShieldCheck, Lock } from 'lucide-react';
 export default function PrivacyPolicy() {
   return (
     <div className="min-h-screen bg-gray-50 pt-32 pb-20">
-      <SEO 
+      <SEO
         title="Privacy Policy | VaCar Cleaning Service"
         description="Learn how VaCar protects your data and privacy when booking our car detailing services."
       />
-      
+
       <div className="container mx-auto px-4 max-w-4xl">
         <div className="text-center mb-12">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 text-primary mb-6 shadow-sm">
@@ -25,7 +25,7 @@ export default function PrivacyPolicy() {
           prose-p:leading-relaxed prose-p:mb-6
           prose-li:my-2
         ">
-          
+
           <p className="lead text-xl text-gray-800 font-medium mb-8">
             At VaCar Cleaning Service, we are committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our website or use our services.
           </p>
@@ -52,7 +52,7 @@ export default function PrivacyPolicy() {
           <h2>3. Data Sharing and Disclosure</h2>
           <p>
             We do not sell, trade, or rent your personal identification information to others. We may share generic aggregated demographic information not linked to any personal identification information with our business partners and advertisers.
-            <br/><br/>
+            <br /><br />
             <strong>Crew Dispatch:</strong> To provide our mobile service, your name, address, and contact number are shared with your assigned detailer so they can navigate to your location and contact you upon arrival.
           </p>
 
@@ -71,7 +71,7 @@ export default function PrivacyPolicy() {
               <ShieldCheck className="text-primary" size={24} /> Contact Us
             </h3>
             <p className="m-0 text-gray-700 text-sm">
-              If you have any questions or concerns about this Privacy Policy, please contact us at <a href="mailto:privacy@vacar.in" className="text-primary font-bold hover:underline">privacy@vacar.in</a>.
+              If you have any questions or concerns about this Privacy Policy, please contact us at <a href="mailto:vacarcleanservice3@gmail.com" className="text-primary font-bold hover:underline">vacarcleanservice3@gmail.com</a>.
             </p>
           </div>
 

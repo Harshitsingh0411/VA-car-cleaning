@@ -1,10 +1,9 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Star, Upload, X, CheckCircle2, Image as ImageIcon, Video as VideoIcon, Sparkles, AlertCircle, Loader2 } from "lucide-react";
+import { Star, Upload, X, CheckCircle2, Image as ImageIcon, Sparkles, AlertCircle, Loader2 } from "lucide-react";
 import { dbBooking, submitReview } from "../../services/dbService";
 import { uploadMediaToCloudinary } from "../../services/cloudinaryService";
 import { compressImage } from "../../utils/imageCompressor";
-import { compressVideo } from "../../utils/videoCompressor";
 
 interface ReviewModalProps {
   isOpen: boolean;
@@ -17,7 +16,7 @@ interface MediaItem {
   id: string;
   file: File;
   previewUrl: string;
-  type: "image" | "video";
+  type: "image";
   originalSize: number;
   compressedSize: number;
   reductionPercentage: number;
@@ -57,76 +56,41 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const isVideo = file.type.startsWith("video/");
       const isImage = file.type.startsWith("image/");
 
-      if (!isVideo && !isImage) {
-        setErrorMsg("Please upload only valid Image or Video files.");
+      if (!isImage) {
+        setErrorMsg("Please upload only valid Image files (PNG, JPG, WebP).");
         continue;
       }
 
-      if (isVideo) {
-        setCompressionStatus(`Compressing video ${i + 1}/${files.length} (HD 720p codec)...`);
-        try {
-          const compVid = await compressVideo(file, {
-            maxWidth: 1280,
-            maxHeight: 720,
-            targetBitrate: 1500000
-          }, (progress) => {
-            setCompressionStatus(`Compressing HD video ${i + 1}/${files.length}: ${progress}%`);
-          });
+      setCompressionStatus(`Compressing photo ${i + 1}/${files.length}...`);
+      try {
+        const compResult = await compressImage(file, {
+          maxWidth: 1200,
+          maxHeight: 1200,
+          quality: 0.75
+        });
 
-          newMediaItems.push({
-            id: Math.random().toString(36).substring(2, 9),
-            file: compVid.compressedFile,
-            previewUrl: compVid.previewUrl,
-            type: "video",
-            originalSize: compVid.originalSize,
-            compressedSize: compVid.compressedSize,
-            reductionPercentage: compVid.reductionPercentage
-          });
-        } catch (err) {
-          console.error("Video compression error, fallback to raw video:", err);
-          newMediaItems.push({
-            id: Math.random().toString(36).substring(2, 9),
-            file,
-            previewUrl: URL.createObjectURL(file),
-            type: "video",
-            originalSize: file.size,
-            compressedSize: file.size,
-            reductionPercentage: 0
-          });
-        }
-      } else if (isImage) {
-        setCompressionStatus(`Compressing photo ${i + 1}/${files.length}...`);
-        try {
-          const compResult = await compressImage(file, {
-            maxWidth: 1200,
-            maxHeight: 1200,
-            quality: 0.75
-          });
-
-          newMediaItems.push({
-            id: Math.random().toString(36).substring(2, 9),
-            file: compResult.compressedFile,
-            previewUrl: compResult.dataUrl,
-            type: "image",
-            originalSize: compResult.originalSize,
-            compressedSize: compResult.compressedSize,
-            reductionPercentage: compResult.reductionPercentage
-          });
-        } catch (err) {
-          console.error("Compression error, fallback to raw photo:", err);
-          newMediaItems.push({
-            id: Math.random().toString(36).substring(2, 9),
-            file,
-            previewUrl: URL.createObjectURL(file),
-            type: "image",
-            originalSize: file.size,
-            compressedSize: file.size,
-            reductionPercentage: 0
-          });
-        }
+        newMediaItems.push({
+          id: Math.random().toString(36).substring(2, 9),
+          file: compResult.compressedFile,
+          previewUrl: compResult.dataUrl,
+          type: "image",
+          originalSize: compResult.originalSize,
+          compressedSize: compResult.compressedSize,
+          reductionPercentage: compResult.reductionPercentage
+        });
+      } catch (err) {
+        console.error("Compression error, fallback to raw photo:", err);
+        newMediaItems.push({
+          id: Math.random().toString(36).substring(2, 9),
+          file,
+          previewUrl: URL.createObjectURL(file),
+          type: "image",
+          originalSize: file.size,
+          compressedSize: file.size,
+          reductionPercentage: 0
+        });
       }
     }
 
@@ -151,19 +115,14 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
 
     try {
       const imageUrls: string[] = [];
-      const videoUrls: string[] = [];
 
-      // Upload each compressed photo/video to Cloudinary pipeline (or persistent Base64 Data URL)
+      // Upload each compressed photo to Cloudinary pipeline (or persistent Base64 Data URL)
       for (const item of mediaItems) {
         const uploadRes = await uploadMediaToCloudinary(item.file);
         const validUrl = uploadRes.url;
         // Never save temporary blob: URLs to database
         if (validUrl && !validUrl.startsWith("blob:")) {
-          if (uploadRes.resourceType === "video") {
-            videoUrls.push(validUrl);
-          } else {
-            imageUrls.push(validUrl);
-          }
+          imageUrls.push(validUrl);
         }
       }
 
@@ -174,7 +133,7 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
         stars,
         review: reviewText,
         images: imageUrls,
-        videos: videoUrls,
+        videos: [],
         serviceName: booking.serviceName || "Car Cleaning Service",
         serviceDate: booking.scheduledDate || new Date().toISOString().split("T")[0]
       });
@@ -235,7 +194,7 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
             <div>
               <h4 className="text-2xl font-heading font-extrabold text-dark">Thank You For Your Review!</h4>
               <p className="text-gray-500 text-xs mt-1 max-w-sm mx-auto">
-                Your star rating, feedback, and Cloudinary media have been published successfully.
+                Your star rating, feedback, and photos have been published successfully.
               </p>
             </div>
           </motion.div>
@@ -294,12 +253,12 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
               />
             </div>
 
-            {/* 3. Media Upload (Photos & Video) + Image Size Reducer notice */}
+            {/* 3. Media Upload (Photos) + Image Size Reducer notice */}
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                   <ImageIcon size={14} className="text-primary" />
-                  Add Photos & Video (Cloudinary Upload)
+                  Add Photos (Cloudinary Upload)
                 </label>
                 <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 py-0.5 px-2 rounded-full flex items-center gap-1">
                   <Sparkles size={11} /> Size Reducer Enabled
@@ -310,7 +269,7 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
                 <input
                   type="file"
                   multiple
-                  accept="image/*,video/*"
+                  accept="image/*"
                   onChange={handleFileSelect}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                 />
@@ -318,7 +277,7 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
                   <div className="w-10 h-10 bg-primary/10 text-primary rounded-full flex items-center justify-center">
                     <Upload size={20} />
                   </div>
-                  <p className="text-xs font-bold text-dark">Click or Drag to upload Photos & Videos</p>
+                  <p className="text-xs font-bold text-dark">Click or Drag to upload Photos</p>
                   <p className="text-[10px] text-gray-400">Automatic HTML5 Canvas Compression reduces storage size before upload</p>
                 </div>
               </div>
@@ -335,11 +294,7 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
                 <div className="grid grid-cols-3 gap-3 pt-2">
                   {mediaItems.map((item) => (
                     <div key={item.id} className="relative group rounded-xl overflow-hidden border border-gray-200 aspect-square bg-black">
-                      {item.type === "video" ? (
-                        <video src={item.previewUrl} className="w-full h-full object-cover" />
-                      ) : (
-                        <img src={item.previewUrl} alt="Review upload" className="w-full h-full object-cover" />
-                      )}
+                      <img src={item.previewUrl} alt="Review upload" className="w-full h-full object-cover" />
 
                       <button
                         type="button"
@@ -350,17 +305,10 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
                         <X size={12} />
                       </button>
 
-                      {item.type === "video" ? (
-                        <span className="absolute bottom-1 left-1 bg-black/80 text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded flex items-center gap-1">
-                          <VideoIcon size={10} className="text-amber-400" />
-                          {item.reductionPercentage > 0 ? `-${item.reductionPercentage}% KB HD` : "HD Video"}
+                      {item.reductionPercentage > 0 && (
+                        <span className="absolute bottom-1 left-1 bg-emerald-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded">
+                          -{item.reductionPercentage}% KB
                         </span>
-                      ) : (
-                        item.reductionPercentage > 0 && (
-                          <span className="absolute bottom-1 left-1 bg-emerald-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded">
-                            -{item.reductionPercentage}% KB
-                          </span>
-                        )
                       )}
                     </div>
                   ))}

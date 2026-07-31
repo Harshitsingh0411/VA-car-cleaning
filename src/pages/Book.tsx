@@ -744,20 +744,29 @@ export default function BookPage() {
                         </div>
                       )}
 
-                      <div className="flex justify-between items-center pt-4 border-t border-gray-100">
-                        <button
-                          type="button"
-                          onClick={prevStep}
-                          className="text-xs text-gray-400 font-bold hover:underline cursor-pointer"
-                        >
-                          Back
-                        </button>
-                        <button
-                          type="submit"
-                          className="bg-primary hover:bg-[#0b327b] text-white font-bold py-3.5 px-6 rounded-2xl text-xs uppercase tracking-wider cursor-pointer shadow-md"
-                        >
-                          Confirm Booking (Pay on Delivery)
-                        </button>
+                      <div className="pt-4 border-t border-gray-100 space-y-3">
+                        <div className="flex justify-between items-center">
+                          <button
+                            type="button"
+                            onClick={prevStep}
+                            className="text-xs text-gray-400 font-bold hover:underline cursor-pointer"
+                          >
+                            Back
+                          </button>
+                          <button
+                            type="submit"
+                            className="bg-primary hover:bg-[#0b327b] text-white font-bold py-3.5 px-6 rounded-2xl text-xs uppercase tracking-wider cursor-pointer shadow-md"
+                          >
+                            Confirm Booking (Pay on Delivery)
+                          </button>
+                        </div>
+                        <p className="text-[11px] text-gray-400 text-center font-medium">
+                          By booking, you agree to our{" "}
+                          <Link to="/terms" className="text-primary hover:underline font-semibold" target="_blank" rel="noopener noreferrer">
+                            Terms & Conditions
+                          </Link>
+                          .
+                        </p>
                       </div>
                     </motion.div>
                   )}

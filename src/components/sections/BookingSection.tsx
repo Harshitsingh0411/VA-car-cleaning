@@ -6,7 +6,7 @@ import { servicePrices } from "../../lib/prices";
 import { useAuth } from "../../context/AuthContext";
 import { createBooking, getAllServices, dbService } from "../../services/dbService";
 
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 export default function BookingSection() {
   const { user, addAppointment } = useAuth();
@@ -202,7 +202,7 @@ export default function BookingSection() {
                   </div>
 
                   {/* Submit Button */}
-                  <div className="md:col-span-2 pt-2">
+                  <div className="md:col-span-2 pt-2 space-y-2">
                     <button
                       type="submit"
                       disabled={submitting}
@@ -210,6 +210,13 @@ export default function BookingSection() {
                     >
                       {submitting ? "Submitting booking..." : <>Book Now <span className="text-base leading-none">→</span></>}
                     </button>
+                    <p className="text-[11px] text-gray-400 text-center font-medium">
+                      By booking, you agree to our{" "}
+                      <Link to="/terms" className="text-[#F4B400] hover:underline font-semibold" target="_blank" rel="noopener noreferrer">
+                        Terms & Conditions
+                      </Link>
+                      .
+                    </p>
                   </div>
                 </motion.form>
               ) : (
