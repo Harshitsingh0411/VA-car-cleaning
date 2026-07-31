@@ -6,8 +6,11 @@ import { servicePrices } from "../../lib/prices";
 import { useAuth } from "../../context/AuthContext";
 import { createBooking, getAllServices, dbService } from "../../services/dbService";
 
+import { useNavigate } from "react-router-dom";
+
 export default function BookingSection() {
   const { user, addAppointment } = useAuth();
+  const navigate = useNavigate();
   const [services, setServices] = useState<dbService[]>([]);
 
   React.useEffect(() => {
@@ -37,6 +40,12 @@ export default function BookingSection() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) {
+      const bookTarget = service ? `/book?service=${service}` : "/book";
+      navigate(`/login?redirect=${encodeURIComponent(bookTarget)}`);
+      return;
+    }
+
     if (!name || !phone || !service || !date || !time) {
       alert("Please fill in all booking details!");
       return;

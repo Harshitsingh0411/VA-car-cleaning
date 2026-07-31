@@ -1,12 +1,15 @@
 import React, { useState } from "react";
 import { motion } from "motion/react";
 import { useAuth } from "../context/AuthContext";
-import { Link, useNavigate } from "react-router-dom";
-import { Mail, Lock, User, UserPlus, Chrome, AlertCircle } from "lucide-react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Mail, Lock, User, UserPlus, Chrome, AlertCircle, Info } from "lucide-react";
 import { Button } from "../components/ui/Button";
 
 export default function Register() {
   const { user, registerWithEmail, loginWithGoogle } = useAuth();
+  const [searchParams] = useSearchParams();
+  const redirectTarget = searchParams.get("redirect") || "/account";
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -17,9 +20,9 @@ export default function Register() {
 
   React.useEffect(() => {
     if (user) {
-      navigate("/account");
+      navigate(redirectTarget, { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, navigate, redirectTarget]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,7 +41,7 @@ export default function Register() {
     setIsSubmitting(true);
     try {
       await registerWithEmail(email, password, name);
-      navigate("/account");
+      navigate(redirectTarget, { replace: true });
     } catch (err: any) {
       setErrorMsg(err.message || "Registration failed. Please try again.");
     } finally {
@@ -50,7 +53,7 @@ export default function Register() {
     setErrorMsg("");
     loginWithGoogle()
       .then(() => {
-        navigate("/account");
+        navigate(redirectTarget, { replace: true });
       })
       .catch((err: any) => {
         setErrorMsg(err.message || "Google Authentication failed.");
@@ -190,7 +193,7 @@ export default function Register() {
           {/* Call to Login */}
           <div className="text-center pt-2 text-xs font-semibold text-gray-500">
             Already have an account?{" "}
-            <Link to="/login" className="text-primary hover:underline font-bold">
+            <Link to={redirectTarget !== "/account" ? `/login?redirect=${encodeURIComponent(redirectTarget)}` : "/login"} className="text-primary hover:underline font-bold">
               Sign In here
             </Link>
           </div>

@@ -1,13 +1,16 @@
 import React, { useState } from "react";
 import { motion } from "motion/react";
 import { useAuth } from "../context/AuthContext";
-import { Link, useNavigate } from "react-router-dom";
-import { Mail, Lock, LogIn, Chrome, ArrowRight, ShieldCheck, AlertCircle } from "lucide-react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Mail, Lock, LogIn, Chrome, ArrowRight, ShieldCheck, AlertCircle, Info } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { isFirebaseConfigured } from "../lib/firebase";
 
 export default function Login() {
   const { user, loginWithEmail, loginWithGoogle } = useAuth();
+  const [searchParams] = useSearchParams();
+  const redirectTarget = searchParams.get("redirect") || "/account";
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
@@ -16,9 +19,9 @@ export default function Login() {
 
   React.useEffect(() => {
     if (user) {
-      navigate("/account");
+      navigate(redirectTarget, { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, navigate, redirectTarget]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +30,7 @@ export default function Login() {
 
     try {
       await loginWithEmail(email, password);
-      navigate("/account");
+      navigate(redirectTarget, { replace: true });
     } catch (err: any) {
       setErrorMsg(err.message || "Login failed. Please verify credentials.");
     } finally {
@@ -39,12 +42,14 @@ export default function Login() {
     setErrorMsg("");
     loginWithGoogle()
       .then(() => {
-        navigate("/account");
+        navigate(redirectTarget, { replace: true });
       })
       .catch((err: any) => {
         setErrorMsg(err.message || "Google Authentication failed.");
       });
   };
+
+  const isBookingRedirect = redirectTarget.includes("book");
 
   return (
     <div className="pt-24 min-h-screen bg-[#070C16] pb-24 flex items-center justify-center relative overflow-hidden">
@@ -59,8 +64,17 @@ export default function Login() {
           <div className="text-center space-y-2">
             <span className="text-[#F4B400] font-heading font-semibold tracking-widest text-xs uppercase block">— VA PORTAL —</span>
             <h1 className="text-3xl font-heading font-extrabold text-dark tracking-tight">Login to Account</h1>
-            <p className="text-gray-500 text-xs">Enter your details to manage your car & bike cleanings.</p>
+            <p className="text-gray-500 text-xs">
+              {isBookingRedirect ? "Please log in to proceed with booking your detailing service." : "Enter your details to manage your car & bike cleanings."}
+            </p>
           </div>
+
+          {isBookingRedirect && (
+            <div className="p-3.5 bg-amber-50 border border-amber-200/80 rounded-2xl text-amber-900 text-xs font-semibold flex items-center gap-2.5">
+              <Info size={18} className="text-[#F4B400] shrink-0" />
+              <span>Login is required to schedule and confirm your doorstep cleaning slot.</span>
+            </div>
+          )}
 
           {errorMsg && (
             <motion.div
@@ -145,7 +159,7 @@ export default function Login() {
           {/* Call to Register */}
           <div className="text-center pt-2 text-xs font-semibold text-gray-500">
             Don't have an account?{" "}
-            <Link to="/register" className="text-primary hover:underline font-bold">
+            <Link to={redirectTarget !== "/account" ? `/register?redirect=${encodeURIComponent(redirectTarget)}` : "/register"} className="text-primary hover:underline font-bold">
               Register here
             </Link>
           </div>

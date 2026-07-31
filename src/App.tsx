@@ -45,7 +45,14 @@ function AnimatedRoutes() {
           <Route path="gallery" element={<Gallery />} />
           <Route path="about" element={<About />} />
           <Route path="jobs" element={<Jobs />} />
-          <Route path="book" element={<Book />} />
+          <Route 
+            path="book" 
+            element={
+              <ProtectedRoute allowedRoles={["admin", "staff", "customer"]}>
+                <Book />
+              </ProtectedRoute>
+            } 
+          />
           <Route path="contact" element={<Contact />} />
           <Route path="terms" element={<TermsConditions />} />
           <Route path="privacy" element={<PrivacyPolicy />} />

@@ -77,10 +77,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const data: any = await getUserProfile(uid);
       if (data) {
-        if (!data.name || !data.email) {
-          const updates: any = {};
-          if (!data.name) updates.name = displayName || auth.currentUser?.displayName || "Valued Customer";
-          if (!data.email) updates.email = email || auth.currentUser?.email || "";
+        const updates: any = {};
+        if (displayName && (data.name !== displayName || data.name === "Valued Customer")) updates.name = displayName;
+        if (email && !data.email) updates.email = email;
+        if (Object.keys(updates).length > 0) {
           await db.collection("users").doc(uid).set(updates, { merge: true });
           data.name = updates.name || data.name;
           data.email = updates.email || data.email;

@@ -214,24 +214,26 @@ export default function DynamicLandingPage({ type }: DynamicLandingProps) {
               {matchedService ? matchedService.description : service.description}
             </p>
 
-            {/* Service Option Selector for Location Pages */}
-            <div className="pt-2">
-              <label className="text-[11px] font-extrabold uppercase tracking-wider text-[#F4B400] block mb-1.5">
-                Select Service Package for {location.name}:
-              </label>
-              <select
-                value={selectedServiceId}
-                onChange={(e) => setSelectedServiceId(e.target.value)}
-                className="w-full max-w-md bg-[#0B1220] border border-white/20 rounded-2xl py-3.5 px-4 text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-[#F4B400] cursor-pointer appearance-none"
-              >
-                <option value="">All Services (Explore All Packages)</option>
-                {combinedServiceList.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} {s.price ? `(₹${s.price})` : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* Service Option Selector for Location Pages (Only when no service is selected) */}
+            {!matchedService && (
+              <div className="pt-2">
+                <label className="text-[11px] font-extrabold uppercase tracking-wider text-[#F4B400] block mb-1.5">
+                  Select Service Package for {location.name}:
+                </label>
+                <select
+                  value={selectedServiceId}
+                  onChange={(e) => setSelectedServiceId(e.target.value)}
+                  className="w-full max-w-md bg-[#0B1220] border border-white/20 rounded-2xl py-3.5 px-4 text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-[#F4B400] cursor-pointer appearance-none"
+                >
+                  <option value="">All Services (Explore All Packages)</option>
+                  {combinedServiceList.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} {s.price ? `(₹${s.price})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div className="flex flex-wrap gap-4 pt-4">
               <Link

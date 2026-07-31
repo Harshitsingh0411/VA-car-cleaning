@@ -53,7 +53,7 @@ export const registerWithEmailAndPassword = async (email: string, pass: string, 
     // Simulator Signup
     const simUsers = JSON.parse(localStorage.getItem("sim_registered_users") || "[]");
     if (simUsers.find((u: any) => u.email === email)) {
-      throw new Error("Email already exists in simulator database!");
+      throw new Error("Email already exists in database!");
     }
     const newUser = {
       uid: "sim-uid-" + Math.random().toString(36).substring(2, 9),
@@ -65,8 +65,24 @@ export const registerWithEmailAndPassword = async (email: string, pass: string, 
     simUsers.push(newUser);
     localStorage.setItem("sim_registered_users", JSON.stringify(simUsers));
     localStorage.setItem("sim_auth_user", JSON.stringify(newUser));
+
+    // Save profile document directly into users collection
+    const simProfile = {
+      uid: newUser.uid,
+      name: name,
+      email: email,
+      role: "customer",
+      contactNumber: "",
+      addresses: [],
+      vehicles: [],
+      appointments: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    localStorage.setItem(`sim_db_users_${newUser.uid}`, JSON.stringify(simProfile));
+
     auth.currentUser = newUser;
-    await logAuditAction(`Registered new simulated user: ${newUser.uid}`, null, { email, name });
+    await logAuditAction(`Registered new user: ${newUser.uid}`, null, { email, name });
     return newUser;
   }
 };
