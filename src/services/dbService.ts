@@ -187,6 +187,7 @@ export interface dbReview extends BaseDoc {
   serviceName?: string;
   serviceDate?: string;
   adminReply?: string;
+  isHidden?: boolean;
 }
 
 
@@ -977,16 +978,27 @@ export const submitReview = async (data: Omit<dbReview, "id">): Promise<string> 
   return res.id;
 };
 
-export const getAllReviews = async (): Promise<dbReview[]> => {
+export const getAllReviews = async (includeHidden: boolean = false): Promise<dbReview[]> => {
   const snap = await db.collection("reviews").get();
   const list: dbReview[] = [];
   snap.forEach((doc: any) => {
     const data = doc.data() || {};
+    if (data.isDeleted) return;
+    if (!includeHidden && data.isHidden) return;
     const images = (data.images || []).filter((url: string) => url && !url.startsWith("blob:"));
     const videos = (data.videos || []).filter((url: string) => url && !url.startsWith("blob:"));
     list.push({ id: doc.id, ...data, images, videos } as dbReview);
   });
   return list;
+};
+
+export const toggleHideReview = async (reviewId: string, isHidden: boolean): Promise<void> => {
+  await db.collection("reviews").doc(reviewId).set({
+    isHidden,
+    updatedAt: new Date().toISOString(),
+    updatedBy: auth.currentUser?.uid || "admin"
+  }, { merge: true });
+  await logAuditAction(`Admin ${isHidden ? "hid" : "unhid"} review ${reviewId}`);
 };
 
 export const replyToReview = async (reviewId: string, reply: string): Promise<void> => {

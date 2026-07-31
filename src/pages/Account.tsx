@@ -155,7 +155,7 @@ export default function Account() {
   const fetchReviews = useCallback(async () => {
     if (!user) return;
     try {
-      const allRev = await getAllReviews();
+      const allRev = await getAllReviews(true);
       setReviewsList(allRev);
     } catch (err) {
       console.error("Failed to fetch reviews:", err);

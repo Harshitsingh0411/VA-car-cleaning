@@ -13,6 +13,7 @@ import {
   getJobApplications,
   updateJobStatus as updateJobStatusInDb,
   getAllReviews,
+  toggleHideReview,
   createOrUpdateEmployee,
   deleteEmployeeProfile,
   getAllEmployees,
@@ -73,7 +74,9 @@ import {
   Plus,
   UserCheck,
   Phone,
-  Loader2
+  Loader2,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import { servicePrices } from "../lib/prices";
 
@@ -130,6 +133,7 @@ interface AdminReview {
   videos?: string[];
   serviceName?: string;
   adminReply?: string;
+  isHidden?: boolean;
 }
 
 export default function Admin() {
@@ -151,6 +155,8 @@ export default function Admin() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [jobs, setJobs] = useState<AdminJobApp[]>([]);
   const [reviews, setReviews] = useState<AdminReview[]>([]);
+  const [reviewFilter, setReviewFilter] = useState<"all" | "visible" | "hidden">("all");
+  const [togglingReviewId, setTogglingReviewId] = useState<string | null>(null);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
 
   const [employees, setEmployees] = useState<any[]>([]);
@@ -629,7 +635,7 @@ export default function Admin() {
 
   const fetchAdminReviews = async () => {
     try {
-      const data = await getAllReviews();
+      const data = await getAllReviews(true);
       const mapped = data.map((r) => ({
         id: r.id,
         name: r.customerName || "Customer",
@@ -640,11 +646,26 @@ export default function Admin() {
         images: r.images,
         videos: r.videos,
         serviceName: r.serviceName,
-        adminReply: r.adminReply
+        adminReply: r.adminReply,
+        isHidden: Boolean(r.isHidden)
       }));
       setReviews(mapped);
     } catch (err) {
       console.error("Error fetching reviews:", err);
+    }
+  };
+
+  const handleToggleHideReview = async (reviewId: string, currentHiddenStatus: boolean) => {
+    setTogglingReviewId(reviewId);
+    try {
+      await toggleHideReview(reviewId, !currentHiddenStatus);
+      setReviews((prev) =>
+        prev.map((r) => (r.id === reviewId ? { ...r, isHidden: !currentHiddenStatus } : r))
+      );
+    } catch (err) {
+      console.error("Failed to toggle review visibility:", err);
+    } finally {
+      setTogglingReviewId(null);
     }
   };
 
@@ -2466,67 +2487,165 @@ export default function Admin() {
           {/* REVIEWS PANEL */}
           {activeTab === "reviews" && (
             <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm space-y-6">
-              <h3 className="font-heading font-extrabold text-dark text-lg">Customer Reviews & Cloudinary Media Feedback</h3>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-100 pb-4">
+                <div>
+                  <h3 className="font-heading font-extrabold text-dark text-lg">Customer Reviews & Public Visibility</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">Control which customer reviews are visible on service pages and the public website.</p>
+                </div>
+                
+                {/* Filter Buttons */}
+                <div className="flex items-center gap-1 bg-gray-100/70 p-1 rounded-xl border border-gray-200/50">
+                  <button
+                    onClick={() => setReviewFilter("all")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      reviewFilter === "all" ? "bg-white text-dark shadow-sm" : "text-gray-500 hover:text-dark"
+                    }`}
+                  >
+                    All ({reviews.length})
+                  </button>
+                  <button
+                    onClick={() => setReviewFilter("visible")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      reviewFilter === "visible" ? "bg-white text-emerald-600 shadow-sm" : "text-gray-500 hover:text-dark"
+                    }`}
+                  >
+                    Visible ({reviews.filter((r) => !r.isHidden).length})
+                  </button>
+                  <button
+                    onClick={() => setReviewFilter("hidden")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      reviewFilter === "hidden" ? "bg-white text-amber-600 shadow-sm" : "text-gray-500 hover:text-dark"
+                    }`}
+                  >
+                    Hidden ({reviews.filter((r) => r.isHidden).length})
+                  </button>
+                </div>
+              </div>
 
               <div className="space-y-4">
-                {reviews.map((r) => (
-                  <div key={r.id} className="p-5 border border-gray-100 rounded-2xl bg-gray-50/30 space-y-3">
-                    <div className="flex justify-between items-start gap-2">
-                      <div>
-                        <h4 className="font-bold text-dark text-sm">{r.name}</h4>
-                        <span className="text-[10px] text-gray-400 font-mono block">{r.email}</span>
-                        {r.serviceName && (
-                          <span className="inline-block text-[9px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full mt-1">
-                            {r.serviceName}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex text-[#F4B400] gap-0.5 items-center bg-amber-50 px-2 py-1 rounded-lg border border-amber-100">
-                        {Array.from({ length: r.rating }).map((_, i) => (
-                          <Star key={i} size={13} className="fill-[#F4B400]" />
-                        ))}
-                        <span className="text-[10px] font-black text-dark ml-1">{r.rating}/5</span>
-                      </div>
-                    </div>
-
-                    <p className="text-xs text-dark font-medium leading-relaxed italic bg-white p-3 rounded-xl border border-gray-100">
-                      "{r.message}"
-                    </p>
-
-                    {/* Customer Attached Photos & Videos */}
-                    {(r.images?.length || r.videos?.length) ? (
-                      <div className="space-y-1 pt-1">
-                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">
-                          Verified Customer Media Attachments
-                        </span>
-                        <div className="flex flex-wrap gap-2">
-                          {r.images?.map((imgUrl, i) => (
-                            <a key={i} href={imgUrl} target="_blank" rel="noopener noreferrer" className="relative group">
-                              <img src={imgUrl} alt="Customer review photo" className="w-16 h-16 rounded-xl object-cover border border-gray-200 shadow-sm group-hover:scale-105 transition-transform" />
-                            </a>
-                          ))}
-                          {r.videos?.map((vidUrl, i) => (
-                            !isLocalBlobUrl(vidUrl) ? (
-                              <video key={i} src={vidUrl} controls className="w-24 h-16 rounded-xl object-cover border border-gray-200 shadow-sm bg-black" />
+                {reviews
+                  .filter((r) => {
+                    if (reviewFilter === "visible") return !r.isHidden;
+                    if (reviewFilter === "hidden") return r.isHidden;
+                    return true;
+                  })
+                  .map((r) => (
+                    <div
+                      key={r.id}
+                      className={`p-5 border rounded-2xl space-y-3 transition-all ${
+                        r.isHidden
+                          ? "border-amber-200 bg-amber-50/20 opacity-90"
+                          : "border-gray-100 bg-gray-50/30"
+                      }`}
+                    >
+                      <div className="flex justify-between items-start gap-2">
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="font-bold text-dark text-sm">{r.name}</h4>
+                            {r.isHidden ? (
+                              <span className="inline-flex items-center gap-1 text-[9px] font-bold text-amber-700 bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-full">
+                                <EyeOff size={10} /> Hidden from Website & Services
+                              </span>
                             ) : (
-                              <div key={i} className="w-28 h-16 rounded-xl bg-amber-50 border border-amber-200 p-1 flex flex-col justify-center items-center text-center text-amber-800 text-[8px] font-bold">
-                                <span>⚠️ Local Session Blob</span>
-                                <span className="text-[7px] text-amber-600 font-normal">Re-upload required</span>
-                              </div>
-                            )
+                              <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-full">
+                                <Eye size={10} /> Visible on Website
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-gray-400 font-mono block mt-0.5">{r.email}</span>
+                          {r.serviceName && (
+                            <span className="inline-block text-[9px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full mt-1">
+                              {r.serviceName}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex text-[#F4B400] gap-0.5 items-center bg-amber-50 px-2 py-1 rounded-lg border border-amber-100">
+                          {Array.from({ length: r.rating }).map((_, i) => (
+                            <Star key={i} size={13} className="fill-[#F4B400]" />
                           ))}
+                          <span className="text-[10px] font-black text-dark ml-1">{r.rating}/5</span>
                         </div>
                       </div>
-                    ) : null}
 
-                    <div className="text-[9px] text-gray-400 font-bold pt-1 flex justify-between items-center">
-                      <span>Submitted: {r.date}</span>
-                      {r.adminReply && (
-                        <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded font-bold">✓ Admin Replied</span>
-                      )}
+                      <p className="text-xs text-dark font-medium leading-relaxed italic bg-white p-3 rounded-xl border border-gray-100">
+                        "{r.message}"
+                      </p>
+
+                      {/* Customer Attached Photos & Videos */}
+                      {(r.images?.length || r.videos?.length) ? (
+                        <div className="space-y-1 pt-1">
+                          <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">
+                            Verified Customer Media Attachments
+                          </span>
+                          <div className="flex flex-wrap gap-2">
+                            {r.images?.map((imgUrl, i) => (
+                              <a key={i} href={imgUrl} target="_blank" rel="noopener noreferrer" className="relative group">
+                                <img src={imgUrl} alt="Customer review photo" className="w-16 h-16 rounded-xl object-cover border border-gray-200 shadow-sm group-hover:scale-105 transition-transform" />
+                              </a>
+                            ))}
+                            {r.videos?.map((vidUrl, i) => (
+                              !isLocalBlobUrl(vidUrl) ? (
+                                <video key={i} src={vidUrl} controls className="w-24 h-16 rounded-xl object-cover border border-gray-200 shadow-sm bg-black" />
+                              ) : (
+                                <div key={i} className="w-28 h-16 rounded-xl bg-amber-50 border border-amber-200 p-1 flex flex-col justify-center items-center text-center text-amber-800 text-[8px] font-bold">
+                                  <span>⚠️ Local Session Blob</span>
+                                  <span className="text-[7px] text-amber-600 font-normal">Re-upload required</span>
+                                </div>
+                              )
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+
+                      <div className="text-[9px] text-gray-400 font-bold pt-2 border-t border-gray-100 flex flex-wrap justify-between items-center gap-2">
+                        <span>Submitted: {r.date}</span>
+
+                        <div className="flex items-center gap-3">
+                          {r.adminReply && (
+                            <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded font-bold">✓ Admin Replied</span>
+                          )}
+
+                          <button
+                            onClick={() => handleToggleHideReview(r.id, Boolean(r.isHidden))}
+                            disabled={togglingReviewId === r.id}
+                            className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl transition-all cursor-pointer border ${
+                              r.isHidden
+                                ? "text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-200 shadow-sm"
+                                : "text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-200"
+                            }`}
+                            title={r.isHidden ? "Click to make this review visible on website & service pages" : "Click to hide this review from website & service pages"}
+                          >
+                            {togglingReviewId === r.id ? (
+                              <>
+                                <Loader2 size={13} className="animate-spin" />
+                                <span>Updating...</span>
+                              </>
+                            ) : r.isHidden ? (
+                              <>
+                                <Eye size={13} />
+                                <span>Unhide Review (Show on Website)</span>
+                              </>
+                            ) : (
+                              <>
+                                <EyeOff size={13} />
+                                <span>Hide Review from Website</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
                     </div>
+                  ))}
+
+                {reviews.filter((r) => {
+                  if (reviewFilter === "visible") return !r.isHidden;
+                  if (reviewFilter === "hidden") return r.isHidden;
+                  return true;
+                }).length === 0 && (
+                  <div className="text-center py-10 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+                    <p className="text-xs text-gray-500 font-medium">No reviews match the selected filter ({reviewFilter}).</p>
                   </div>
-                ))}
+                )}
               </div>
             </div>
           )}
