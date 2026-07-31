@@ -1396,89 +1396,77 @@ export const updateContactSettings = async (settings: dbContactSettings): Promis
 
 
 // 14. Dynamic Custom Services
-export const INITIAL_SEED_SERVICES: dbService[] = [
-  {
-    id: "bike-wash",
-    name: "Bike & Scooter Foam Wash",
-    price: 100,
-    description: "Doorstep high-pressure foam wash, degreasing, tyre shine, and matte/gloss polish for all bikes and scooters.",
-    image: "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&q=80&w=800",
-    isCustom: false
-  },
-  {
-    id: "foam-car-wash",
-    name: "Foam Car Wash & Shine",
-    price: 299,
-    description: "Complete exterior high-pressure foam bath, microfiber hand drying, glass cleaning, and tyre dressing at your doorstep.",
-    image: "https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&q=80&w=800",
-    isCustom: false
-  },
-  {
-    id: "interior-detailing",
-    name: "Deep Interior Cleaning & Vacuum",
-    price: 499,
-    description: "Complete cabin vacuuming, dashboard restoration, seat upholstery stain removal, and air vent sanitization.",
-    image: "https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&q=80&w=800",
-    isCustom: false
-  },
-  {
-    id: "full-car-spa",
-    name: "Full Car Spa & Paint Protection",
-    price: 799,
-    description: "Complete interior deep clean + exterior foam wash + liquid wax ceramic spray polish for showroom shine.",
-    image: "https://images.unsplash.com/photo-1507136566006-cfc505b114fe?auto=format&fit=crop&q=80&w=800",
-    isCustom: false
-  }
+export const defaultServices: dbService[] = [];
+
+const LEGACY_SEED_IDS = [
+  "bike-wash",
+  "foam-car-wash",
+  "interior-detailing",
+  "full-car-spa",
+  "exterior",
+  "interior",
+  "foam",
+  "wax",
+  "dashboard",
+  "tyre",
+  "premium"
 ];
 
-export const defaultServices: dbService[] = [];
+const LEGACY_SEED_NAMES = [
+  "bike & scooter foam wash",
+  "foam car wash & shine",
+  "deep interior cleaning & vacuum",
+  "full car spa & paint protection"
+];
+
+const isLegacyService = (s: any): boolean => {
+  if (!s) return true;
+  const sId = (s.id || "").toLowerCase();
+  const sName = (s.name || "").toLowerCase();
+  return LEGACY_SEED_IDS.includes(sId) || LEGACY_SEED_NAMES.includes(sName);
+};
 
 let cachedServicesMap: dbService[] | null = null;
 
 export const getAllServicesSync = (): dbService[] => {
-  if (cachedServicesMap && cachedServicesMap.length > 0) return cachedServicesMap;
+  if (cachedServicesMap && cachedServicesMap.length > 0) {
+    const cleaned = cachedServicesMap.filter(s => !isLegacyService(s));
+    if (cleaned.length !== cachedServicesMap.length) {
+      cachedServicesMap = cleaned;
+    }
+    return cachedServicesMap;
+  }
 
   try {
     const cachedRaw = localStorage.getItem("sim_db_services_cache");
     if (cachedRaw) {
       const parsed = JSON.parse(cachedRaw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        cachedServicesMap = parsed;
+        const cleaned = parsed.filter((s: any) => !isLegacyService(s));
+        try { localStorage.setItem("sim_db_services_cache", JSON.stringify(cleaned)); } catch (e) {}
+        cachedServicesMap = cleaned;
         return cachedServicesMap;
       }
     }
   } catch (e) {}
 
   const servicesMap = new Map<string, dbService>();
-  INITIAL_SEED_SERVICES.forEach((s) => servicesMap.set(s.id, { ...s }));
 
   try {
-    const priceOverrides = JSON.parse(localStorage.getItem("admin_pricing_overrides") || "{}");
-    const imageOverrides = JSON.parse(localStorage.getItem("admin_service_images") || "{}");
-    const descOverrides = JSON.parse(localStorage.getItem("admin_service_descriptions") || "{}");
     const customServicesRaw = JSON.parse(localStorage.getItem("admin_custom_services") || "[]");
-    const defaultDeleted = JSON.parse(localStorage.getItem("admin_default_deleted_services") || "[]");
+    const cleanedCustom = customServicesRaw.filter((s: any) => !isLegacyService(s));
+    try { localStorage.setItem("admin_custom_services", JSON.stringify(cleanedCustom)); } catch (e) {}
 
-    defaultDeleted.forEach((id: string) => servicesMap.delete(id));
-    customServicesRaw.forEach((cs: any) => {
-      if (cs.isDeleted || defaultDeleted.includes(cs.id)) {
-        servicesMap.delete(cs.id);
-      } else {
-        const existing = servicesMap.get(cs.id) || cs;
-        servicesMap.set(cs.id, { ...existing, ...cs });
+    cleanedCustom.forEach((cs: any) => {
+      if (!cs.isDeleted && !isLegacyService(cs)) {
+        servicesMap.set(cs.id, cs);
       }
-    });
-
-    servicesMap.forEach((s, sId) => {
-      if (priceOverrides[sId] !== undefined) s.price = Number(priceOverrides[sId]);
-      if (imageOverrides[sId] !== undefined) s.image = imageOverrides[sId];
-      if (descOverrides[sId] !== undefined) s.description = descOverrides[sId];
     });
   } catch (e) {
     console.error("Error reading service overrides from local storage:", e);
   }
 
-  cachedServicesMap = Array.from(servicesMap.values());
+  cachedServicesMap = Array.from(servicesMap.values()).filter(s => !isLegacyService(s));
   return cachedServicesMap;
 };
 
@@ -1488,50 +1476,44 @@ export const getAllServices = async (): Promise<dbService[]> => {
   // Background revalidation against live database
   db.collection("services").get().then((snap) => {
     const servicesMap = new Map<string, dbService>();
-    INITIAL_SEED_SERVICES.forEach((s) => servicesMap.set(s.id, { ...s }));
 
     if (snap && snap.docs && snap.docs.length > 0) {
       snap.docs.forEach((doc: any) => {
         const data = (typeof doc.data === "function" ? doc.data() : doc) as Partial<dbService>;
         const sId = doc.id;
-        if (data && data.isDeleted) {
-          servicesMap.delete(sId);
-        } else if (data && data.name) {
-          servicesMap.set(sId, {
-            id: sId,
-            name: data.name || "Unnamed Service",
-            price: data.price !== undefined ? Number(data.price) : 0,
-            image: data.image || "",
-            description: data.description || "",
-            isCustom: true
-          });
+        if (sId && !isLegacyService({ id: sId, name: data?.name })) {
+          if (data && data.isDeleted) {
+            servicesMap.delete(sId);
+          } else if (data && data.name) {
+            servicesMap.set(sId, {
+              id: sId,
+              name: data.name || "Unnamed Service",
+              price: data.price !== undefined ? Number(data.price) : 0,
+              image: data.image || "",
+              description: data.description || "",
+              isCustom: true
+            });
+          }
         }
       });
     }
 
     try {
-      const priceOverrides = JSON.parse(localStorage.getItem("admin_pricing_overrides") || "{}");
-      const imageOverrides = JSON.parse(localStorage.getItem("admin_service_images") || "{}");
-      const descOverrides = JSON.parse(localStorage.getItem("admin_service_descriptions") || "{}");
       const customServicesRaw = JSON.parse(localStorage.getItem("admin_custom_services") || "[]");
-      const defaultDeleted = JSON.parse(localStorage.getItem("admin_default_deleted_services") || "[]");
+      const cleanedCustom = customServicesRaw.filter((s: any) => !isLegacyService(s));
+      try { localStorage.setItem("admin_custom_services", JSON.stringify(cleanedCustom)); } catch (e) {}
 
-      defaultDeleted.forEach((id: string) => servicesMap.delete(id));
-      customServicesRaw.forEach((cs: any) => {
-        if (cs.isDeleted) servicesMap.delete(cs.id);
-        else {
+      cleanedCustom.forEach((cs: any) => {
+        if (cs.isDeleted || isLegacyService(cs)) {
+          servicesMap.delete(cs.id);
+        } else {
           const existing = servicesMap.get(cs.id) || cs;
           servicesMap.set(cs.id, { ...existing, ...cs });
         }
       });
-      servicesMap.forEach((s, sId) => {
-        if (priceOverrides[sId] !== undefined) s.price = Number(priceOverrides[sId]);
-        if (imageOverrides[sId] !== undefined) s.image = imageOverrides[sId];
-        if (descOverrides[sId] !== undefined) s.description = descOverrides[sId];
-      });
     } catch {}
 
-    const freshList = Array.from(servicesMap.values());
+    const freshList = Array.from(servicesMap.values()).filter(s => !isLegacyService(s));
     if (JSON.stringify(freshList) !== JSON.stringify(cachedServicesMap)) {
       cachedServicesMap = freshList;
       try {
@@ -1552,7 +1534,7 @@ export const createOrUpdateService = async (service: dbService): Promise<void> =
     price: service.price,
     image: service.image,
     description: service.description,
-    isCustom: service.isCustom ?? true,
+    isCustom: true,
     isDeleted: false,
     updatedAt: new Date().toISOString()
   };
@@ -1565,33 +1547,10 @@ export const createOrUpdateService = async (service: dbService): Promise<void> =
 
   // Backup to Local Storage
   try {
-    if (service.isCustom) {
-      const customServicesRaw = JSON.parse(localStorage.getItem("admin_custom_services") || "[]");
-      const filtered = customServicesRaw.filter((s: any) => s.id !== service.id);
-      filtered.push(service);
-      localStorage.setItem("admin_custom_services", JSON.stringify(filtered));
-    } else {
-      // It's a default service override
-      const priceOverrides = JSON.parse(localStorage.getItem("admin_pricing_overrides") || "{}");
-      const imageOverrides = JSON.parse(localStorage.getItem("admin_service_images") || "{}");
-      const descOverrides = JSON.parse(localStorage.getItem("admin_service_descriptions") || "{}");
-
-      const priceKey = service.id === "exterior" ? "exteriorWash"
-        : service.id === "interior" ? "interiorCleaning"
-          : service.id === "foam" ? "foamWash"
-            : service.id === "wax" ? "waxPolish"
-              : service.id === "dashboard" ? "dashboardCleaning"
-                : service.id === "tyre" ? "tyreDressing"
-                  : service.id === "premium" ? "premiumDetailing" : service.id;
-
-      priceOverrides[priceKey] = service.price;
-      imageOverrides[service.id] = service.image;
-      descOverrides[service.id] = service.description;
-
-      localStorage.setItem("admin_pricing_overrides", JSON.stringify(priceOverrides));
-      localStorage.setItem("admin_service_images", JSON.stringify(imageOverrides));
-      localStorage.setItem("admin_service_descriptions", JSON.stringify(descOverrides));
-    }
+    const customServicesRaw = JSON.parse(localStorage.getItem("admin_custom_services") || "[]");
+    const filtered = customServicesRaw.filter((s: any) => s.id !== service.id);
+    filtered.push({ ...service, isCustom: true });
+    localStorage.setItem("admin_custom_services", JSON.stringify(filtered));
   } catch (e) {
     console.error("Local storage service backup failed:", e);
   }
@@ -1607,18 +1566,8 @@ export const deleteServiceProfile = async (id: string): Promise<void> => {
 
   try {
     const customServicesRaw = JSON.parse(localStorage.getItem("admin_custom_services") || "[]");
-    const matched = customServicesRaw.find((s: any) => s.id === id);
-    if (matched) {
-      matched.isDeleted = true;
-      localStorage.setItem("admin_custom_services", JSON.stringify(customServicesRaw));
-    } else {
-      // It was a default service, save delete flag in localStorage
-      const defaultDeleted = JSON.parse(localStorage.getItem("admin_default_deleted_services") || "[]");
-      if (!defaultDeleted.includes(id)) {
-        defaultDeleted.push(id);
-        localStorage.setItem("admin_default_deleted_services", JSON.stringify(defaultDeleted));
-      }
-    }
+    const filtered = customServicesRaw.filter((s: any) => s.id !== id);
+    localStorage.setItem("admin_custom_services", JSON.stringify(filtered));
   } catch (e) {
     console.error("Local storage delete backup failed:", e);
   }

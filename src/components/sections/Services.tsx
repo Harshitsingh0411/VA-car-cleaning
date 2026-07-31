@@ -3,13 +3,24 @@ import { motion } from "motion/react";
 import { Droplet, Sparkles, Zap, Award, Car, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "../ui/Button";
-import { getAllServices, dbService } from "../../services/dbService";
+import { getAllServices, dbService, subscribeToDataChanges } from "../../services/dbService";
 
 export default function Services() {
   const [services, setServices] = useState<dbService[]>([]);
 
   useEffect(() => {
-    getAllServices().then(setServices).catch(console.error);
+    const fetchServices = () => {
+      getAllServices().then(setServices).catch(console.error);
+    };
+
+    fetchServices();
+    const unsubscribe = subscribeToDataChanges((topic) => {
+      if (!topic || topic === "all" || topic === "services") {
+        fetchServices();
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const getIcon = (id: string) => {
