@@ -979,18 +979,33 @@ export const replyToReview = async (reviewId: string, reply: string): Promise<vo
 
 // 9. Notifications CRUD
 export const getUserNotifications = async (userId: string): Promise<dbNotification[]> => {
+  if (!userId) return [];
   const notifMap = new Map<string, dbNotification>();
 
+  // Determine target user's role to strictly isolate customer vs crew/admin notifications
+  let userRole = "customer";
   try {
-    const snap = await db.collection("notifications")
-      .where("user", "in", [userId, "all_users", "system"])
-      .get();
+    const userDoc = await getUserProfile(userId);
+    if (userDoc?.role) userRole = userDoc.role;
+  } catch (e) {}
+
+  try {
+    const snap = await db.collection("notifications").get();
     
     snap.forEach((doc: any) => {
       const data = doc.data() as dbNotification;
       const docId = doc.id;
       if (!data.isDeleted) {
-        notifMap.set(docId, { id: docId, ...data });
+        const notifUserId = data.userId || data.user;
+        const matchesUser = (
+          notifUserId === userId ||
+          data.user === "all_users" ||
+          (data.user === "system" && !data.receiverRole)
+        );
+
+        if (matchesUser) {
+          notifMap.set(docId, { id: docId, ...data });
+        }
       }
     });
   } catch (err) {
@@ -1012,7 +1027,41 @@ export const getUserNotifications = async (userId: string): Promise<dbNotificati
     // fallback
   }
 
-  return Array.from(notifMap.values());
+  const allFetched = Array.from(notifMap.values());
+
+  // Role-based Security & Privacy Filter:
+  // If user is a regular customer, strictly exclude crew job requests & internal admin alerts
+  if (userRole === "customer") {
+    return allFetched.filter((n) => {
+      const nType = (n.type || "").toLowerCase();
+      const nRole = (n.receiverRole || "").toLowerCase();
+      const nTitle = (n.title || "").toLowerCase();
+
+      // Exclude staff/crew/admin recipient targets
+      if (nRole === "staff" || nRole === "crew" || nRole === "admin" || nRole === "super_admin") {
+        return false;
+      }
+      // Exclude job request & internal job assignment categories
+      if (nType.includes("job") || nType === "job request" || nType === "job assignment") {
+        return false;
+      }
+      if (nTitle.includes("new booking request") || nTitle.includes("booking accepted by crew") || nTitle.includes("new job assigned")) {
+        return false;
+      }
+      return true;
+    });
+  }
+
+  // If user is crew/staff, exclude customer-private or admin-only notifications not meant for staff
+  if (userRole === "staff" || userRole === "crew") {
+    return allFetched.filter((n) => {
+      const nRole = (n.receiverRole || "").toLowerCase();
+      if (nRole === "customer" && n.userId && n.userId !== userId) return false;
+      return true;
+    });
+  }
+
+  return allFetched;
 };
 
 export const sendNotification = async (
