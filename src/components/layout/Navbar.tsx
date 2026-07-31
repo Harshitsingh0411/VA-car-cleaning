@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Car, Phone, Bell, LogIn, User, ChevronDown } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { Menu, X, Phone, Bell, LogIn, ChevronDown } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "../ui/Button";
 import { cn } from "../../lib/utils";
 import { useAuth } from "../../context/AuthContext";
@@ -13,8 +13,9 @@ import {
 } from "../../services/notificationService";
 import { getCartoonAvatar, handleAvatarError } from "../../utils/avatar";
 
-import { seoServices, seoLocations } from "../../data/seoData";
-import { getAllServices, getAllServicesSync, dbService, subscribeToDataChanges } from "../../services/dbService";
+import { seoLocations } from "../../data/seoData";
+import { getAllServices, getAllServicesSync, subscribeToDataChanges } from "../../services/dbService";
+import { usePerformanceMode } from "../../hooks/usePerformanceMode";
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -22,6 +23,8 @@ export default function Navbar() {
   const location = useLocation();
   const { user, profile } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
+  const { isLowEnd, prefersReducedMotion } = usePerformanceMode();
+
   const [dynamicServices, setDynamicServices] = useState<Array<{ name: string; path: string }>>(() => {
     const syncData = getAllServicesSync();
     return (syncData || []).map((s) => ({ name: s.name, path: `/services/${s.id}` }));
@@ -73,7 +76,7 @@ export default function Navbar() {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
     };
-    window.addEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
@@ -112,7 +115,7 @@ export default function Navbar() {
   return (
     <header
       className={cn(
-        "fixed top-0 left-0 right-0 z-40 transition-all duration-300",
+        "fixed top-0 left-0 right-0 z-40 transition-all duration-300 transform-gpu",
         shouldStyleScrolled
           ? "bg-[#0B1220]/95 backdrop-blur-md shadow-lg py-3 border-b border-white/5"
           : "bg-transparent py-5"
@@ -122,9 +125,13 @@ export default function Navbar() {
 
         {/* BRAND LOGO */}
         <Link to="/" className="flex items-center gap-2 group">
-          <div className="w-10 h-10 group-hover:scale-110 transition-transform shadow-md flex items-center justify-center">
+          <motion.div
+            whileHover={{ scale: isLowEnd ? 1 : 1.08 }}
+            whileTap={{ scale: 0.95 }}
+            className="w-10 h-10 shadow-md flex items-center justify-center transform-gpu"
+          >
             <img src={vaLogo} alt="VA Detailing Logo" className="w-full h-full object-contain" />
-          </div>
+          </motion.div>
           <div className="flex flex-col">
             <span className="text-[9px] tracking-widest font-black text-[#F4B400]">
               CAR & BIKE CARE
@@ -149,26 +156,26 @@ export default function Navbar() {
                   <motion.div
                     layoutId="underline"
                     className="absolute left-0 right-0 bottom-4 h-0.5 bg-[#F4B400]"
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    transition={{ type: "spring", stiffness: 350, damping: 30 }}
                   />
                 )}
               </Link>
 
               {/* Dropdown Menu */}
               {link.dropdown && (
-                <div className="absolute top-full left-0 mt-0 w-72 bg-white rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 translate-y-4 group-hover:translate-y-0 border border-gray-100 overflow-hidden z-50">
+                <div className="absolute top-full left-0 mt-0 w-72 bg-white rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 translate-y-2 group-hover:translate-y-0 border border-gray-100 overflow-hidden z-50 transform-gpu">
                   <div className="p-2.5 max-h-[360px] overflow-y-auto grid grid-cols-1 gap-1">
                     {link.dropdown.map(dropItem => (
                       <Link 
                         key={dropItem.name} 
                         to={dropItem.path}
-                        className="block px-3.5 py-2.5 text-xs font-bold text-gray-700 hover:text-primary hover:bg-blue-50 rounded-xl transition-colors truncate"
+                        className="block px-3.5 py-2.5 text-xs font-bold text-gray-700 hover:text-[#0D3B8E] hover:bg-blue-50 rounded-xl transition-colors truncate"
                       >
                         {dropItem.name}
                       </Link>
                     ))}
                     {link.name === "Services" && (
-                      <Link to="/services" className="block px-4 py-2.5 text-xs font-black text-primary text-center hover:bg-gray-50 border-t border-gray-100 mt-1 uppercase tracking-wider">
+                      <Link to="/services" className="block px-4 py-2.5 text-xs font-black text-[#0D3B8E] text-center hover:bg-gray-50 border-t border-gray-100 mt-1 uppercase tracking-wider">
                         View All Services →
                       </Link>
                     )}
@@ -191,42 +198,48 @@ export default function Navbar() {
           </a>
 
           {user && (
-            <Link to="/notifications" className="relative text-gray-300 hover:text-[#F4B400] transition-colors p-1.5 cursor-pointer shrink-0" title="Notification Center">
-              <Bell size={16} />
-              {unreadCount > 0 && (
-                <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-rose-500 text-white rounded-full flex items-center justify-center text-[8px] font-black leading-none border border-[#0B1220]">
-                  {unreadCount}
-                </span>
-              )}
-            </Link>
+            <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}>
+              <Link to="/notifications" className="relative text-gray-300 hover:text-[#F4B400] transition-colors p-1.5 cursor-pointer shrink-0 block" title="Notification Center">
+                <Bell size={16} />
+                {unreadCount > 0 && (
+                  <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-rose-500 text-white rounded-full flex items-center justify-center text-[8px] font-black leading-none border border-[#0B1220]">
+                    {unreadCount}
+                  </span>
+                )}
+              </Link>
+            </motion.div>
           )}
 
           {user ? (
             <Link to="/account" className="flex items-center gap-2 group shrink-0">
-              <div className="w-8 h-8 rounded-full overflow-hidden border border-white/20 group-hover:border-[#F4B400] transition-colors">
+              <motion.div whileHover={{ scale: 1.08 }} className="w-8 h-8 rounded-full overflow-hidden border border-white/20 group-hover:border-[#F4B400] transition-colors transform-gpu">
                 <img
                   src={profile?.photo || user.photoURL || getCartoonAvatar(user.email || user.displayName || user.uid)}
                   onError={(e) => handleAvatarError(e, user.email || user.displayName || user.uid)}
                   alt="My Profile avatar"
                   className="w-full h-full object-cover"
                 />
-              </div>
+              </motion.div>
               <span className="text-[11px] font-bold text-gray-300 group-hover:text-white transition-colors max-w-[65px] truncate whitespace-nowrap">
                 {user.displayName || "Account"}
               </span>
             </Link>
           ) : (
             <Link to="/login" className="shrink-0">
-              <Button variant="outline" className="text-white border-white/20 hover:bg-white/10 hover:border-white/40 font-bold text-[10px] uppercase tracking-wider px-3 h-8.5 rounded-lg">
-                Login
-              </Button>
+              <motion.div whileHover={{ scale: isLowEnd ? 1 : 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Button variant="outline" className="text-white border-white/20 hover:bg-white/10 hover:border-white/40 font-bold text-[10px] uppercase tracking-wider px-3 h-8.5 rounded-lg cursor-pointer transform-gpu transition-all">
+                  Login
+                </Button>
+              </motion.div>
             </Link>
           )}
 
           <Link to="/book" className="shrink-0">
-            <Button className="bg-[#F4B400] hover:bg-[#ffe258] text-dark font-bold text-[10px] uppercase tracking-wider px-4 h-8.5 rounded-lg border-none shadow-lg">
-              Book Now
-            </Button>
+            <motion.div whileHover={{ scale: isLowEnd ? 1 : 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button className="bg-[#F4B400] hover:bg-[#ffe258] text-dark font-bold text-[10px] uppercase tracking-wider px-4 h-8.5 rounded-lg border-none shadow-lg cursor-pointer transform-gpu transition-all">
+                Book Now
+              </Button>
+            </motion.div>
           </Link>
         </div>
 
@@ -273,7 +286,7 @@ export default function Navbar() {
           )}
 
           <button
-            className="p-1.5 rounded-lg text-white hover:bg-white/10 transition-colors focus:outline-none"
+            className="p-1.5 rounded-lg text-white hover:bg-white/10 transition-colors focus:outline-none cursor-pointer"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             aria-label="Toggle menu"
           >
@@ -289,13 +302,17 @@ export default function Navbar() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="absolute top-full left-0 right-0 bg-[#0B1220] shadow-xl py-6 px-6 flex flex-col gap-4 lg:hidden border-b border-white/10 overflow-hidden"
+            transition={{
+              duration: prefersReducedMotion ? 0 : isLowEnd ? 0.2 : 0.3,
+              ease: "easeInOut",
+            }}
+            className="absolute top-full left-0 right-0 bg-[#0B1220] shadow-xl py-6 px-6 flex flex-col gap-4 lg:hidden border-b border-white/10 overflow-hidden transform-gpu"
           >
             {navLinks.map((link, index) => (
               <motion.div
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05 }}
+                transition={{ delay: prefersReducedMotion ? 0 : index * 0.04 }}
                 key={link.name}
               >
                 <Link
@@ -311,7 +328,7 @@ export default function Navbar() {
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: navLinks.length * 0.05 }}
+              transition={{ delay: prefersReducedMotion ? 0 : navLinks.length * 0.04 }}
               className="flex flex-col gap-3 mt-4"
             >
               <a
@@ -362,7 +379,7 @@ export default function Navbar() {
                 </>
               ) : (
                 <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
-                  <Button variant="outline" className="w-full text-white border-white/15 hover:bg-white/5 py-2.5 flex items-center justify-center gap-2 font-bold">
+                  <Button variant="outline" className="w-full text-white border-white/15 hover:bg-white/5 py-2.5 flex items-center justify-center gap-2 font-bold cursor-pointer">
                     <LogIn size={16} className="text-[#F4B400]" />
                     <span>Login / Register</span>
                   </Button>
@@ -370,7 +387,7 @@ export default function Navbar() {
               )}
 
               <Link to="/book" onClick={() => setIsMobileMenuOpen(false)}>
-                <Button className="w-full bg-[#F4B400] text-dark hover:bg-[#ffe258] border-none font-bold">
+                <Button className="w-full bg-[#F4B400] text-dark hover:bg-[#ffe258] border-none font-bold cursor-pointer">
                   Book Now
                 </Button>
               </Link>

@@ -1,13 +1,27 @@
 import { useEffect, useState } from "react";
-import { motion } from "motion/react";
+import { motion } from "framer-motion";
+import { usePerformanceMode } from "../../hooks/usePerformanceMode";
 
 export default function CustomCursor() {
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [mousePosition, setMousePosition] = useState({ x: -100, y: -100 });
   const [isHovering, setIsHovering] = useState(false);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+  const { isLowEnd, prefersReducedMotion } = usePerformanceMode();
 
   useEffect(() => {
+    // Detect touch-only devices or low-end hardware
+    if ("ontouchstart" in window || navigator.maxTouchPoints > 0) {
+      setIsTouchDevice(true);
+      return;
+    }
+
+    let animationFrameId: number;
+
     const updateMousePosition = (e: MouseEvent) => {
-      setMousePosition({ x: e.clientX, y: e.clientY });
+      cancelAnimationFrame(animationFrameId);
+      animationFrameId = requestAnimationFrame(() => {
+        setMousePosition({ x: e.clientX, y: e.clientY });
+      });
     };
 
     const handleMouseOver = (e: MouseEvent) => {
@@ -16,7 +30,8 @@ export default function CustomCursor() {
         target.tagName.toLowerCase() === "a" ||
         target.tagName.toLowerCase() === "button" ||
         target.closest("a") ||
-        target.closest("button")
+        target.closest("button") ||
+        target.getAttribute("role") === "button"
       ) {
         setIsHovering(true);
       } else {
@@ -24,34 +39,39 @@ export default function CustomCursor() {
       }
     };
 
-    window.addEventListener("mousemove", updateMousePosition);
-    window.addEventListener("mouseover", handleMouseOver);
+    window.addEventListener("mousemove", updateMousePosition, { passive: true });
+    window.addEventListener("mouseover", handleMouseOver, { passive: true });
 
     return () => {
+      cancelAnimationFrame(animationFrameId);
       window.removeEventListener("mousemove", updateMousePosition);
       window.removeEventListener("mouseover", handleMouseOver);
     };
   }, []);
 
+  if (isTouchDevice || prefersReducedMotion || isLowEnd) {
+    return null;
+  }
+
   return (
     <>
       <motion.div
-        className="fixed top-0 left-0 w-4 h-4 bg-primary rounded-full pointer-events-none z-50 mix-blend-difference hidden md:block"
+        className="fixed top-0 left-0 w-4 h-4 bg-[#0D3B8E] rounded-full pointer-events-none z-50 mix-blend-difference hidden md:block transform-gpu"
         animate={{
           x: mousePosition.x - 8,
           y: mousePosition.y - 8,
-          scale: isHovering ? 2.5 : 1,
+          scale: isHovering ? 2.2 : 1,
         }}
-        transition={{ type: "spring", stiffness: 500, damping: 28, mass: 0.5 }}
+        transition={{ type: "spring", stiffness: 600, damping: 30, mass: 0.2 }}
       />
       <motion.div
-        className="fixed top-0 left-0 w-8 h-8 border border-primary/50 rounded-full pointer-events-none z-50 hidden md:block"
+        className="fixed top-0 left-0 w-8 h-8 border border-[#0D3B8E]/50 rounded-full pointer-events-none z-50 hidden md:block transform-gpu"
         animate={{
           x: mousePosition.x - 16,
           y: mousePosition.y - 16,
-          scale: isHovering ? 1.5 : 1,
+          scale: isHovering ? 1.4 : 1,
         }}
-        transition={{ type: "spring", stiffness: 250, damping: 20, mass: 0.8 }}
+        transition={{ type: "spring", stiffness: 300, damping: 25, mass: 0.5 }}
       />
     </>
   );

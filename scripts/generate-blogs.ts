@@ -30,30 +30,30 @@ async function generateBlogs() {
   }
 
   // Example LLM prompt template
-  const systemPrompt = \`
+  const systemPrompt = `
     You are an expert SEO copywriter and professional auto detailer. 
     Write a 1500+ word blog post optimized for the target title.
     Use semantic HTML tags (<h2>, <p>, <ul>).
     Ensure high keyword density without keyword stuffing.
     Do not wrap the response in markdown code blocks.
-  \`;
+  `;
 
   const results = [];
 
   for (const blog of BLOGS_TO_GENERATE) {
-    console.log(\`Generating content for: \${blog.title}...\`);
+    console.log(`Generating content for: ${blog.title}...`);
     try {
       // --- AI API CALL GOES HERE ---
-      // const response = await llm.generateText({ prompt: \`\${systemPrompt} \\n\\n Title: \${blog.title}\` });
+      // const response = await llm.generateText({ prompt: `${systemPrompt} \n\n Title: ${blog.title}` });
       // const content = response.text;
       
-      const simulatedContent = \`<h2>Introduction</h2><p>This is a simulated AI generated post for \${blog.title}. Replace this block with actual API calls.</p>\`;
+      const simulatedContent = `<h2>Introduction</h2><p>This is a simulated AI generated post for ${blog.title}. Replace this block with actual API calls.</p>`;
       
       results.push({
         id: Math.random().toString(36).substr(2, 9),
         slug: blog.slug,
         title: blog.title,
-        excerpt: \`Learn all about \${blog.title.toLowerCase()} in this comprehensive guide by VaCar Cleaning Service.\`,
+        excerpt: `Learn all about ${blog.title.toLowerCase()} in this comprehensive guide by VaCar Cleaning Service.`,
         content: simulatedContent,
         date: new Date().toISOString().split('T')[0],
         author: "VaCar Expert",
@@ -64,16 +64,16 @@ async function generateBlogs() {
       // Be mindful of rate limits!
       await new Promise(resolve => setTimeout(resolve, 2000));
     } catch (err) {
-      console.error(\`Failed to generate \${blog.title}\`, err);
+      console.error(`Failed to generate ${blog.title}`, err);
     }
   }
 
   // Save to a TS file that exports an array
-  let output = \`import { BlogPost } from './blogData';\\n\\n\`;
-  output += \`export const generatedBlogPosts: BlogPost[] = \${JSON.stringify(results, null, 2)};\\n\`;
+  let output = `import { BlogPost } from './blogData';\n\n`;
+  output += `export const generatedBlogPosts: BlogPost[] = ${JSON.stringify(results, null, 2)};\n`;
   
   fs.writeFileSync(TARGET_FILE, output);
-  console.log(\`Successfully generated \${results.length} blogs into src/data/generatedBlogs.ts\`);
+  console.log(`Successfully generated ${results.length} blogs into src/data/generatedBlogs.ts`);
 }
 
 generateBlogs().catch(console.error);

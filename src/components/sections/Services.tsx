@@ -1,12 +1,15 @@
-import React, { useState, useEffect } from "react";
-import { motion } from "motion/react";
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { Droplet, Sparkles, Zap, Award, Car, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "../ui/Button";
 import { getAllServices, dbService, subscribeToDataChanges } from "../../services/dbService";
+import ScrollReveal from "../ui/ScrollReveal";
+import { usePerformanceMode } from "../../hooks/usePerformanceMode";
 
 export default function Services() {
   const [services, setServices] = useState<dbService[]>([]);
+  const { isLowEnd } = usePerformanceMode();
 
   useEffect(() => {
     const fetchServices = () => {
@@ -45,108 +48,118 @@ export default function Services() {
       <div className="container mx-auto px-4 md:px-6">
         
         {/* Header Block */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16">
-          <div className="max-w-2xl space-y-4">
-            <span className="text-[#F4B400] font-heading font-semibold tracking-widest text-xs uppercase block">
-              — OUR SERVICES —
-            </span>
-            <h2 className="text-3xl md:text-5xl font-heading font-extrabold tracking-tight">
-              Premium Cleaning & Detailing Services
-            </h2>
-            <p className="text-gray-400 text-sm leading-relaxed max-w-xl">
-              We use the best products and techniques to make your vehicle look brand new.
-            </p>
+        <ScrollReveal variant="fade-up">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16">
+            <div className="max-w-2xl space-y-4">
+              <span className="text-[#F4B400] font-heading font-semibold tracking-widest text-xs uppercase block">
+                — OUR SERVICES —
+              </span>
+              <h2 className="text-3xl md:text-5xl font-heading font-extrabold tracking-tight">
+                Premium Cleaning & Detailing Services
+              </h2>
+              <p className="text-gray-400 text-sm leading-relaxed max-w-xl">
+                We use the best products and techniques to make your vehicle look brand new.
+              </p>
+            </div>
+            <Link to="/services">
+              <motion.div whileHover={{ x: isLowEnd ? 0 : 4 }} whileTap={{ scale: 0.95 }}>
+                <Button variant="outline" className="text-white border-white/10 hover:border-white/40 hover:bg-white/5 py-2.5 px-5 rounded-xl text-xs uppercase tracking-wider flex items-center gap-2 cursor-pointer transform-gpu transition-all">
+                  View All Services
+                  <ArrowRight size={14} className="text-[#F4B400]" />
+                </Button>
+              </motion.div>
+            </Link>
           </div>
-          <Link to="/services">
-            <Button variant="outline" className="text-white border-white/10 hover:border-white/40 hover:bg-white/5 py-2.5 px-5 rounded-xl text-xs uppercase tracking-wider flex items-center gap-2">
-              View All Services
-              <ArrowRight size={14} className="text-[#F4B400]" />
-            </Button>
-          </Link>
-        </div>
+        </ScrollReveal>
 
         {/* Services Cards Horizontal Grid */}
         {services.length === 0 ? (
-          <div className="text-center py-12 bg-white/5 rounded-3xl p-8 border border-white/10 max-w-2xl mx-auto">
-            <Car size={40} className="mx-auto text-gray-500 mb-3" />
-            <p className="text-gray-300 font-semibold text-sm">No custom services listed yet.</p>
-            <p className="text-gray-400 text-xs mt-1">Add detailing packages from the admin portal to feature them here.</p>
-          </div>
+          <ScrollReveal variant="scale-up">
+            <div className="text-center py-12 bg-white/5 rounded-3xl p-8 border border-white/10 max-w-2xl mx-auto">
+              <Car size={40} className="mx-auto text-gray-500 mb-3" />
+              <p className="text-gray-300 font-semibold text-sm">No custom services listed yet.</p>
+              <p className="text-gray-400 text-xs mt-1">Add detailing packages from the admin portal to feature them here.</p>
+            </div>
+          </ScrollReveal>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
             {services.map((service, index) => {
               const iconInfo = getIcon(service.id);
               return (
-                <motion.div
+                <ScrollReveal
                   key={service.id}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.1 }}
-                  className="bg-white rounded-3xl overflow-hidden shadow-2xl transition-all duration-300 group hover:-translate-y-2 flex flex-col justify-between w-full"
+                  variant="fade-up"
+                  staggerIndex={index}
                 >
-                  {/* Image with icon overlay */}
-                  <Link to={`/services/${service.id}`} className="relative h-44 overflow-hidden shrink-0 block bg-gradient-to-br from-slate-800 to-slate-900">
-                    {service.image ? (
-                      <img 
-                        src={service.image} 
-                        alt={service.name} 
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center text-gray-400">
-                        <Sparkles size={28} className="text-[#F4B400] mb-1" />
-                        <span className="text-[11px] font-bold text-gray-200">{service.name}</span>
-                      </div>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
-                    
-                    {/* Floating Circle Icon */}
-                    <div className={`absolute -bottom-4 left-6 w-10 h-10 ${iconInfo.bg} rounded-full flex items-center justify-center border-2 border-white shadow-md z-10 group-hover:rotate-12 transition-transform`}>
-                      {iconInfo.icon}
-                    </div>
-                  </Link>
-
-                  {/* Service description details */}
-                  <div className="p-6 pt-8 flex-1 flex flex-col justify-between text-dark">
-                    <div className="space-y-2 mb-4 text-left">
-                      <Link to={`/services/${service.id}`} className="block">
-                        <h3 className="text-lg font-heading font-extrabold tracking-tight group-hover:text-primary transition-colors">
-                          {service.name}
-                        </h3>
-                      </Link>
-                      <p className="text-gray-500 text-xs leading-relaxed">
-                        {service.description}
-                      </p>
-                    </div>
-
-                    <div className="flex flex-col gap-3 pt-3 border-t border-gray-100">
-                      <div className="flex justify-between items-center text-left">
-                        <div>
-                          <span className="block text-[15px] font-heading font-black text-dark">
-                            ₹{service.price}
-                          </span>
-                          <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                            Starting From
-                          </span>
+                  <motion.div
+                    whileHover={{ y: isLowEnd ? -2 : -6 }}
+                    transition={{ duration: 0.25, ease: "easeOut" }}
+                    className="bg-white rounded-3xl overflow-hidden shadow-2xl transition-shadow duration-300 group flex flex-col justify-between w-full h-full transform-gpu border border-white/10 hover:shadow-cyan-950/20"
+                  >
+                    {/* Image with icon overlay */}
+                    <Link to={`/services/${service.id}`} className="relative h-44 overflow-hidden shrink-0 block bg-gradient-to-br from-slate-800 to-slate-900">
+                      {service.image ? (
+                        <img 
+                          src={service.image} 
+                          alt={service.name} 
+                          className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-700 ease-out transform-gpu"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center text-gray-400">
+                          <Sparkles size={28} className="text-[#F4B400] mb-1" />
+                          <span className="text-[11px] font-bold text-gray-200">{service.name}</span>
                         </div>
-                        <Link
-                          to={`/services/${service.id}`}
-                          className="text-[11px] font-bold text-primary hover:text-dark flex items-center gap-1 transition-colors bg-primary/5 px-2.5 py-1 rounded-lg border border-primary/10"
-                        >
-                          Details →
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
+                      
+                      {/* Floating Circle Icon */}
+                      <div className={`absolute -bottom-4 left-6 w-10 h-10 ${iconInfo.bg} rounded-full flex items-center justify-center border-2 border-white shadow-md z-10 group-hover:rotate-12 transition-transform duration-300`}>
+                        {iconInfo.icon}
+                      </div>
+                    </Link>
+
+                    {/* Service description details */}
+                    <div className="p-6 pt-8 flex-1 flex flex-col justify-between text-dark">
+                      <div className="space-y-2 mb-4 text-left">
+                        <Link to={`/services/${service.id}`} className="block">
+                          <h3 className="text-lg font-heading font-extrabold tracking-tight group-hover:text-[#0D3B8E] transition-colors">
+                            {service.name}
+                          </h3>
+                        </Link>
+                        <p className="text-gray-500 text-xs leading-relaxed">
+                          {service.description}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col gap-3 pt-3 border-t border-gray-100">
+                        <div className="flex justify-between items-center text-left">
+                          <div>
+                            <span className="block text-[15px] font-heading font-black text-dark">
+                              ₹{service.price}
+                            </span>
+                            <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                              Starting From
+                            </span>
+                          </div>
+                          <Link
+                            to={`/services/${service.id}`}
+                            className="text-[11px] font-bold text-[#0D3B8E] hover:text-dark flex items-center gap-1 transition-colors bg-[#0D3B8E]/5 px-2.5 py-1 rounded-lg border border-[#0D3B8E]/10"
+                          >
+                            Details →
+                          </Link>
+                        </div>
+
+                        <Link to={`/book?service=${service.id}`} className="w-full">
+                          <motion.div whileHover={{ scale: isLowEnd ? 1 : 1.02 }} whileTap={{ scale: 0.97 }}>
+                            <Button className="w-full text-[10px] uppercase tracking-wider h-8.5 rounded-xl font-bold bg-[#F4B400] text-dark hover:bg-[#ffe258] border-none shadow cursor-pointer transform-gpu transition-all">
+                              Book Service
+                            </Button>
+                          </motion.div>
                         </Link>
                       </div>
-
-                      <Link to={`/book?service=${service.id}`} className="w-full">
-                        <Button className="w-full text-[10px] uppercase tracking-wider h-8.5 rounded-xl font-bold bg-[#F4B400] text-dark hover:bg-[#ffe258] border-none shadow">
-                          Book Service
-                        </Button>
-                      </Link>
                     </div>
-                  </div>
-
-                </motion.div>
+                  </motion.div>
+                </ScrollReveal>
               );
             })}
           </div>
