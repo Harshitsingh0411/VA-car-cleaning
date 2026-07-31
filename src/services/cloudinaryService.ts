@@ -73,9 +73,6 @@ export async function uploadMediaToCloudinary(
       const formData = new FormData();
       formData.append("file", fileToUpload);
       formData.append("upload_preset", uploadPreset.trim());
-      if (apiKey && apiKey.trim()) {
-        formData.append("api_key", apiKey.trim());
-      }
 
       const endpoint = `https://api.cloudinary.com/v1_1/${cloudName.trim()}/${resourceType}/upload`;
 

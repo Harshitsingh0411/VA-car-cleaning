@@ -1411,23 +1411,21 @@ export const getAllServicesSync = (): dbService[] => {
 };
 
 export const getAllServices = async (): Promise<dbService[]> => {
-  const syncData = getAllServicesSync();
+  const servicesMap = new Map<string, dbService>();
 
-  // Background async refresh from Firestore
-  db.collection("services").get().then((snap) => {
-    const servicesMap = new Map<string, dbService>();
-
-    if (snap && !snap.empty) {
-      snap.forEach((doc: any) => {
-        const data = doc.data() as Partial<dbService>;
+  try {
+    const snap = await db.collection("services").get();
+    if (snap && snap.docs) {
+      snap.docs.forEach((doc: any) => {
+        const data = (typeof doc.data === "function" ? doc.data() : doc) as Partial<dbService>;
         const sId = doc.id;
-        if (data.isDeleted) {
+        if (data && data.isDeleted) {
           servicesMap.delete(sId);
-        } else {
+        } else if (data) {
           servicesMap.set(sId, {
             id: sId,
             name: data.name || "Unnamed Service",
-            price: data.price !== undefined ? data.price : 0,
+            price: data.price !== undefined ? Number(data.price) : 0,
             image: data.image || "",
             description: data.description || "",
             isCustom: true
@@ -1435,37 +1433,35 @@ export const getAllServices = async (): Promise<dbService[]> => {
         }
       });
     }
+  } catch (err) {
+    console.warn("Database services fetch notice:", err);
+  }
 
-    try {
-      const priceOverrides = JSON.parse(localStorage.getItem("admin_pricing_overrides") || "{}");
-      const imageOverrides = JSON.parse(localStorage.getItem("admin_service_images") || "{}");
-      const descOverrides = JSON.parse(localStorage.getItem("admin_service_descriptions") || "{}");
-      const customServicesRaw = JSON.parse(localStorage.getItem("admin_custom_services") || "[]");
-      const defaultDeleted = JSON.parse(localStorage.getItem("admin_default_deleted_services") || "[]");
+  try {
+    const priceOverrides = JSON.parse(localStorage.getItem("admin_pricing_overrides") || "{}");
+    const imageOverrides = JSON.parse(localStorage.getItem("admin_service_images") || "{}");
+    const descOverrides = JSON.parse(localStorage.getItem("admin_service_descriptions") || "{}");
+    const customServicesRaw = JSON.parse(localStorage.getItem("admin_custom_services") || "[]");
+    const defaultDeleted = JSON.parse(localStorage.getItem("admin_default_deleted_services") || "[]");
 
-      defaultDeleted.forEach((id: string) => servicesMap.delete(id));
-      customServicesRaw.forEach((cs: any) => {
-        if (cs.isDeleted) servicesMap.delete(cs.id);
-        else {
-          const existing = servicesMap.get(cs.id) || cs;
-          servicesMap.set(cs.id, { ...existing, ...cs });
-        }
-      });
-      servicesMap.forEach((s, sId) => {
-        if (priceOverrides[sId] !== undefined) s.price = Number(priceOverrides[sId]);
-        if (imageOverrides[sId] !== undefined) s.image = imageOverrides[sId];
-        if (descOverrides[sId] !== undefined) s.description = descOverrides[sId];
-      });
-    } catch {}
+    defaultDeleted.forEach((id: string) => servicesMap.delete(id));
+    customServicesRaw.forEach((cs: any) => {
+      if (cs.isDeleted) servicesMap.delete(cs.id);
+      else {
+        const existing = servicesMap.get(cs.id) || cs;
+        servicesMap.set(cs.id, { ...existing, ...cs });
+      }
+    });
+    servicesMap.forEach((s, sId) => {
+      if (priceOverrides[sId] !== undefined) s.price = Number(priceOverrides[sId]);
+      if (imageOverrides[sId] !== undefined) s.image = imageOverrides[sId];
+      if (descOverrides[sId] !== undefined) s.description = descOverrides[sId];
+    });
+  } catch {}
 
-    const freshList = Array.from(servicesMap.values());
-    if (JSON.stringify(freshList) !== JSON.stringify(cachedServicesMap)) {
-      cachedServicesMap = freshList;
-      notifyGlobalDataChange("services");
-    }
-  }).catch(() => {});
-
-  return syncData;
+  const freshList = Array.from(servicesMap.values());
+  cachedServicesMap = freshList;
+  return freshList;
 };
 
 export const createOrUpdateService = async (service: dbService): Promise<void> => {
