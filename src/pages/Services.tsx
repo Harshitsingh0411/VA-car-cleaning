@@ -111,6 +111,17 @@ export default function ServicesPage() {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
             <p className="text-gray-500 font-semibold mt-4">Loading services...</p>
           </div>
+        ) : services.length === 0 ? (
+          <div className="text-center py-16 bg-white rounded-3xl p-8 shadow-sm">
+            <Car size={48} className="mx-auto text-gray-300 mb-4" />
+            <h3 className="text-xl font-bold text-dark mb-2">No Services Available</h3>
+            <p className="text-gray-500 text-sm max-w-md mx-auto mb-6">
+              There are currently no active detailing services listed. You can manage and add custom services from the Admin panel.
+            </p>
+            <Link to="/book">
+              <Button>Book Custom Detailing</Button>
+            </Link>
+          </div>
         ) : (
           <div className="space-y-16">
             {services.map((service, index) => {

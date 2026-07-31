@@ -15,7 +15,7 @@ import {
   ChevronRight
 } from "lucide-react";
 import { Button } from "../components/ui/Button";
-import { getAllServices, dbService, defaultServices } from "../services/dbService";
+import { getAllServices, dbService } from "../services/dbService";
 
 // Pre-configured terms and conditions & inclusions lookup for standard and custom services
 const serviceTermsAndDetails: Record<string, {
@@ -104,10 +104,6 @@ export default function ServiceDetailPage() {
         
         if (found) {
           setService(found);
-        } else {
-          // Check default fallback services
-          const def = defaultServices.find((s) => s.id === serviceId || s.name.toLowerCase().replace(/\s+/g, "-") === serviceId);
-          if (def) setService(def);
         }
       } catch (err) {
         console.error("Failed to load service detail:", err);

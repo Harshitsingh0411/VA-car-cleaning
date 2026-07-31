@@ -33,7 +33,7 @@ interface BookingInputs {
 
 export default function BookPage() {
   const [searchParams] = useSearchParams();
-  const { user, profile, addAppointment, addAddress } = useAuth();
+  const { user, profile, addAppointment, addAddress, addVehicle } = useAuth();
   const [step, setStep] = useState(1);
   const [isBooked, setIsBooked] = useState(false);
   const [bookedDetails, setBookedDetails] = useState<any>(null);
@@ -42,6 +42,7 @@ export default function BookPage() {
   const [userLoyaltyPoints, setUserLoyaltyPoints] = useState<number>(0);
   const [redeemLoyalty, setRedeemLoyalty] = useState<boolean>(false);
   const [pointsToRedeemInput, setPointsToRedeemInput] = useState<number>(0);
+  const [saveNewVehicle, setSaveNewVehicle] = useState<boolean>(true);
 
   // Read query parameters
   const queryService = searchParams.get("service");
@@ -49,7 +50,7 @@ export default function BookPage() {
 
   const { register, handleSubmit, formState: { errors }, watch, trigger, setValue } = useForm<BookingInputs>({
     defaultValues: {
-      serviceType: queryService || "subscription-small",
+      serviceType: queryService || "",
       bookingTime: "Morning (8:00 AM - 12:00 PM)",
       vehicleSelect: "",
       bookingDate: new Date().toISOString().split("T")[0]
@@ -109,7 +110,7 @@ export default function BookPage() {
     s.id.toLowerCase() === selectedServiceKey?.toLowerCase() ||
     s.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") === selectedServiceKey?.toLowerCase()
   );
-  const fallbackPrice = services.length > 0 ? services[0].price : 800;
+  const fallbackPrice = services.length > 0 ? services[0].price : 0;
   const rawServicePrice = isRevisit ? 0 : (matchedService ? matchedService.price : fallbackPrice);
 
   // Loyalty calculations
@@ -154,11 +155,18 @@ export default function BookPage() {
 
   const onSubmit = async (data: BookingInputs) => {
     let finalVehicle = "";
-    if (user && profile?.vehicles && profile.vehicles.length > 0) {
+    if (user && profile?.vehicles && profile.vehicles.length > 0 && data.vehicleSelect !== "new") {
       const matched = profile.vehicles.find(v => v.id === data.vehicleSelect);
       finalVehicle = matched ? `${matched.name} (${matched.number})` : data.vehicleSelect;
     } else {
       finalVehicle = `${data.customVehicleName} (${data.customVehicleNumber})`;
+      if (user && saveNewVehicle && data.customVehicleName && data.customVehicleNumber && addVehicle) {
+        try {
+          await addVehicle(data.customVehicleName, data.customVehicleNumber);
+        } catch (e) {
+          console.warn("Could not save new vehicle to user profile:", e);
+        }
+      }
     }
 
     const matchedServiceSubmit = services.find(s => s.id === data.serviceType);
@@ -555,19 +563,63 @@ export default function BookPage() {
                         </p>
                       </div>
 
-                      {/* Vehicle selection (Dropdown of saved, or inputs if empty/logged-out) */}
+                      {/* Vehicle selection (Dropdown of saved + option to add new vehicle, or inputs if empty/logged-out) */}
                       <div className="space-y-4">
                         {user && profile?.vehicles && profile.vehicles.length > 0 ? (
-                          <div className="space-y-1.5">
-                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Select Saved Vehicle</label>
-                            <select
-                              {...register("vehicleSelect", { required: "Vehicle is required" })}
-                              className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3.5 px-4 font-semibold text-dark text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition-all appearance-none cursor-pointer"
-                            >
-                              {profile.vehicles.map((v) => (
-                                <option key={v.id} value={v.id}>{v.name} ({v.number})</option>
-                              ))}
-                            </select>
+                          <div className="space-y-3">
+                            <div className="space-y-1.5">
+                              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Select Vehicle</label>
+                              <select
+                                {...register("vehicleSelect", { required: "Vehicle selection is required" })}
+                                className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3.5 px-4 font-semibold text-dark text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition-all appearance-none cursor-pointer"
+                              >
+                                {profile.vehicles.map((v) => (
+                                  <option key={v.id} value={v.id}>{v.name} ({v.number})</option>
+                                ))}
+                                <option value="new">+ Add / Select New Vehicle</option>
+                              </select>
+                            </div>
+
+                            {selectedVehicleId === "new" && (
+                              <div className="p-4 bg-primary/5 border border-primary/10 rounded-2xl space-y-3">
+                                <h4 className="text-xs font-extrabold text-primary uppercase tracking-wider">Enter New Vehicle Details</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div className="space-y-1.5">
+                                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Vehicle Brand & Model</label>
+                                    <input
+                                      type="text"
+                                      placeholder="e.g. Hyundai Creta, Honda City"
+                                      {...register("customVehicleName", { required: selectedVehicleId === "new" ? "Vehicle model is required" : false })}
+                                      className="w-full bg-white border border-gray-200 rounded-2xl py-3 px-4 font-semibold text-dark text-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+                                    />
+                                    {errors.customVehicleName && (
+                                      <p className="text-red-500 text-[10px] font-bold">{errors.customVehicleName.message}</p>
+                                    )}
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Registration Number</label>
+                                    <input
+                                      type="text"
+                                      placeholder="e.g. UP-78-AB-1234"
+                                      {...register("customVehicleNumber", { required: selectedVehicleId === "new" ? "Registration number is required" : false })}
+                                      className="w-full bg-white border border-gray-200 rounded-2xl py-3 px-4 font-semibold text-dark text-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+                                    />
+                                    {errors.customVehicleNumber && (
+                                      <p className="text-red-500 text-[10px] font-bold">{errors.customVehicleNumber.message}</p>
+                                    )}
+                                  </div>
+                                </div>
+                                <label className="flex items-center gap-2 cursor-pointer select-none pt-1">
+                                  <input
+                                    type="checkbox"
+                                    checked={saveNewVehicle}
+                                    onChange={(e) => setSaveNewVehicle(e.target.checked)}
+                                    className="w-4 h-4 rounded text-primary focus:ring-primary accent-primary cursor-pointer"
+                                  />
+                                  <span className="text-xs font-bold text-gray-700">Save vehicle to my account for faster future bookings</span>
+                                </label>
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -575,19 +627,25 @@ export default function BookPage() {
                               <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Vehicle Brand & Model</label>
                               <input
                                 type="text"
-                                placeholder="Hyundai Creta, Honda City"
-                                {...register("customVehicleName", { required: !user && "Vehicle details required" })}
+                                placeholder="e.g. Hyundai Creta, Honda City"
+                                {...register("customVehicleName", { required: "Vehicle details required" })}
                                 className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3.5 px-4 font-semibold text-dark text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition-all"
                               />
+                              {errors.customVehicleName && (
+                                <p className="text-red-500 text-[10px] font-bold">{errors.customVehicleName.message}</p>
+                              )}
                             </div>
                             <div className="space-y-1.5">
                               <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Registration Number</label>
                               <input
                                 type="text"
-                                placeholder="DL-3C-AS-1234"
-                                {...register("customVehicleNumber", { required: !user && "Registration number required" })}
+                                placeholder="e.g. UP-78-AB-1234"
+                                {...register("customVehicleNumber", { required: "Registration number required" })}
                                 className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3.5 px-4 font-semibold text-dark text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition-all"
                               />
+                              {errors.customVehicleNumber && (
+                                <p className="text-red-500 text-[10px] font-bold">{errors.customVehicleNumber.message}</p>
+                              )}
                             </div>
                           </div>
                         )}

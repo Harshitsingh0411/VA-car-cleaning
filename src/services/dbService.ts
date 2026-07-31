@@ -1326,50 +1326,7 @@ export const updateContactSettings = async (settings: dbContactSettings): Promis
 
 
 // 14. Dynamic Custom Services
-export const defaultServices: dbService[] = [
-  {
-    id: "subscription-small",
-    name: "Subscription (Small Car)",
-    price: 800,
-    image: "",
-    description: "1 month plan for small car. Includes daily cloth wipe and 1 full wash per week."
-  },
-  {
-    id: "subscription-big",
-    name: "Subscription (Big Car)",
-    price: 1500,
-    image: "",
-    description: "1 month plan for big car. Includes daily cloth wipe and 1 full wash per week."
-  },
-  {
-    id: "one-time-full",
-    name: "One time (Full Wash)",
-    price: 0,
-    image: "",
-    description: "Enjoy a professional one-time exterior car wash using high-pressure foam and premium cleaning products. Includes body wash, tyre & wheel cleaning, dashboard dust cleaning, glass cleaning, and microfiber drying."
-  },
-  {
-    id: "bike-foam-wash",
-    name: "Bike & Scooter Foam Wash",
-    price: 149,
-    image: "https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&q=80&w=800",
-    description: "Budget-friendly doorstep bike and scooter cleaning. Includes thick snow foam bath, high-pressure water rinse, tyre degreasing, spray gloss polish, and chain lube."
-  },
-  {
-    id: "bike-subscription",
-    name: "Monthly Bike Care Subscription",
-    price: 399,
-    image: "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?auto=format&fit=crop&q=80&w=800",
-    description: "1 month budget plan for your motorcycle or scooter. Includes daily microfiber cloth wipe-down, weekly doorstep snow foam wash, and bi-weekly chain clean & lube."
-  },
-  {
-    id: "superbike-detail",
-    name: "Superbike Detailing & Chain Lube",
-    price: 499,
-    image: "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&q=80&w=800",
-    description: "Comprehensive detailing for sports bikes & premium motorcycles. Deep chain degreasing, Motul lube, engine block wash, and hydrophobic ceramic shine spray."
-  }
-];
+export const defaultServices: dbService[] = [];
 
 let cachedServicesMap: dbService[] | null = null;
 
@@ -1377,7 +1334,6 @@ export const getAllServicesSync = (): dbService[] => {
   if (cachedServicesMap) return cachedServicesMap;
 
   const servicesMap = new Map<string, dbService>();
-  defaultServices.forEach(s => servicesMap.set(s.id, { ...s }));
 
   try {
     const priceOverrides = JSON.parse(localStorage.getItem("admin_pricing_overrides") || "{}");
@@ -1386,29 +1342,15 @@ export const getAllServicesSync = (): dbService[] => {
     const customServicesRaw = JSON.parse(localStorage.getItem("admin_custom_services") || "[]");
     const defaultDeleted = JSON.parse(localStorage.getItem("admin_default_deleted_services") || "[]");
 
-    defaultDeleted.forEach((id: string) => {
-      servicesMap.delete(id);
-    });
-
-    servicesMap.forEach((s, sId) => {
-      const priceKey = sId === "exterior" ? "exteriorWash"
-        : sId === "interior" ? "interiorCleaning"
-          : sId === "foam" ? "foamWash"
-            : sId === "wax" ? "waxPolish"
-              : sId === "dashboard" ? "dashboardCleaning"
-                : sId === "tyre" ? "tyreDressing"
-                  : sId === "premium" ? "premiumDetailing" : sId;
-
-      if (priceOverrides[priceKey] !== undefined) s.price = Number(priceOverrides[priceKey]);
-      if (imageOverrides[sId] !== undefined) s.image = imageOverrides[sId];
-      if (descOverrides[sId] !== undefined) s.description = descOverrides[sId];
-    });
-
     customServicesRaw.forEach((cs: any) => {
-      if (cs.isDeleted) {
+      if (cs.isDeleted || defaultDeleted.includes(cs.id)) {
         servicesMap.delete(cs.id);
       } else {
-        servicesMap.set(cs.id, cs);
+        const s = { ...cs };
+        if (priceOverrides[cs.id] !== undefined) s.price = Number(priceOverrides[cs.id]);
+        if (imageOverrides[cs.id] !== undefined) s.image = imageOverrides[cs.id];
+        if (descOverrides[cs.id] !== undefined) s.description = descOverrides[cs.id];
+        servicesMap.set(cs.id, s);
       }
     });
   } catch (e) {
@@ -1424,27 +1366,26 @@ export const getAllServices = async (): Promise<dbService[]> => {
 
   // Background async refresh from Firestore
   db.collection("services").get().then((snap) => {
-    if (!snap || snap.empty) return;
     const servicesMap = new Map<string, dbService>();
-    defaultServices.forEach(s => servicesMap.set(s.id, { ...s }));
 
-    snap.forEach((doc: any) => {
-      const data = doc.data() as Partial<dbService>;
-      const sId = doc.id;
-      if (data.isDeleted) {
-        servicesMap.delete(sId);
-      } else {
-        const existing = servicesMap.get(sId);
-        servicesMap.set(sId, {
-          id: sId,
-          name: data.name || existing?.name || "Unnamed Service",
-          price: data.price !== undefined ? data.price : (existing?.price || 0),
-          image: data.image || existing?.image || "",
-          description: data.description || existing?.description || "",
-          isCustom: data.isCustom ?? (existing ? false : true)
-        });
-      }
-    });
+    if (snap && !snap.empty) {
+      snap.forEach((doc: any) => {
+        const data = doc.data() as Partial<dbService>;
+        const sId = doc.id;
+        if (data.isDeleted) {
+          servicesMap.delete(sId);
+        } else {
+          servicesMap.set(sId, {
+            id: sId,
+            name: data.name || "Unnamed Service",
+            price: data.price !== undefined ? data.price : 0,
+            image: data.image || "",
+            description: data.description || "",
+            isCustom: true
+          });
+        }
+      });
+    }
 
     try {
       const priceOverrides = JSON.parse(localStorage.getItem("admin_pricing_overrides") || "{}");
@@ -1454,15 +1395,17 @@ export const getAllServices = async (): Promise<dbService[]> => {
       const defaultDeleted = JSON.parse(localStorage.getItem("admin_default_deleted_services") || "[]");
 
       defaultDeleted.forEach((id: string) => servicesMap.delete(id));
-      servicesMap.forEach((s, sId) => {
-        const priceKey = sId === "exterior" ? "exteriorWash" : sId;
-        if (priceOverrides[priceKey] !== undefined) s.price = Number(priceOverrides[priceKey]);
-        if (imageOverrides[sId] !== undefined) s.image = imageOverrides[sId];
-        if (descOverrides[sId] !== undefined) s.description = descOverrides[sId];
-      });
       customServicesRaw.forEach((cs: any) => {
         if (cs.isDeleted) servicesMap.delete(cs.id);
-        else servicesMap.set(cs.id, cs);
+        else {
+          const existing = servicesMap.get(cs.id) || cs;
+          servicesMap.set(cs.id, { ...existing, ...cs });
+        }
+      });
+      servicesMap.forEach((s, sId) => {
+        if (priceOverrides[sId] !== undefined) s.price = Number(priceOverrides[sId]);
+        if (imageOverrides[sId] !== undefined) s.image = imageOverrides[sId];
+        if (descOverrides[sId] !== undefined) s.description = descOverrides[sId];
       });
     } catch {}
 
@@ -1571,79 +1514,7 @@ export interface dbPricingPlan extends BaseDoc {
   cta: string;
 }
 
-export const DEFAULT_PRICING_PLANS: dbPricingPlan[] = [
-  {
-    id: "starter",
-    name: "Starter Package",
-    description: "Great for quick, regular cleanups to maintain standard cleanliness.",
-    price: "₹499",
-    subscriptionDiscountPercent: 15,
-    icon: "zap",
-    features: [
-      "Eco foam exterior wash",
-      "Wheel cleaning & shine",
-      "Door frame wipe down",
-      "Towel dried finish",
-      "Standard dashboard dusting"
-    ],
-    popular: false,
-    cta: "Book Starter"
-  },
-  {
-    id: "standard",
-    name: "Standard Package",
-    description: "Highly requested for regular maintenance and light interior detailing.",
-    price: "₹799",
-    subscriptionDiscountPercent: 15,
-    icon: "star",
-    features: [
-      "All Starter features",
-      "Deep cabin vacuuming",
-      "All footmats washed",
-      "Dashboard polish & UV guard",
-      "Interior glass clean & polish",
-      "Odor neutralizing spray"
-    ],
-    popular: true,
-    cta: "Book Standard"
-  },
-  {
-    id: "premium",
-    name: "Premium Detailing",
-    description: "Our signature package to restore your vehicle to immaculate condition.",
-    price: "₹1999",
-    subscriptionDiscountPercent: 15,
-    icon: "shield",
-    features: [
-      "All Standard features",
-      "Engine bay cleaning",
-      "Seat stain spot extraction",
-      "AC vent steam sterilization",
-      "Liquid polymer paint wax coat",
-      "Premium tire dressing"
-    ],
-    popular: false,
-    cta: "Book Premium"
-  },
-  {
-    id: "gold",
-    name: "Gold Ultimate",
-    description: "Elite service including professional gloss enhancement and total protection.",
-    price: "₹4999",
-    subscriptionDiscountPercent: 15,
-    icon: "trophy",
-    features: [
-      "All Premium features",
-      "9H Nano-ceramic coating layer",
-      "Leather condition treatment",
-      "Windshield hydrophobe treatment",
-      "Alloy wheel restoration polish",
-      "2-Year protection guarantee"
-    ],
-    popular: false,
-    cta: "Book Gold Ultimate"
-  }
-];
+export const DEFAULT_PRICING_PLANS: dbPricingPlan[] = [];
 
 export const getAllPricingPlans = async (): Promise<dbPricingPlan[]> => {
   const plansMap = new Map<string, dbPricingPlan>();

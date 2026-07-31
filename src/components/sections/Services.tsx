@@ -55,83 +55,91 @@ export default function Services() {
         </div>
 
         {/* Services Cards Horizontal Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-          {services.map((service, index) => {
-            const iconInfo = getIcon(service.id);
-            return (
-              <motion.div
-                key={service.id}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                className="bg-white rounded-3xl overflow-hidden shadow-2xl transition-all duration-300 group hover:-translate-y-2 flex flex-col justify-between w-full"
-              >
-                {/* Image with icon overlay */}
-                <Link to={`/services/${service.id}`} className="relative h-44 overflow-hidden shrink-0 block bg-gradient-to-br from-slate-800 to-slate-900">
-                  {service.image ? (
-                    <img 
-                      src={service.image} 
-                      alt={service.name} 
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center text-gray-400">
-                      <Sparkles size={28} className="text-[#F4B400] mb-1" />
-                      <span className="text-[11px] font-bold text-gray-200">{service.name}</span>
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
-                  
-                  {/* Floating Circle Icon */}
-                  <div className={`absolute -bottom-4 left-6 w-10 h-10 ${iconInfo.bg} rounded-full flex items-center justify-center border-2 border-white shadow-md z-10 group-hover:rotate-12 transition-transform`}>
-                    {iconInfo.icon}
-                  </div>
-                </Link>
-
-                {/* Service description details */}
-                <div className="p-6 pt-8 flex-1 flex flex-col justify-between text-dark">
-                  <div className="space-y-2 mb-4 text-left">
-                    <Link to={`/services/${service.id}`} className="block">
-                      <h3 className="text-lg font-heading font-extrabold tracking-tight group-hover:text-primary transition-colors">
-                        {service.name}
-                      </h3>
-                    </Link>
-                    <p className="text-gray-500 text-xs leading-relaxed">
-                      {service.description}
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col gap-3 pt-3 border-t border-gray-100">
-                    <div className="flex justify-between items-center text-left">
-                      <div>
-                        <span className="block text-[15px] font-heading font-black text-dark">
-                          ₹{service.price}
-                        </span>
-                        <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                          Starting From
-                        </span>
+        {services.length === 0 ? (
+          <div className="text-center py-12 bg-white/5 rounded-3xl p-8 border border-white/10 max-w-2xl mx-auto">
+            <Car size={40} className="mx-auto text-gray-500 mb-3" />
+            <p className="text-gray-300 font-semibold text-sm">No custom services listed yet.</p>
+            <p className="text-gray-400 text-xs mt-1">Add detailing packages from the admin portal to feature them here.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+            {services.map((service, index) => {
+              const iconInfo = getIcon(service.id);
+              return (
+                <motion.div
+                  key={service.id}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                  className="bg-white rounded-3xl overflow-hidden shadow-2xl transition-all duration-300 group hover:-translate-y-2 flex flex-col justify-between w-full"
+                >
+                  {/* Image with icon overlay */}
+                  <Link to={`/services/${service.id}`} className="relative h-44 overflow-hidden shrink-0 block bg-gradient-to-br from-slate-800 to-slate-900">
+                    {service.image ? (
+                      <img 
+                        src={service.image} 
+                        alt={service.name} 
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center text-gray-400">
+                        <Sparkles size={28} className="text-[#F4B400] mb-1" />
+                        <span className="text-[11px] font-bold text-gray-200">{service.name}</span>
                       </div>
-                      <Link
-                        to={`/services/${service.id}`}
-                        className="text-[11px] font-bold text-primary hover:text-dark flex items-center gap-1 transition-colors bg-primary/5 px-2.5 py-1 rounded-lg border border-primary/10"
-                      >
-                        Details →
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
+                    
+                    {/* Floating Circle Icon */}
+                    <div className={`absolute -bottom-4 left-6 w-10 h-10 ${iconInfo.bg} rounded-full flex items-center justify-center border-2 border-white shadow-md z-10 group-hover:rotate-12 transition-transform`}>
+                      {iconInfo.icon}
+                    </div>
+                  </Link>
+
+                  {/* Service description details */}
+                  <div className="p-6 pt-8 flex-1 flex flex-col justify-between text-dark">
+                    <div className="space-y-2 mb-4 text-left">
+                      <Link to={`/services/${service.id}`} className="block">
+                        <h3 className="text-lg font-heading font-extrabold tracking-tight group-hover:text-primary transition-colors">
+                          {service.name}
+                        </h3>
+                      </Link>
+                      <p className="text-gray-500 text-xs leading-relaxed">
+                        {service.description}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col gap-3 pt-3 border-t border-gray-100">
+                      <div className="flex justify-between items-center text-left">
+                        <div>
+                          <span className="block text-[15px] font-heading font-black text-dark">
+                            ₹{service.price}
+                          </span>
+                          <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                            Starting From
+                          </span>
+                        </div>
+                        <Link
+                          to={`/services/${service.id}`}
+                          className="text-[11px] font-bold text-primary hover:text-dark flex items-center gap-1 transition-colors bg-primary/5 px-2.5 py-1 rounded-lg border border-primary/10"
+                        >
+                          Details →
+                        </Link>
+                      </div>
+
+                      <Link to={`/book?service=${service.id}`} className="w-full">
+                        <Button className="w-full text-[10px] uppercase tracking-wider h-8.5 rounded-xl font-bold bg-[#F4B400] text-dark hover:bg-[#ffe258] border-none shadow">
+                          Book Service
+                        </Button>
                       </Link>
                     </div>
-
-                    <Link to={`/book?service=${service.id}`} className="w-full">
-                      <Button className="w-full text-[10px] uppercase tracking-wider h-8.5 rounded-xl font-bold bg-[#F4B400] text-dark hover:bg-[#ffe258] border-none shadow">
-                        Book Service
-                      </Button>
-                    </Link>
                   </div>
-                </div>
 
-              </motion.div>
-            );
-          })}
-        </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
 
       </div>
     </section>

@@ -9,23 +9,16 @@ export default function Footer() {
   const [contactSettings, setContactSettings] = useState<dbContactSettings>(DEFAULT_CONTACT_SETTINGS);
   const [servicesList, setServicesList] = useState<Array<{ name: string; id: string }>>(() => {
     const syncData = getAllServicesSync();
-    if (syncData && syncData.length > 0) {
-      return syncData.map(s => ({ name: s.name, id: s.id }));
-    }
-    return seoServices.map(s => ({ name: s.name, id: s.slug }));
+    return (syncData || []).map(s => ({ name: s.name, id: s.id }));
   });
 
   useEffect(() => {
     const reloadFooterData = () => {
       getContactSettings().then(setContactSettings);
       getAllServices().then((data) => {
-        if (data && data.length > 0) {
-          setServicesList(data.map(s => ({ name: s.name, id: s.id })));
-        } else {
-          setServicesList(seoServices.map(s => ({ name: s.name, id: s.slug })));
-        }
+        setServicesList((data || []).map(s => ({ name: s.name, id: s.id })));
       }).catch(() => {
-        setServicesList(seoServices.map(s => ({ name: s.name, id: s.slug })));
+        setServicesList([]);
       });
     };
 

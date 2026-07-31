@@ -46,7 +46,7 @@ export default function Hero() {
 
       <div className="container mx-auto px-4 md:px-6 relative z-10">
         <div className="grid grid-cols-1 gap-8 items-center">
-          
+
           {/* Heading, Copy, Buttons */}
           <div className="space-y-6">
             <motion.div
@@ -63,7 +63,7 @@ export default function Hero() {
                 <span className="text-[#F4B400] font-extrabold">Professional & Budget Friendly</span>
               </h1>
               <p className="text-sm sm:text-base text-gray-300 max-w-lg leading-relaxed font-normal">
-                We bring the showroom shine back to your car, motorcycle & scooter with eco foam washing & detailing right in your driveway. Bike wash starting at just ₹149!
+                We bring the showroom shine back to your car, motorcycle & scooter with eco foam washing & detailing right in your driveway. Bike wash starting at just ₹100!
               </p>
             </motion.div>
 

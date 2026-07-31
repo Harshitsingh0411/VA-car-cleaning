@@ -24,27 +24,20 @@ export default function Navbar() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [dynamicServices, setDynamicServices] = useState<Array<{ name: string; path: string }>>(() => {
     const syncData = getAllServicesSync();
-    if (syncData && syncData.length > 0) {
-      return syncData.map((s) => ({ name: s.name, path: `/services/${s.id}` }));
-    }
-    return seoServices.map((s) => ({ name: s.name, path: `/services/${s.slug}` }));
+    return (syncData || []).map((s) => ({ name: s.name, path: `/services/${s.id}` }));
   });
 
   useEffect(() => {
     const reloadServices = () => {
       getAllServices().then((data) => {
-        if (data && data.length > 0) {
-          const mapped = data.map((s) => ({
-            name: s.name,
-            path: `/services/${s.id}`
-          }));
-          setDynamicServices(mapped);
-        } else {
-          setDynamicServices(seoServices.map(s => ({ name: s.name, path: `/services/${s.slug}` })));
-        }
+        const mapped = (data || []).map((s) => ({
+          name: s.name,
+          path: `/services/${s.id}`
+        }));
+        setDynamicServices(mapped);
       }).catch((err) => {
         console.warn("Could not load dynamic services in Navbar:", err);
-        setDynamicServices(seoServices.map(s => ({ name: s.name, path: `/services/${s.slug}` })));
+        setDynamicServices([]);
       });
     };
 
@@ -63,7 +56,7 @@ export default function Navbar() {
     { 
       name: "Services", 
       path: "/services",
-      dropdown: dynamicServices.length > 0 ? dynamicServices : seoServices.map(s => ({ name: s.name, path: `/services/${s.slug}` }))
+      dropdown: dynamicServices
     },
     { 
       name: "Locations", 
