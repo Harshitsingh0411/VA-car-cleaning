@@ -76,10 +76,22 @@ export async function uploadMediaToCloudinary(
 
       const endpoint = `https://api.cloudinary.com/v1_1/${cloudName.trim()}/${resourceType}/upload`;
 
-      const response = await fetch(endpoint, {
+      let response = await fetch(endpoint, {
         method: "POST",
         body: formData
       });
+
+      // Retry via 'auto' resourceType endpoint if video upload returned 401/400
+      if (!response.ok && isVideo) {
+        const autoEndpoint = `https://api.cloudinary.com/v1_1/${cloudName.trim()}/auto/upload`;
+        const autoResp = await fetch(autoEndpoint, {
+          method: "POST",
+          body: formData
+        });
+        if (autoResp.ok) {
+          response = autoResp;
+        }
+      }
 
       if (response.ok) {
         const data = await response.json();
@@ -102,8 +114,12 @@ export async function uploadMediaToCloudinary(
     }
   }
 
-  // 3. Fallback: Return persistent Data URL (never a temporary local blob: URL)
+  // 3. Persistent Local Fallback: Generate compact poster data URL for videos & compressed data URL for photos
   let persistentDataUrl = dataUrlPreview;
+  if (isVideo) {
+    persistentDataUrl = await generateVideoPosterDataUrl(file);
+  }
+
   if (!persistentDataUrl || persistentDataUrl.startsWith("blob:")) {
     persistentDataUrl = await new Promise<string>((resolve) => {
       const reader = new FileReader();
@@ -113,6 +129,11 @@ export async function uploadMediaToCloudinary(
     });
   }
 
+  // Safety cap: Ensure data URL never exceeds 400KB to fit safely in Firestore limits
+  if (persistentDataUrl.length > 400000 && persistentDataUrl.startsWith("data:")) {
+    persistentDataUrl = persistentDataUrl.substring(0, 400000);
+  }
+
   return {
     url: persistentDataUrl,
     resourceType: isVideo ? "video" : "image",
@@ -120,4 +141,51 @@ export async function uploadMediaToCloudinary(
     compressedSize,
     reductionPercentage
   };
+}
+
+/** Helper to generate lightweight (< 50KB) JPEG poster snapshot from video files */
+export async function generateVideoPosterDataUrl(file: File): Promise<string> {
+  return new Promise((resolve) => {
+    try {
+      const video = document.createElement("video");
+      const url = URL.createObjectURL(file);
+      video.src = url;
+      video.muted = true;
+      video.playsInline = true;
+      video.currentTime = 0.5;
+
+      const cleanup = () => {
+        URL.revokeObjectURL(url);
+        video.remove();
+      };
+
+      video.onloadeddata = () => {
+        try {
+          const canvas = document.createElement("canvas");
+          const width = Math.min(video.videoWidth || 640, 640);
+          const height = Math.round((width * (video.videoHeight || 360)) / (video.videoWidth || 640));
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(video, 0, 0, width, height);
+            const posterDataUrl = canvas.toDataURL("image/jpeg", 0.6);
+            cleanup();
+            resolve(posterDataUrl);
+            return;
+          }
+        } catch (e) {}
+        cleanup();
+        resolve("");
+      };
+
+      video.onerror = () => {
+        cleanup();
+        resolve("");
+      };
+    } catch (e) {
+      resolve("");
+    }
+  });
 }

@@ -934,8 +934,29 @@ export const updateJobStatus = async (appId: string, status: dbJobApplication["s
 
 // 8. Reviews CRUD
 export const submitReview = async (data: Omit<dbReview, "id">): Promise<string> => {
+  // Sanitize images & videos arrays to guarantee Firestore document property limit compliance
+  const safeImages = (data.images || [])
+    .filter((url) => Boolean(url && typeof url === "string"))
+    .map((url) => {
+      if (url.length > 400000 && url.startsWith("data:")) {
+        return url.substring(0, 400000);
+      }
+      return url;
+    });
+
+  const safeVideos = (data.videos || [])
+    .filter((url) => Boolean(url && typeof url === "string"))
+    .map((url) => {
+      if (url.length > 400000 && url.startsWith("data:")) {
+        return url.substring(0, 400000);
+      }
+      return url;
+    });
+
   const docData = {
     ...data,
+    images: safeImages,
+    videos: safeVideos,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     createdBy: data.customerId,
@@ -1375,14 +1396,61 @@ export const updateContactSettings = async (settings: dbContactSettings): Promis
 
 
 // 14. Dynamic Custom Services
+export const INITIAL_SEED_SERVICES: dbService[] = [
+  {
+    id: "bike-wash",
+    name: "Bike & Scooter Foam Wash",
+    price: 100,
+    description: "Doorstep high-pressure foam wash, degreasing, tyre shine, and matte/gloss polish for all bikes and scooters.",
+    image: "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&q=80&w=800",
+    isCustom: false
+  },
+  {
+    id: "foam-car-wash",
+    name: "Foam Car Wash & Shine",
+    price: 299,
+    description: "Complete exterior high-pressure foam bath, microfiber hand drying, glass cleaning, and tyre dressing at your doorstep.",
+    image: "https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&q=80&w=800",
+    isCustom: false
+  },
+  {
+    id: "interior-detailing",
+    name: "Deep Interior Cleaning & Vacuum",
+    price: 499,
+    description: "Complete cabin vacuuming, dashboard restoration, seat upholstery stain removal, and air vent sanitization.",
+    image: "https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&q=80&w=800",
+    isCustom: false
+  },
+  {
+    id: "full-car-spa",
+    name: "Full Car Spa & Paint Protection",
+    price: 799,
+    description: "Complete interior deep clean + exterior foam wash + liquid wax ceramic spray polish for showroom shine.",
+    image: "https://images.unsplash.com/photo-1507136566006-cfc505b114fe?auto=format&fit=crop&q=80&w=800",
+    isCustom: false
+  }
+];
+
 export const defaultServices: dbService[] = [];
 
 let cachedServicesMap: dbService[] | null = null;
 
 export const getAllServicesSync = (): dbService[] => {
-  if (cachedServicesMap) return cachedServicesMap;
+  if (cachedServicesMap && cachedServicesMap.length > 0) return cachedServicesMap;
+
+  try {
+    const cachedRaw = localStorage.getItem("sim_db_services_cache");
+    if (cachedRaw) {
+      const parsed = JSON.parse(cachedRaw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        cachedServicesMap = parsed;
+        return cachedServicesMap;
+      }
+    }
+  } catch (e) {}
 
   const servicesMap = new Map<string, dbService>();
+  INITIAL_SEED_SERVICES.forEach((s) => servicesMap.set(s.id, { ...s }));
 
   try {
     const priceOverrides = JSON.parse(localStorage.getItem("admin_pricing_overrides") || "{}");
@@ -1391,16 +1459,20 @@ export const getAllServicesSync = (): dbService[] => {
     const customServicesRaw = JSON.parse(localStorage.getItem("admin_custom_services") || "[]");
     const defaultDeleted = JSON.parse(localStorage.getItem("admin_default_deleted_services") || "[]");
 
+    defaultDeleted.forEach((id: string) => servicesMap.delete(id));
     customServicesRaw.forEach((cs: any) => {
       if (cs.isDeleted || defaultDeleted.includes(cs.id)) {
         servicesMap.delete(cs.id);
       } else {
-        const s = { ...cs };
-        if (priceOverrides[cs.id] !== undefined) s.price = Number(priceOverrides[cs.id]);
-        if (imageOverrides[cs.id] !== undefined) s.image = imageOverrides[cs.id];
-        if (descOverrides[cs.id] !== undefined) s.description = descOverrides[cs.id];
-        servicesMap.set(cs.id, s);
+        const existing = servicesMap.get(cs.id) || cs;
+        servicesMap.set(cs.id, { ...existing, ...cs });
       }
+    });
+
+    servicesMap.forEach((s, sId) => {
+      if (priceOverrides[sId] !== undefined) s.price = Number(priceOverrides[sId]);
+      if (imageOverrides[sId] !== undefined) s.image = imageOverrides[sId];
+      if (descOverrides[sId] !== undefined) s.description = descOverrides[sId];
     });
   } catch (e) {
     console.error("Error reading service overrides from local storage:", e);
@@ -1411,17 +1483,20 @@ export const getAllServicesSync = (): dbService[] => {
 };
 
 export const getAllServices = async (): Promise<dbService[]> => {
-  const servicesMap = new Map<string, dbService>();
+  const syncData = getAllServicesSync();
 
-  try {
-    const snap = await db.collection("services").get();
-    if (snap && snap.docs) {
+  // Background revalidation against live database
+  db.collection("services").get().then((snap) => {
+    const servicesMap = new Map<string, dbService>();
+    INITIAL_SEED_SERVICES.forEach((s) => servicesMap.set(s.id, { ...s }));
+
+    if (snap && snap.docs && snap.docs.length > 0) {
       snap.docs.forEach((doc: any) => {
         const data = (typeof doc.data === "function" ? doc.data() : doc) as Partial<dbService>;
         const sId = doc.id;
         if (data && data.isDeleted) {
           servicesMap.delete(sId);
-        } else if (data) {
+        } else if (data && data.name) {
           servicesMap.set(sId, {
             id: sId,
             name: data.name || "Unnamed Service",
@@ -1433,35 +1508,42 @@ export const getAllServices = async (): Promise<dbService[]> => {
         }
       });
     }
-  } catch (err) {
-    console.warn("Database services fetch notice:", err);
-  }
 
-  try {
-    const priceOverrides = JSON.parse(localStorage.getItem("admin_pricing_overrides") || "{}");
-    const imageOverrides = JSON.parse(localStorage.getItem("admin_service_images") || "{}");
-    const descOverrides = JSON.parse(localStorage.getItem("admin_service_descriptions") || "{}");
-    const customServicesRaw = JSON.parse(localStorage.getItem("admin_custom_services") || "[]");
-    const defaultDeleted = JSON.parse(localStorage.getItem("admin_default_deleted_services") || "[]");
+    try {
+      const priceOverrides = JSON.parse(localStorage.getItem("admin_pricing_overrides") || "{}");
+      const imageOverrides = JSON.parse(localStorage.getItem("admin_service_images") || "{}");
+      const descOverrides = JSON.parse(localStorage.getItem("admin_service_descriptions") || "{}");
+      const customServicesRaw = JSON.parse(localStorage.getItem("admin_custom_services") || "[]");
+      const defaultDeleted = JSON.parse(localStorage.getItem("admin_default_deleted_services") || "[]");
 
-    defaultDeleted.forEach((id: string) => servicesMap.delete(id));
-    customServicesRaw.forEach((cs: any) => {
-      if (cs.isDeleted) servicesMap.delete(cs.id);
-      else {
-        const existing = servicesMap.get(cs.id) || cs;
-        servicesMap.set(cs.id, { ...existing, ...cs });
-      }
-    });
-    servicesMap.forEach((s, sId) => {
-      if (priceOverrides[sId] !== undefined) s.price = Number(priceOverrides[sId]);
-      if (imageOverrides[sId] !== undefined) s.image = imageOverrides[sId];
-      if (descOverrides[sId] !== undefined) s.description = descOverrides[sId];
-    });
-  } catch {}
+      defaultDeleted.forEach((id: string) => servicesMap.delete(id));
+      customServicesRaw.forEach((cs: any) => {
+        if (cs.isDeleted) servicesMap.delete(cs.id);
+        else {
+          const existing = servicesMap.get(cs.id) || cs;
+          servicesMap.set(cs.id, { ...existing, ...cs });
+        }
+      });
+      servicesMap.forEach((s, sId) => {
+        if (priceOverrides[sId] !== undefined) s.price = Number(priceOverrides[sId]);
+        if (imageOverrides[sId] !== undefined) s.image = imageOverrides[sId];
+        if (descOverrides[sId] !== undefined) s.description = descOverrides[sId];
+      });
+    } catch {}
 
-  const freshList = Array.from(servicesMap.values());
-  cachedServicesMap = freshList;
-  return freshList;
+    const freshList = Array.from(servicesMap.values());
+    if (JSON.stringify(freshList) !== JSON.stringify(cachedServicesMap)) {
+      cachedServicesMap = freshList;
+      try {
+        localStorage.setItem("sim_db_services_cache", JSON.stringify(freshList));
+      } catch (e) {}
+      notifyGlobalDataChange("services");
+    }
+  }).catch((err) => {
+    console.warn("Background services revalidation notice:", err);
+  });
+
+  return syncData;
 };
 
 export const createOrUpdateService = async (service: dbService): Promise<void> => {
