@@ -270,99 +270,130 @@ export default function NotificationCenter() {
             </div>
           ) : (
             <div className="divide-y divide-gray-100">
-              {filteredNotifications.map((notif) => (
-                <div
-                  key={notif.id}
-                  className={`py-5 flex gap-4 first:pt-0 last:pb-0 transition-all ${
-                    !notif.read ? "bg-[#0b327b]/2 p-3 rounded-2xl border-l-2 border-primary" : ""
-                  }`}
-                >
-                  {/* Left priority tag or icon */}
-                  <div className="shrink-0">
-                    <span className={`text-[8px] font-black uppercase py-1 px-2.5 rounded-full ${getPriorityStyle(notif.priority)}`}>
-                      {notif.priority}
-                    </span>
-                  </div>
+              {filteredNotifications.map((notif) => {
+                const handleCardClick = (e: React.MouseEvent) => {
+                  const target = e.target as HTMLElement;
+                  if (target.closest("button") || target.closest("a")) {
+                    return;
+                  }
 
-                  {/* Body details */}
-                  <div className="flex-1 space-y-2">
-                    <div className="space-y-1">
-                      <div className="flex justify-between items-start gap-3">
-                        <h3 className="font-heading font-extrabold text-dark text-sm leading-snug">{notif.title}</h3>
-                        <div className="flex gap-1.5 shrink-0 text-gray-400">
-                          <button
-                            onClick={() => handlePin(notif.id, !!notif.pinned)}
-                            className={`p-1 hover:text-primary transition-colors cursor-pointer ${
-                              notif.pinned ? "text-primary fill-primary/10" : ""
-                            }`}
-                            title={notif.pinned ? "Unpin alert" : "Pin alert"}
-                          >
-                            <Pin size={13} className={notif.pinned ? "rotate-45" : ""} />
-                          </button>
-                          <button
-                            onClick={() => handleArchive(notif.id, !!notif.archived)}
-                            className={`p-1 hover:text-[#F4B400] transition-colors cursor-pointer ${
-                              notif.archived ? "text-[#F4B400]" : ""
-                            }`}
-                            title={notif.archived ? "Unarchive alert" : "Archive alert"}
-                          >
-                            <Archive size={13} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(notif.id)}
-                            className="p-1 hover:text-rose-500 transition-colors cursor-pointer"
-                            title="Delete alert"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      </div>
-                      {notif.subtitle && <h4 className="text-xs font-bold text-gray-500 leading-snug">{notif.subtitle}</h4>}
-                      <p className="text-xs text-gray-500 leading-relaxed font-medium">{notif.description}</p>
+                  if (!notif.read) {
+                    handleMarkRead(notif.id);
+                  }
+
+                  if (notif.deepLink) {
+                    if (notif.deepLink.startsWith("http")) {
+                      window.open(notif.deepLink, "_blank");
+                    } else {
+                      navigate(notif.deepLink);
+                    }
+                  }
+                };
+
+                return (
+                  <div
+                    key={notif.id}
+                    onClick={handleCardClick}
+                    className={`py-4 px-4 my-1.5 rounded-2xl flex gap-4 transition-all cursor-pointer hover:bg-gray-50/80 border border-transparent hover:border-gray-100 ${
+                      !notif.read ? "bg-blue-50/40 border-l-4 border-l-primary shadow-sm" : ""
+                    }`}
+                  >
+                    {/* Left priority tag or icon */}
+                    <div className="shrink-0 pt-0.5">
+                      <span className={`text-[8px] font-black uppercase py-1 px-2.5 rounded-full ${getPriorityStyle(notif.priority)}`}>
+                        {notif.priority}
+                      </span>
                     </div>
 
-                    {/* Image banner block */}
-                    {notif.imageUrl && (
-                      <div className="max-w-md rounded-2xl overflow-hidden border border-gray-100 shadow-sm max-h-40">
-                        <img src={notif.imageUrl} alt="Banner" className="w-full h-full object-cover" />
-                      </div>
-                    )}
-
-                    {/* Metadata & Actions */}
-                    <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                      <div className="flex items-center gap-3">
-                        <span className="bg-gray-100 text-gray-500 py-0.5 px-2.5 rounded-full text-[9px]">
-                          {notif.type}
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <Clock size={12} className="text-gray-400" />
-                          <span>{new Date(notif.createdAt).toLocaleDateString()} at {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    {/* Body details */}
+                    <div className="flex-1 space-y-2">
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-start gap-3">
+                          <h3 className="font-heading font-extrabold text-dark text-sm leading-snug">{notif.title}</h3>
+                          <div className="flex gap-1.5 shrink-0 text-gray-400">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePin(notif.id, !!notif.pinned);
+                              }}
+                              className={`p-1 hover:text-primary transition-colors cursor-pointer ${
+                                notif.pinned ? "text-primary fill-primary/10" : ""
+                              }`}
+                              title={notif.pinned ? "Unpin alert" : "Pin alert"}
+                            >
+                              <Pin size={13} className={notif.pinned ? "rotate-45" : ""} />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleArchive(notif.id, !!notif.archived);
+                              }}
+                              className={`p-1 hover:text-[#F4B400] transition-colors cursor-pointer ${
+                                notif.archived ? "text-[#F4B400]" : ""
+                              }`}
+                              title={notif.archived ? "Unarchive alert" : "Archive alert"}
+                            >
+                              <Archive size={13} />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(notif.id);
+                              }}
+                              className="p-1 hover:text-rose-500 transition-colors cursor-pointer"
+                              title="Delete alert"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
                         </div>
+                        {notif.subtitle && <h4 className="text-xs font-bold text-gray-500 leading-snug">{notif.subtitle}</h4>}
+                        <p className="text-xs text-gray-500 leading-relaxed font-medium">{notif.description}</p>
                       </div>
 
-                      <div className="flex gap-2">
-                        {!notif.read && (
-                          <button
-                            onClick={() => handleMarkRead(notif.id)}
-                            className="text-primary hover:underline cursor-pointer"
-                          >
-                            Mark Read
-                          </button>
-                        )}
-                        {notif.deepLink && (
-                          <a
-                            href={notif.deepLink}
-                            className="text-[#F4B400] hover:underline flex items-center gap-0.5"
-                          >
-                            Go to Link
-                            <ExternalLink size={10} />
-                          </a>
-                        )}
+                      {/* Image banner block */}
+                      {notif.imageUrl && (
+                        <div className="max-w-md rounded-2xl overflow-hidden border border-gray-100 shadow-sm max-h-40 my-2">
+                          <img src={notif.imageUrl} alt="Banner" className="w-full h-full object-cover" />
+                        </div>
+                      )}
+
+                      {/* Metadata & Actions */}
+                      <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                        <div className="flex items-center gap-3">
+                          <span className="bg-gray-100 text-gray-500 py-0.5 px-2.5 rounded-full text-[9px]">
+                            {notif.type}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <Clock size={12} className="text-gray-400" />
+                            <span>{new Date(notif.createdAt).toLocaleDateString()} at {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2 items-center">
+                          {!notif.read && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleMarkRead(notif.id);
+                              }}
+                              className="text-primary hover:underline cursor-pointer font-bold"
+                            >
+                              Mark Read
+                            </button>
+                          )}
+                          {notif.deepLink && (
+                            <span className="text-[#F4B400] flex items-center gap-0.5 font-extrabold">
+                              Open Link
+                              <ChevronRight size={12} />
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

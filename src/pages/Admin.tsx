@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { isLocalBlobUrl } from "../utils/mediaUtils";
 import { motion } from "motion/react";
 import { Link } from "react-router-dom";
@@ -74,6 +75,8 @@ import {
   Plus,
   UserCheck,
   Phone,
+  Mail,
+  MessageCircle,
   Loader2,
   Eye,
   EyeOff
@@ -1846,63 +1849,135 @@ export default function Admin() {
           {/* JOBS PANEL */}
           {activeTab === "jobs" && (
             <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm space-y-6">
-              <h3 className="font-heading font-extrabold text-dark text-lg">Detailer Partner Applications</h3>
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 pb-4">
+                <div>
+                  <h3 className="font-heading font-extrabold text-dark text-xl">Detailer Partner Applications</h3>
+                  <p className="text-xs text-gray-500 mt-1">Review candidate applications and initiate direct contact via WhatsApp, Phone, or Email.</p>
+                </div>
+                <span className="bg-primary/10 text-primary text-xs font-bold py-1.5 px-3 rounded-full">
+                  Total Applications: {jobs.length}
+                </span>
+              </div>
 
               <div className="space-y-4">
-                {jobs.map((j) => (
-                  <div key={j.id} className="p-5 border border-gray-100 rounded-2xl bg-gray-50/30 space-y-4 shadow-sm">
-                    <div className="flex flex-wrap justify-between items-start gap-2">
-                      <div>
-                        <h4 className="font-heading font-extrabold text-dark text-base">{j.name}</h4>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">
-                          {j.email} | {j.phone}
-                        </p>
-                      </div>
-                      <span className={`text-[9px] font-bold py-1 px-2.5 rounded-full border uppercase tracking-wider ${j.status === "Approved"
-                        ? "bg-emerald-50 text-emerald-600 border-emerald-100"
-                        : j.status === "Rejected"
-                          ? "bg-rose-50 text-rose-600 border-rose-100"
-                          : "bg-amber-50 text-amber-600 border-amber-100"
-                        }`}>
-                        {j.status}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-semibold text-gray-600 bg-white border border-gray-100 rounded-xl p-3.5">
-                      <div>
-                        <span className="text-[9px] text-gray-400 font-bold uppercase block mb-0.5">Skill Focus</span>
-                        <span>{j.skill}</span>
-                      </div>
-                      <div>
-                        <span className="text-[9px] text-gray-400 font-bold uppercase block mb-0.5">Exp Level</span>
-                        <span>{j.exp}</span>
-                      </div>
-                    </div>
-
-                    <div className="p-3.5 bg-gray-100/50 rounded-xl text-xs text-gray-500 italic leading-relaxed">
-                      "{j.cover}"
-                    </div>
-
-                    {j.status === "Under Review" && (
-                      <div className="flex gap-2 justify-end">
-                        <button
-                          onClick={() => updateJobStatus(j.id, "Rejected")}
-                          className="bg-rose-50 hover:bg-rose-100 text-rose-600 py-1.5 px-4 rounded-xl font-bold text-xs cursor-pointer flex items-center gap-1"
-                        >
-                          <XCircle size={14} />
-                          Reject
-                        </button>
-                        <button
-                          onClick={() => updateJobStatus(j.id, "Approved")}
-                          className="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 py-1.5 px-4 rounded-xl font-bold text-xs cursor-pointer flex items-center gap-1"
-                        >
-                          <CheckCircle size={14} />
-                          Approve Partner
-                        </button>
-                      </div>
-                    )}
+                {jobs.length === 0 ? (
+                  <div className="text-center py-12 bg-gray-50/50 rounded-2xl border border-gray-100 space-y-2">
+                    <Briefcase size={36} className="mx-auto text-gray-300 stroke-1" />
+                    <p className="text-gray-500 font-medium text-sm">No job applications submitted yet.</p>
                   </div>
-                ))}
+                ) : (
+                  jobs.map((j) => {
+                    const cleanPhone = (j.phone || "").replace(/[^\d]/g, "");
+                    const defaultMsg = `Hello ${j.name}, regarding your application for ${j.skill || "Mobile Detailing Partner"} at VA Car Cleaning Service...`;
+                    const waLink = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(defaultMsg)}`;
+                    const mailLink = `mailto:${j.email}?subject=${encodeURIComponent("VA Car Cleaning Service - Job Application Update")}&body=${encodeURIComponent(`Hello ${j.name},\n\nThank you for applying for the ${j.skill || "Mobile Detailing Partner"} position at VA Car Cleaning Service.\n\n`)}`;
+
+                    return (
+                      <div key={j.id} className="p-6 border border-gray-100 rounded-2xl bg-white space-y-5 shadow-sm hover:shadow-md transition-shadow">
+                        {/* Header: Name, Contact badges & Status */}
+                        <div className="flex flex-wrap justify-between items-start gap-4">
+                          <div className="space-y-1">
+                            <h4 className="font-heading font-extrabold text-dark text-lg">{j.name}</h4>
+                            <div className="flex flex-wrap items-center gap-3 text-xs font-medium">
+                              <span className="normal-case text-gray-600 font-mono flex items-center gap-1">
+                                ✉️ {j.email}
+                              </span>
+                              <span className="text-gray-300">•</span>
+                              <span className="font-mono text-gray-700 flex items-center gap-1">
+                                📞 {j.phone}
+                              </span>
+                            </div>
+                          </div>
+
+                          <span className={`text-[10px] font-black py-1.5 px-3 rounded-full border uppercase tracking-wider ${
+                            j.status === "Approved"
+                              ? "bg-emerald-50 text-emerald-600 border-emerald-200"
+                              : j.status === "Rejected"
+                                ? "bg-rose-50 text-rose-600 border-rose-200"
+                                : "bg-amber-50 text-amber-600 border-amber-200"
+                          }`}>
+                            {j.status}
+                          </span>
+                        </div>
+
+                        {/* Direct Action Contact Toolbar */}
+                        <div className="flex flex-wrap gap-2 pt-1 border-t border-b border-gray-100 py-3">
+                          {/* WhatsApp Direct Action Button */}
+                          <a
+                            href={waLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#128C7E] font-bold text-xs py-2 px-3.5 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer border border-[#25D366]/20"
+                            title="Send pre-typed WhatsApp message"
+                          >
+                            <MessageCircle size={15} />
+                            WhatsApp Candidate
+                          </a>
+
+                          {/* Phone Call Action Button */}
+                          <a
+                            href={`tel:${j.phone}`}
+                            className="bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold text-xs py-2 px-3.5 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer border border-blue-100"
+                            title="Call candidate phone"
+                          >
+                            <Phone size={15} />
+                            Call Candidate
+                          </a>
+
+                          {/* Email Direct Action Button */}
+                          <a
+                            href={mailLink}
+                            className="bg-purple-50 hover:bg-purple-100 text-purple-600 font-bold text-xs py-2 px-3.5 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer border border-purple-100"
+                            title="Send email to candidate"
+                          >
+                            <Mail size={15} />
+                            Email Candidate
+                          </a>
+                        </div>
+
+                        {/* Skill Focus & Exp Level Cards */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-semibold text-gray-700 bg-gray-50/70 border border-gray-100 rounded-xl p-4">
+                          <div>
+                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">Skill Focus / Shift</span>
+                            <span className="text-dark font-medium leading-relaxed block">{j.skill}</span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">Experience & Background</span>
+                            <span className="text-dark font-medium leading-relaxed block">{j.exp}</span>
+                          </div>
+                        </div>
+
+                        {/* Cover Note */}
+                        {j.cover && j.cover !== "None" && (
+                          <div className="p-4 bg-amber-50/40 border border-amber-100/60 rounded-xl text-xs text-gray-700 leading-relaxed space-y-1">
+                            <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider block">Candidate Cover Note</span>
+                            <p className="italic text-gray-700">"{j.cover}"</p>
+                          </div>
+                        )}
+
+                        {/* Approval / Rejection Controls */}
+                        {j.status === "Under Review" && (
+                          <div className="flex gap-3 justify-end pt-1">
+                            <button
+                              onClick={() => updateJobStatus(j.id, "Rejected")}
+                              className="bg-rose-50 hover:bg-rose-100 text-rose-600 py-2 px-4 rounded-xl font-bold text-xs cursor-pointer flex items-center gap-1.5 border border-rose-100 transition-colors"
+                            >
+                              <XCircle size={15} />
+                              Reject
+                            </button>
+                            <button
+                              onClick={() => updateJobStatus(j.id, "Approved")}
+                              className="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 py-2 px-4 rounded-xl font-bold text-xs cursor-pointer flex items-center gap-1.5 border border-emerald-100 transition-colors shadow-sm"
+                            >
+                              <CheckCircle size={15} />
+                              Approve Partner
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
           )}
@@ -3017,7 +3092,7 @@ export default function Admin() {
 
       </div>
 
-      {showAddStaffModal && (
+      {showAddStaffModal && createPortal(
         <div className="fixed inset-0 z-50 bg-dark/60 backdrop-blur-sm flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
@@ -3179,15 +3254,16 @@ export default function Admin() {
               </button>
             </form>
           </motion.div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {selectedBookingForAssign && (
+      {selectedBookingForAssign && createPortal(
         <div className="fixed inset-0 z-50 bg-dark/60 backdrop-blur-sm flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-gray-100 space-y-6"
+            className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-gray-100 space-y-6 max-h-[90vh] overflow-y-auto"
           >
             <div className="flex justify-between items-center">
               <h3 className="font-heading font-extrabold text-dark text-xl">Assign Detailing Crew</h3>
@@ -3198,7 +3274,7 @@ export default function Admin() {
                   setAssignArrivalDate("");
                   setAssignArrivalTime("");
                 }}
-                className="text-gray-400 hover:text-dark text-sm font-bold uppercase transition-colors font-semibold"
+                className="text-gray-400 hover:text-dark text-sm font-bold uppercase transition-colors font-semibold cursor-pointer"
               >
                 Close
               </button>
@@ -3283,7 +3359,8 @@ export default function Admin() {
               </button>
             </form>
           </motion.div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {viewingBookingDetails && (

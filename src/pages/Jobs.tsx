@@ -177,7 +177,7 @@ export default function JobsPage() {
                           type="text"
                           placeholder="Aditya Kumar"
                           {...register("name", { required: "Name is required" })}
-                          className={`w-full px-5 py-3.5 bg-light rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all ${
+                          className={`w-full px-5 py-3.5 bg-light text-dark font-medium rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all ${
                             errors.name ? "border-red-500" : ""
                           }`}
                         />
@@ -199,7 +199,7 @@ export default function JobsPage() {
                             required: "Phone is required",
                             pattern: { value: /^[0-9+ ]{10,15}$/, message: "Invalid Phone Number" }
                           })}
-                          className={`w-full px-5 py-3.5 bg-light rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all ${
+                          className={`w-full px-5 py-3.5 bg-light text-dark font-medium rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all ${
                             errors.phone ? "border-red-500" : ""
                           }`}
                         />
@@ -224,7 +224,7 @@ export default function JobsPage() {
                             required: "Email is required",
                             pattern: { value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i, message: "Invalid Email Address" }
                           })}
-                          className={`w-full px-5 py-3.5 bg-light rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all ${
+                          className={`w-full px-5 py-3.5 bg-light text-dark font-medium rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all ${
                             errors.email ? "border-red-500" : ""
                           }`}
                         />
@@ -243,7 +243,7 @@ export default function JobsPage() {
                           type="number"
                           placeholder="21"
                           {...register("age", { required: "Age is required", min: { value: 18, message: "Must be 18 or older" } })}
-                          className={`w-full px-5 py-3.5 bg-light rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all ${
+                          className={`w-full px-5 py-3.5 bg-light text-dark font-medium rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all ${
                             errors.age ? "border-red-500" : ""
                           }`}
                         />
@@ -265,7 +265,7 @@ export default function JobsPage() {
                           type="text"
                           placeholder="New Delhi"
                           {...register("city", { required: "City is required" })}
-                          className={`w-full px-5 py-3.5 bg-light rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all ${
+                          className={`w-full px-5 py-3.5 bg-light text-dark font-medium rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all ${
                             errors.city ? "border-red-500" : ""
                           }`}
                         />
@@ -284,7 +284,7 @@ export default function JobsPage() {
                           type="text"
                           placeholder="B.Tech Student (Final Year)"
                           {...register("education", { required: "Education details are required" })}
-                          className={`w-full px-5 py-3.5 bg-light rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all ${
+                          className={`w-full px-5 py-3.5 bg-light text-dark font-medium rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all ${
                             errors.education ? "border-red-500" : ""
                           }`}
                         />
@@ -304,7 +304,7 @@ export default function JobsPage() {
                         </label>
                         <select
                           {...register("availableTime", { required: "Shift preference is required" })}
-                          className="w-full px-5 py-3.5 bg-light rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                          className="w-full px-5 py-3.5 bg-light text-dark font-medium rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                         >
                           <option value="morning">Morning shift (7:00 AM - 1:00 PM)</option>
                           <option value="afternoon">Afternoon shift (1:00 PM - 7:00 PM)</option>
@@ -318,7 +318,7 @@ export default function JobsPage() {
                         </label>
                         <select
                           {...register("experience", { required: "This selection is required" })}
-                          className="w-full px-5 py-3.5 bg-light rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                          className="w-full px-5 py-3.5 bg-light text-dark font-medium rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                         >
                           <option value="none">No experience (We provide full training)</option>
                           <option value="beginner">1-6 Months Experience</option>
@@ -336,7 +336,7 @@ export default function JobsPage() {
                         rows={3}
                         placeholder="Share any details about yourself..."
                         {...register("notes")}
-                        className="w-full px-5 py-3.5 bg-light rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
+                        className="w-full px-5 py-3.5 bg-light text-dark font-medium rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
                       />
                     </div>
 

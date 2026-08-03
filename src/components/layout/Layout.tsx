@@ -81,7 +81,6 @@ export default function Layout() {
                 duration: prefersReducedMotion ? 0 : isLowEnd ? 0.22 : 0.35,
                 ease: [0.22, 1, 0.36, 1],
               }}
-              className="transform-gpu will-change-transform"
             >
               <ErrorBoundary>
                 <Outlet />
