@@ -28,7 +28,9 @@ import {
   archiveNotification,
   deleteNotification,
   markAllNotificationsAsRead,
-  dbNotification
+  dbNotification,
+  getAllCoupons,
+  dbCoupon
 } from "../services/dbService";
 
 export default function NotificationCenter() {
@@ -36,6 +38,7 @@ export default function NotificationCenter() {
   const navigate = useNavigate();
 
   const [notifications, setNotifications] = useState<dbNotification[]>([]);
+  const [couponsList, setCouponsList] = useState<dbCoupon[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -47,6 +50,8 @@ export default function NotificationCenter() {
     const updateOnlineStatus = () => setIsOffline(!navigator.onLine);
     window.addEventListener("online", updateOnlineStatus);
     window.addEventListener("offline", updateOnlineStatus);
+
+    getAllCoupons().then(setCouponsList).catch(console.error);
 
     if (!user) {
       setLoading(false);
@@ -271,6 +276,15 @@ export default function NotificationCenter() {
           ) : (
             <div className="divide-y divide-gray-100">
               {filteredNotifications.map((notif) => {
+                // Detect eligible coupon code in notification text or deepLink
+                const detectedCoupon = couponsList.find(
+                  (c) =>
+                    notif.deepLink?.toUpperCase().includes(c.code) ||
+                    notif.title.toUpperCase().includes(c.code) ||
+                    notif.description.toUpperCase().includes(c.code) ||
+                    notif.subtitle?.toUpperCase().includes(c.code)
+                );
+
                 const handleCardClick = (e: React.MouseEvent) => {
                   const target = e.target as HTMLElement;
                   if (target.closest("button") || target.closest("a")) {
@@ -281,7 +295,9 @@ export default function NotificationCenter() {
                     handleMarkRead(notif.id);
                   }
 
-                  if (notif.deepLink) {
+                  if (detectedCoupon) {
+                    navigate(`/book?coupon=${detectedCoupon.code}`);
+                  } else if (notif.deepLink) {
                     if (notif.deepLink.startsWith("http")) {
                       window.open(notif.deepLink, "_blank");
                     } else {
@@ -355,6 +371,24 @@ export default function NotificationCenter() {
                       {notif.imageUrl && (
                         <div className="max-w-md rounded-2xl overflow-hidden border border-gray-100 shadow-sm max-h-40 my-2">
                           <img src={notif.imageUrl} alt="Banner" className="w-full h-full object-cover" />
+                        </div>
+                      )}
+
+                      {/* Special Eligible Coupon Action Box */}
+                      {detectedCoupon && (
+                        <div className="p-3 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200/80 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs my-2">
+                          <div className="flex items-center gap-2 text-purple-900 font-bold">
+                            <Sparkles size={16} className="text-[#F4B400] shrink-0" />
+                            <span>🎁 Coupon Code: <strong className="font-mono text-purple-700 bg-purple-100/90 px-2 py-0.5 rounded-md border border-purple-200">{detectedCoupon.code}</strong> ({detectedCoupon.description})</span>
+                          </div>
+                          <Link
+                            to={`/book?coupon=${detectedCoupon.code}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-primary hover:bg-[#0b327b] text-white text-[11px] font-extrabold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 shadow-xs"
+                          >
+                            Use Coupon in Booking
+                            <ChevronRight size={12} />
+                          </Link>
                         </div>
                       )}
 

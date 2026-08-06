@@ -6,7 +6,9 @@ import { Link } from "react-router-dom";
 import BookingSection from "../components/sections/BookingSection";
 import SEO from "../components/seo/SEO";
 import SeoTextSection from "../components/seo/SeoTextSection";
+import Breadcrumbs from "../components/common/Breadcrumbs";
 import { getAllServices, dbService, subscribeToDataChanges } from "../services/dbService";
+import { getBreadcrumbSchema, getServiceSchema } from "../utils/seoSchemas";
 
 export default function ServicesPage() {
   const [services, setServices] = useState<dbService[]>([]);
@@ -42,171 +44,149 @@ export default function ServicesPage() {
     return <Sparkles size={36} />;
   };
 
-  const getServiceBenefits = (name: string, desc: string) => {
-    const lower = (name + " " + desc).toLowerCase();
-    if (lower.includes("bike") || lower.includes("scooter") || lower.includes("superbike")) {
-      return [
-        "Snow foam bath & pressure rinse",
-        "Tyre & wheel rim degreasing",
-        "Chain cleaning & lube application",
-        "Matte / Gloss spray polish"
-      ];
-    }
-    if (lower.includes("subscription")) {
-      return [
-        "Daily cloth wipe",
-        "1 full wash per week",
-        "Priority scheduling",
-        "Interior dusting"
-      ];
-    }
-    return [
-      "Exterior body wash",
-      "Tyre & wheel cleaning",
-      "Dashboard dust cleaning",
-      "Glass cleaning & microfiber drying"
-    ];
-  };
+  const breadcrumbs = [{ name: "Services", path: "/services" }];
+  const schemas = [
+    getBreadcrumbSchema(breadcrumbs),
+    ...services.map(s => getServiceSchema(s.name, s.description, s.price, s.image))
+  ];
 
   return (
-    <div className="min-h-screen bg-light">
+    <div className="min-h-screen bg-gray-50/50 pt-24 pb-16">
       <SEO 
         title="Car & Bike Detailing Services | Doorstep Cleaning In Budget"
         description="Explore budget-friendly car and bike doorstep cleaning services in Kanpur including bike snow foam wash at ₹149, monthly bike subscriptions at ₹399, and superbike chain detailing."
+        keywords="car wash pricing, bike cleaning kanpur, doorstep car detailing, foam wash cost, interior vacuuming, ceramic coating"
+        schemas={schemas}
       />
-      {/* Hero Header */}
-      <div className="bg-[#070C16] text-white pt-24 pb-12 md:pt-28 md:pb-14 relative overflow-hidden">
-        <div className="absolute inset-0 bg-primary/10" />
-        <div className="container mx-auto px-4 md:px-6 relative z-10 text-center">
-          <motion.span
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-secondary font-semibold tracking-wider uppercase text-[11px] mb-2 block"
-          >
-            Our Offerings
-          </motion.span>
-          <motion.h1
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-3xl md:text-5xl font-heading font-extrabold max-w-3xl mx-auto leading-[1.1] tracking-tight mb-3"
-          >
-            Professional Detailing Services
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.8 }}
-            transition={{ delay: 0.2 }}
-            className="text-gray-300 text-sm md:text-base max-w-xl mx-auto leading-relaxed"
-          >
-            Explore our comprehensive list of specialized car cleaning, restoration, and long-term protection services.
-          </motion.p>
+
+      {/* 1. Header & Breadcrumbs Panel */}
+      <div className="container mx-auto px-4 md:px-6 mb-6">
+        <Breadcrumbs items={breadcrumbs} className="mb-4" />
+        <div className="bg-white border border-gray-100 rounded-[32px] p-6 md:p-8 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <span className="text-primary font-bold uppercase tracking-wider text-[10px] block mb-1">Our Offerings</span>
+            <h1 className="text-2xl md:text-3xl font-heading font-extrabold text-dark">Professional Detailing Services</h1>
+            <p className="text-gray-400 text-xs mt-1">Explore all our premium car &amp; bike care offerings, doorstep cleaning plans, and custom subscription packages.</p>
+          </div>
+          <Link to="/book" className="w-full md:w-auto">
+            <button className="w-full bg-primary hover:bg-[#0b327b] text-white font-bold py-3 px-6 rounded-xl text-xs uppercase tracking-wider shadow cursor-pointer transition-all flex items-center justify-center gap-1.5 shrink-0">
+              <Sparkles size={14} />
+              Book Custom Wash
+            </button>
+          </Link>
         </div>
       </div>
 
-      {/* Services Grid */}
-      <div className="container mx-auto px-4 md:px-6 py-10 md:py-14">
+      {/* 2. KPI Stats Cards Row */}
+      <div className="container mx-auto px-4 md:px-6 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            { label: "Total Services", value: services.length || "12", icon: "📋", bg: "bg-blue-50/50 border-blue-100", color: "text-blue-600" },
+            { label: "Active Packages", value: services.filter(s => !s.name.toLowerCase().includes("hidden")).length || "9", icon: "✅", bg: "bg-emerald-50/50 border-emerald-100", color: "text-emerald-600" },
+            { label: "Happy Clients", value: "2,500+", icon: "❤️", bg: "bg-purple-50/50 border-purple-100", color: "text-purple-600" },
+            { label: "Average Rating", value: "4.8 ★ (128)", icon: "⭐", bg: "bg-amber-50/50 border-amber-100", color: "text-amber-600" }
+          ].map((kpi, i) => (
+            <div key={i} className={`bg-white border ${kpi.bg} rounded-2xl p-4 flex items-center gap-4 shadow-xs`}>
+              <div className="text-2xl shrink-0">{kpi.icon}</div>
+              <div>
+                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-sm md:text-base font-black ${kpi.color}`}>{kpi.value}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 3. Catalog Section Grid */}
+      <div className="container mx-auto px-4 md:px-6 mb-12">
         {loading ? (
-          <div className="text-center py-16">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-            <p className="text-gray-500 font-semibold mt-4">Loading services...</p>
+          <div className="text-center py-16 bg-white rounded-3xl border border-gray-100 shadow-xs">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto"></div>
+            <p className="text-gray-400 font-semibold mt-4 text-xs">Loading services catalog...</p>
           </div>
         ) : services.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-3xl p-8 shadow-sm">
+          <div className="text-center py-16 bg-white rounded-3xl p-8 shadow-xs border border-gray-100">
             <Car size={48} className="mx-auto text-gray-300 mb-4" />
             <h3 className="text-xl font-bold text-dark mb-2">No Services Available</h3>
             <p className="text-gray-500 text-sm max-w-md mx-auto mb-6">
-              There are currently no active detailing services listed. You can manage and add custom services from the Admin panel.
+              There are currently no active detailing services listed. Please check back later.
             </p>
             <Link to="/book">
               <Button>Book Custom Detailing</Button>
             </Link>
           </div>
         ) : (
-          <div className="space-y-16">
-            {services.map((service, index) => {
-              const benefits = getServiceBenefits(service.name, service.description);
-              const icon = getServiceIcon(service.id, service.name);
-              const serviceSlug = service.id || service.name.toLowerCase().replace(/\s+/g, "-");
+          <div className="bg-white border border-gray-100 rounded-[32px] p-6 md:p-8 shadow-xs space-y-6">
+            <div>
+              <h2 className="text-lg font-heading font-extrabold text-dark">Wash &amp; Detailing Packages</h2>
+              <p className="text-gray-400 text-xs mt-0.5">Choose from our selected service catalog below and order doorstep detailing instantly.</p>
+            </div>
 
-              return (
-                <motion.div
-                  key={service.id || index}
-                  initial={{ opacity: 0, y: 40 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.6 }}
-                  className={`flex flex-col lg:flex-row gap-12 items-center bg-white p-6 md:p-10 rounded-[32px] shadow-xl ${
-                    index % 2 === 1 ? "lg:flex-row-reverse" : ""
-                  }`}
-                >
-                  {/* Service Image */}
-                  <div className="w-full lg:w-1/2 h-[350px] rounded-2xl overflow-hidden relative shadow-lg group">
-                    <img
-                      src={service.image || "https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&q=80&w=800"}
-                      alt={service.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-dark/60 to-transparent" />
-                    <div className="absolute top-6 left-6 bg-primary text-white p-4 rounded-2xl shadow-xl">
-                      {icon}
-                    </div>
-                  </div>
-
-                  {/* Service Details */}
-                  <div className="w-full lg:w-1/2">
-                    <div className="flex items-center justify-between gap-4 mb-4">
-                      <h2 className="text-3xl font-heading font-extrabold text-dark">
-                        {service.name}
-                      </h2>
-                      <span className="text-2xl font-black text-primary bg-primary/5 px-4 py-1.5 rounded-full border border-primary/10">
-                        ₹{service.price}
-                      </span>
-                    </div>
-
-                    <p className="text-gray-600 text-lg mb-6 leading-relaxed">
-                      {service.description}
-                    </p>
-
-                    {/* Benefits Checklists */}
-                    <div className="mb-8">
-                      <h4 className="text-sm font-semibold tracking-wider uppercase text-gray-400 mb-4">
-                        What is included
-                      </h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {benefits.map((benefit, bIdx) => (
-                          <div key={bIdx} className="flex items-start gap-2.5">
-                            <CheckCircle size={18} className="text-green-500 shrink-0 mt-0.5" />
-                            <span className="text-gray-700 text-sm font-medium">{benefit}</span>
-                          </div>
-                        ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {services.map((service, index) => {
+                const stepNum = String(index + 1).padStart(2, "0");
+                const icon = getServiceIcon(service.id, service.name);
+                const isSubscription = service.name.toLowerCase().includes("subscription");
+                
+                return (
+                  <motion.div 
+                    key={service.id || index}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.4, delay: index * 0.05 }}
+                    className="bg-white border border-gray-100 rounded-3xl p-5 shadow-xs space-y-5 flex flex-col justify-between hover:shadow-md transition-all duration-300 text-left"
+                  >
+                    <div className="space-y-4">
+                      {/* Image Frame */}
+                      <div className="relative aspect-video rounded-2xl overflow-hidden bg-gray-100 shrink-0">
+                        <img 
+                          src={service.image || "https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&q=80&w=800"} 
+                          alt={service.name} 
+                          className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" 
+                          loading="lazy"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-dark/30 to-transparent" />
+                        <span className="absolute top-4 left-4 bg-primary text-white text-[10px] font-black px-2 py-0.5 rounded-md z-10 shadow-sm">{stepNum}</span>
+                        <span className="absolute top-4 right-4 bg-emerald-500 text-white text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md z-10 shadow-sm">ACTIVE</span>
+                        <div className="absolute -bottom-4 left-4 w-9 h-9 rounded-full bg-white text-primary flex items-center justify-center shadow-md border border-gray-100 z-10">
+                          {icon}
+                        </div>
                       </div>
+
+                      {/* Header and Details */}
+                      <div className="pt-2 flex justify-between items-start gap-3">
+                        <h3 className="font-heading font-extrabold text-dark text-sm leading-snug">{service.name}</h3>
+                        <div className="bg-blue-50 border border-blue-100 px-2.5 py-1 rounded-xl text-center shrink-0">
+                          <span className="block text-primary font-black text-xs leading-none">₹{service.price}</span>
+                          <span className="text-[7px] font-extrabold text-blue-400 uppercase tracking-wider block mt-0.5">{isSubscription ? "Monthly" : "Starting"}</span>
+                        </div>
+                      </div>
+
+                      <p className="text-gray-400 text-xs leading-relaxed line-clamp-3">{service.description}</p>
                     </div>
 
-                    {/* Duration & Call to Actions */}
-                    <div className="flex flex-wrap items-center justify-between gap-4 pt-6 border-t border-gray-100">
-                      <div className="flex items-center gap-2 text-gray-500 font-medium">
-                        <span className="text-xs uppercase tracking-wider text-gray-400">Duration:</span>
-                        <span className="bg-gray-100 px-3 py-1 rounded-lg text-sm text-dark font-semibold">
-                          {service.name.toLowerCase().includes("subscription") ? "1 Month" : "60 Mins"}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-                        <Link to={`/services/${service.id}`} className="w-full sm:w-auto">
-                          <Button variant="outline" className="w-full sm:w-auto border-gray-200 hover:border-primary">View Webpage ↗</Button>
-                        </Link>
-                        <Link to={`/book?service=${service.id}`} className="w-full sm:w-auto">
-                          <Button className="w-full sm:w-auto">Book This Service</Button>
-                        </Link>
-                      </div>
+                    {/* Action Row */}
+                    <div className="flex gap-2 pt-4 border-t border-gray-100">
+                      <Link to={`/services/${service.id}`} className="flex-grow">
+                        <button className="w-full bg-gray-50 hover:bg-gray-100 text-gray-700 font-bold py-2 px-3 rounded-xl text-xs border border-gray-200 cursor-pointer transition-colors text-center">
+                          View Details
+                        </button>
+                      </Link>
+                      <Link to={`/book?service=${service.id}`} className="flex-grow">
+                        <button className="w-full bg-primary hover:bg-[#0b327b] text-white font-bold py-2 px-3 rounded-xl text-xs cursor-pointer shadow-xs transition-colors text-center">
+                          Book Now
+                        </button>
+                      </Link>
                     </div>
-                  </div>
-                </motion.div>
-              );
-            })}
+                  </motion.div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
+
       <BookingSection />
 
       <SeoTextSection 

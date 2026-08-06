@@ -28,6 +28,7 @@ import {
   updateBookingStatus,
   dbBooking
 } from "../../services/dbService";
+import VehicleMediaThumbnail from "../../components/ui/VehicleMediaThumbnail";
 import { CrewLocationBroadcaster } from "../../components/location/LocationPickerMap";
 
 export default function EmployeeDashboard({ embedded = false }: { embedded?: boolean }) {
@@ -36,13 +37,14 @@ export default function EmployeeDashboard({ embedded = false }: { embedded?: boo
   
   const [availableBookings, setAvailableBookings] = useState<dbBooking[]>([]);
   const [myJobs, setMyJobs] = useState<dbBooking[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [selectedJobDetails, setSelectedJobDetails] = useState<dbBooking | null>(null);
 
-  const loadDashboardData = useCallback(async () => {
+  const loadDashboardData = useCallback(async (isSilent = true) => {
     if (!user) return;
-    setLoading(true);
+    setIsRefreshing(true);
 
     try {
       const available = await getAvailableBookings(user.uid);
@@ -58,17 +60,20 @@ export default function EmployeeDashboard({ embedded = false }: { embedded?: boo
       console.warn("Could not fetch assigned bookings:", err);
     }
 
-    setLoading(false);
+    setInitialLoading(false);
+    setIsRefreshing(false);
   }, [user]);
 
   useEffect(() => {
-    loadDashboardData();
+    loadDashboardData(false);
 
-    // Polling fallback
-    const interval = setInterval(loadDashboardData, 4000);
+    // Polling fallback - silent background update without hiding UI
+    const interval = setInterval(() => {
+      loadDashboardData(true);
+    }, 4000);
 
-    // Real-time event listeners
-    const handleUpdate = () => loadDashboardData();
+    // Real-time event listeners - silent background update
+    const handleUpdate = () => loadDashboardData(true);
     window.addEventListener("sim_booking_created", handleUpdate);
     window.addEventListener("booking_accepted_by_crew", handleUpdate);
     window.addEventListener("crew_booking_assigned", handleUpdate);
@@ -126,11 +131,11 @@ export default function EmployeeDashboard({ embedded = false }: { embedded?: boo
     }
   };
 
-  const generateWhatsAppUrl = (phone: string, customerName: string, serviceName: string, vehicle: string) => {
-    const cleanPhone = phone.replace(/[^0-9]/g, "");
+  const generateWhatsAppUrl = (phone?: string, customerName?: string, serviceName?: string, vehicle?: string) => {
+    const cleanPhone = (phone || "").replace(/[^0-9]/g, "");
     const formattedPhone = cleanPhone.startsWith("91") ? cleanPhone : `91${cleanPhone}`;
     const crewName = profile?.name || user?.displayName || "Detailing Crew";
-    const text = `Hello ${customerName}, this is ${crewName} from VA Car Detailing. I am assigned to your doorstep service for ${vehicle} (${serviceName}). I will be arriving shortly. Please confirm your address!`;
+    const text = `Hello ${customerName || "Customer"}, this is ${crewName} from VA Car Detailing. I am assigned to your doorstep service for ${vehicle || "your vehicle"} (${serviceName || "Detailing"}). I will be arriving shortly. Please confirm your address!`;
     return `https://wa.me/${formattedPhone}?text=${encodeURIComponent(text)}`;
   };
 
@@ -156,11 +161,11 @@ export default function EmployeeDashboard({ embedded = false }: { embedded?: boo
 
         <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md p-2 rounded-2xl border border-white/10">
           <button
-            onClick={loadDashboardData}
+            onClick={() => loadDashboardData(false)}
             className="p-2 text-white hover:bg-white/10 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-bold px-3"
             title="Refresh Dashboard"
           >
-            <RefreshCw size={16} className={loading ? "animate-spin text-accent" : ""} />
+            <RefreshCw size={16} className={isRefreshing ? "animate-spin text-accent" : ""} />
             <span>Refresh</span>
           </button>
           {!embedded && (
@@ -233,7 +238,7 @@ export default function EmployeeDashboard({ embedded = false }: { embedded?: boo
         {/* TAB 1: AVAILABLE BOOKINGS TO CLAIM */}
         {activeTab === "available" && (
           <div className="space-y-4">
-            {loading ? (
+            {initialLoading && availableBookings.length === 0 ? (
               <div className="py-16 text-center">
                 <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
                 <p className="text-xs text-gray-400 mt-3 font-semibold">Checking available job requests...</p>
@@ -257,17 +262,20 @@ export default function EmployeeDashboard({ embedded = false }: { embedded?: boo
                     animate={{ opacity: 1, y: 0 }}
                     className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all space-y-4 relative overflow-hidden"
                   >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <span className="inline-block text-[9px] font-black uppercase tracking-wider py-0.5 px-2.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200">
-                          Pending Claim
-                        </span>
-                        <h3 className="font-heading font-extrabold text-dark text-lg mt-1">
-                          {booking.serviceName}
-                        </h3>
-                        <p className="text-xs text-gray-500 font-bold">₹{booking.price}</p>
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="flex items-start gap-3">
+                        <VehicleMediaThumbnail serviceName={booking.serviceName} vehicleDetails={booking.vehicleDetails} className="w-14 h-12" />
+                        <div>
+                          <span className="inline-block text-[9px] font-black uppercase tracking-wider py-0.5 px-2.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200">
+                            Pending Claim
+                          </span>
+                          <h3 className="font-heading font-extrabold text-dark text-base mt-1">
+                            {booking.serviceName}
+                          </h3>
+                          <p className="text-xs text-gray-500 font-bold">₹{booking.price}</p>
+                        </div>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right shrink-0">
                         <span className="text-[10px] text-gray-400 font-mono block">ID: #{booking.id.slice(0, 8).toUpperCase()}</span>
                       </div>
                     </div>

@@ -117,12 +117,25 @@ html.lenis, html.lenis body {
   }
 }
 
+@keyframes glassShimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 .animate-float {
   animation: floatSlow 5s ease-in-out infinite;
 }
 
 .animate-pulse-glow {
   animation: pulseGlow 4s ease-in-out infinite;
+}
+
+.animate-glass-shimmer {
+  animation: glassShimmer 2s infinite ease-in-out;
 }
 
 /* Accessibility & Reduced Motion Overrides */

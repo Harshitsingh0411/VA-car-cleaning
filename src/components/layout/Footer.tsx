@@ -31,12 +31,13 @@ export default function Footer() {
 
     return () => unsubscribe();
   }, []);
+
   return (
     <footer className="bg-[#0B1220] text-gray-400 py-16 border-t border-white/5 relative">
       <div className="container mx-auto px-4 md:px-6">
 
         {/* Foot Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-10 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-10 mb-12 text-left">
 
           {/* Brand Col */}
           <div className="space-y-4">
@@ -49,12 +50,12 @@ export default function Footer() {
                   VA
                 </span>
                 <span className="text-[8px] tracking-widest font-black text-[#F4B400]">
-                  CAR & BIKE CARE
+                  CAR &amp; BIKE CARE
                 </span>
               </div>
             </Link>
             <p className="text-xs leading-relaxed text-gray-400 max-w-[200px]">
-              We provide premium doorstep car & bike cleaning & detailing services. Your vehicle, our responsibility.
+              We provide premium doorstep car &amp; bike cleaning &amp; detailing services in Kanpur. Your vehicle, our responsibility.
             </p>
             <div className="flex items-center gap-3 pt-2">
               {contactSettings.facebook && (
@@ -80,35 +81,38 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Quick Links */}
+          {/* Core Sitelinks / Navigation */}
           <div>
-            <h4 className="text-white font-heading font-bold mb-5 text-sm uppercase tracking-wider">Quick Links</h4>
+            <h4 className="text-white font-heading font-bold mb-5 text-sm uppercase tracking-wider">Navigation</h4>
             <ul className="flex flex-col gap-2.5 text-xs">
               <li><Link to="/" className="hover:text-[#F4B400] transition-colors">Home</Link></li>
               <li><Link to="/services" className="hover:text-[#F4B400] transition-colors">Services</Link></li>
-              <li><Link to="/gallery" className="hover:text-[#F4B400] transition-colors">Gallery</Link></li>
+              <li><Link to="/pricing" className="hover:text-[#F4B400] transition-colors">Pricing</Link></li>
+              <li><Link to="/subscription-plans" className="hover:text-[#F4B400] transition-colors">Subscription Plans</Link></li>
+              <li><Link to="/book-now" className="hover:text-[#F4B400] transition-colors font-bold text-[#F4B400]">Book Now</Link></li>
               <li><Link to="/about" className="hover:text-[#F4B400] transition-colors">About Us</Link></li>
-              <li><Link to="/contact" className="hover:text-[#F4B400] transition-colors">Contact</Link></li>
+              <li><Link to="/contact" className="hover:text-[#F4B400] transition-colors">Contact Us</Link></li>
             </ul>
           </div>
 
-          {/* Our Services */}
+          {/* Detailing Services */}
           <div>
             <h4 className="text-white font-heading font-bold mb-5 text-sm uppercase tracking-wider">Our Services</h4>
             <ul className="flex flex-col gap-2.5 text-xs">
-              {servicesList.map(service => (
+              {servicesList.slice(0, 5).map(service => (
                 <li key={service.id}>
                   <Link to={`/services/${service.id}`} className="hover:text-[#F4B400] transition-colors">
                     {service.name}
                   </Link>
                 </li>
               ))}
+              <li><Link to="/services" className="text-[#F4B400] hover:underline font-semibold">View All Services →</Link></li>
             </ul>
           </div>
 
-          {/* Popular Areas */}
+          {/* Popular Kanpur Locations */}
           <div>
-            <h4 className="text-white font-heading font-bold mb-5 text-sm uppercase tracking-wider">Popular Areas</h4>
+            <h4 className="text-white font-heading font-bold mb-5 text-sm uppercase tracking-wider">Locations</h4>
             <ul className="flex flex-col gap-2.5 text-xs">
               {seoLocations.slice(0, 6).map(location => (
                 <li key={location.slug}>
@@ -120,25 +124,28 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Job Opportunity */}
+          {/* Customer Care & Legal */}
           <div>
-            <h4 className="text-white font-heading font-bold mb-5 text-sm uppercase tracking-wider">Job Opportunity</h4>
+            <h4 className="text-white font-heading font-bold mb-5 text-sm uppercase tracking-wider">Customer Care</h4>
             <ul className="flex flex-col gap-2.5 text-xs">
-              <li><Link to="/jobs/part-time" className="hover:text-[#F4B400] transition-colors">Part-Time Job</Link></li>
-              <li><Link to="/jobs/apply" className="hover:text-[#F4B400] transition-colors">Apply Now</Link></li>
-              <li><Link to="/jobs/benefits" className="hover:text-[#F4B400] transition-colors">Benefits</Link></li>
-              <li><Link to="/jobs/work-with-us" className="hover:text-[#F4B400] transition-colors">Work With Us</Link></li>
+              <li><Link to="/help-center" className="hover:text-[#F4B400] transition-colors">FAQ &amp; Help Center</Link></li>
+              <li><Link to="/reviews" className="hover:text-[#F4B400] transition-colors">Customer Reviews</Link></li>
+              <li><Link to="/login" className="hover:text-[#F4B400] transition-colors">Login / Register</Link></li>
+              <li><Link to="/account" className="hover:text-[#F4B400] transition-colors">My Account</Link></li>
+              <li><Link to="/privacy-policy" className="hover:text-[#F4B400] transition-colors">Privacy Policy</Link></li>
+              <li><Link to="/terms-and-conditions" className="hover:text-[#F4B400] transition-colors">Terms &amp; Conditions</Link></li>
+              <li><Link to="/refund-policy" className="hover:text-[#F4B400] transition-colors">Refund Policy</Link></li>
             </ul>
           </div>
 
-          {/* Contact Us */}
+          {/* Contact Helpline */}
           <div className="space-y-3.5 text-xs">
-            <h4 className="text-white font-heading font-bold mb-5 text-sm uppercase tracking-wider">Contact Us</h4>
+            <h4 className="text-white font-heading font-bold mb-5 text-sm uppercase tracking-wider">Contact Info</h4>
             <div className="flex items-start gap-2.5">
               <Phone size={14} className="text-[#F4B400] mt-0.5 shrink-0" />
               <div className="flex flex-col gap-1">
                 <span>{contactSettings.phone1}</span>
-                <span>{contactSettings.phone2}</span>
+                {contactSettings.phone2 && <span>{contactSettings.phone2}</span>}
               </div>
             </div>
             <div className="flex items-center gap-2.5">
@@ -155,10 +162,11 @@ export default function Footer() {
 
         {/* Bottom Bar */}
         <div className="border-t border-white/5 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500">
-          <p>&copy; {new Date().getFullYear()} VA Car Cleaning Service. All Rights Reserved.</p>
+          <p>&copy; {new Date().getFullYear()} VA Car &amp; Bike Care Services. All Rights Reserved.</p>
           <div className="flex items-center gap-6">
-            <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
-            <Link to="/terms" className="hover:text-white transition-colors">Terms & Conditions</Link>
+            <Link to="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link>
+            <Link to="/terms-and-conditions" className="hover:text-white transition-colors">Terms &amp; Conditions</Link>
+            <Link to="/refund-policy" className="hover:text-white transition-colors">Refund Policy</Link>
           </div>
         </div>
 

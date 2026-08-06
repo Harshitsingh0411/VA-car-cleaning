@@ -119,6 +119,7 @@ export interface dbBooking extends BaseDoc {
   rating?: number;
   feedback?: string;
   invoiceRef?: string;
+  vehicleImageUrl?: string;
 }
 
 export interface dbService extends BaseDoc {
@@ -243,7 +244,7 @@ export const logAuditAction = async (action: string, prevValue?: any, newValue?:
     const actorName = user?.displayName || user?.email || "System/Unknown";
     const timestamp = new Date().toISOString();
     const uid = user?.uid || null;
-    
+
     await db.collection("audit_logs").add({
       action,
       prevValue: prevValue || null,
@@ -282,17 +283,17 @@ export const updateUserProfile = async (uid: string, data: Partial<dbUser>): Pro
   // Sync photo update to active bookings if user is staff/crew
   if (data.photo && prev?.photo !== data.photo) {
     if (prev?.role === "crew" || prev?.role === "staff") {
-       try {
-         const snap = await db.collection("bookings").where("assignedEmployeeId", "==", uid).get();
-         snap.forEach((doc: any) => {
-           const bData = doc.data();
-           if (bData.bookingStatus !== "Completed" && bData.bookingStatus !== "Cancelled") {
-             db.collection("bookings").doc(doc.id).set({ assignedEmployeePhoto: data.photo }, { merge: true });
-           }
-         });
-       } catch (e) {
-         console.warn("Could not sync photo to active bookings:", e);
-       }
+      try {
+        const snap = await db.collection("bookings").where("assignedEmployeeId", "==", uid).get();
+        snap.forEach((doc: any) => {
+          const bData = doc.data();
+          if (bData.bookingStatus !== "Completed" && bData.bookingStatus !== "Cancelled") {
+            db.collection("bookings").doc(doc.id).set({ assignedEmployeePhoto: data.photo }, { merge: true });
+          }
+        });
+      } catch (e) {
+        console.warn("Could not sync photo to active bookings:", e);
+      }
     }
   }
 };
@@ -395,95 +396,92 @@ export const createBooking = async (data: Omit<dbBooking, "id" | "bookingStatus"
   };
 
   const res = await db.collection("bookings").add(docData);
-  await logAuditAction(`Create booking for customer ${data.customerId}`, null, docData);
+  logAuditAction(`Create booking for customer ${data.customerId}`, null, docData).catch(() => {});
 
-  // --- Forcefully notify ONLY Crew Members for accepting booking ---
-  try {
-    const crewUids: string[] = [];
-    const adminUidsSet = new Set<string>();
-
-    // 1. Gather all admin UIDs to explicitly exclude them
+  // --- Background Crew Notification Dispatch (Non-blocking for fast user response) ---
+  (async () => {
     try {
-      const adminUsersSnap = await db.collection("users").where("role", "in", ["admin", "super_admin"]).get();
-      adminUsersSnap.forEach((doc: any) => adminUidsSet.add(doc.id));
-    } catch (e) { }
+      const crewUids: string[] = [];
+      const adminUidsSet = new Set<string>();
 
-    // 2. Check users collection for crew/staff roles ONLY
-    try {
-      const usersSnap = await db.collection("users").get();
-      usersSnap.forEach((doc: any) => {
-        const u = doc.data();
-        if ((u.role === "staff" || u.role === "crew") && u.role !== "admin" && u.role !== "super_admin") {
+      try {
+        const adminUsersSnap = await db.collection("users").where("role", "in", ["admin", "super_admin"]).get();
+        adminUsersSnap.forEach((doc: any) => adminUidsSet.add(doc.id));
+      } catch (e) { }
+
+      try {
+        const usersSnap = await db.collection("users").where("role", "in", ["staff", "crew"]).get();
+        usersSnap.forEach((doc: any) => {
           if (!adminUidsSet.has(doc.id)) {
             crewUids.push(doc.id);
           }
-        }
-      });
-    } catch (e) { }
+        });
+      } catch (e) { }
 
-    // 3. Check employees collection for crew/staff role ONLY
-    try {
-      const empSnap = await db.collection("employees").get();
-      empSnap.forEach((doc: any) => {
-        const emp = doc.data();
-        const empRole = emp?.role || "crew";
-        if (
-          !crewUids.includes(doc.id) &&
-          !adminUidsSet.has(doc.id) &&
-          empRole !== "admin" &&
-          empRole !== "super_admin" &&
-          (empRole === "staff" || empRole === "crew" || empRole === "employee")
-        ) {
-          crewUids.push(doc.id);
-        }
-      });
-    } catch (e) { }
-
-    // 4. Check simulator registered users fallback
-    if (typeof localStorage !== "undefined") {
       try {
-        const simUsers = JSON.parse(localStorage.getItem("sim_registered_users") || "[]");
-        for (const u of simUsers) {
-          const profileRaw = localStorage.getItem(`sim_db_users_${u.uid}`);
-          const profileData = profileRaw ? JSON.parse(profileRaw) : null;
+        const empSnap = await db.collection("employees").get();
+        empSnap.forEach((doc: any) => {
+          const emp = doc.data();
+          const empRole = emp?.role || "crew";
           if (
-            profileData &&
-            (profileData.role === "staff" || profileData.role === "crew") &&
-            profileData.role !== "admin" &&
-            profileData.role !== "super_admin"
+            !crewUids.includes(doc.id) &&
+            !adminUidsSet.has(doc.id) &&
+            empRole !== "admin" &&
+            empRole !== "super_admin" &&
+            (empRole === "staff" || empRole === "crew" || empRole === "employee")
           ) {
-            if (!crewUids.includes(u.uid) && !adminUidsSet.has(u.uid)) {
-              crewUids.push(u.uid);
+            crewUids.push(doc.id);
+          }
+        });
+      } catch (e) { }
+
+      if (typeof localStorage !== "undefined") {
+        try {
+          const simUsers = JSON.parse(localStorage.getItem("sim_registered_users") || "[]");
+          for (const u of simUsers) {
+            const profileRaw = localStorage.getItem(`sim_db_users_${u.uid}`);
+            const profileData = profileRaw ? JSON.parse(profileRaw) : null;
+            if (
+              profileData &&
+              (profileData.role === "staff" || profileData.role === "crew") &&
+              profileData.role !== "admin" &&
+              profileData.role !== "super_admin"
+            ) {
+              if (!crewUids.includes(u.uid) && !adminUidsSet.has(u.uid)) {
+                crewUids.push(u.uid);
+              }
             }
           }
-        }
-      } catch (e) { }
-    }
+        } catch (e) { }
+      }
 
-    for (const crewUid of crewUids) {
-      await sendNotification(
-        crewUid,
-        `🚨 NEW BOOKING REQUEST AVAILABLE!`,
-        `Customer ${data.customerName} booked ${data.serviceName} for ${data.scheduledDate} (${data.timeSlot}). Tap to accept this job!`,
-        "Job Request",
-        "critical",
-        {
-          deepLink: "/employee",
-          receiverRole: "staff",
-          pinned: true,
-          sentTime: new Date().toISOString(),
-          actionButtons: [{ label: "Claim Job", action: "accept_booking", url: "/employee" }]
-        }
+      await Promise.all(
+        crewUids.map(crewUid =>
+          sendNotification(
+            crewUid,
+            `🚨 NEW BOOKING REQUEST AVAILABLE!`,
+            `Customer ${data.customerName} booked ${data.serviceName} for ${data.scheduledDate} (${data.timeSlot}). Tap to accept this job!`,
+            "Job Request",
+            "critical",
+            {
+              deepLink: "/employee",
+              receiverRole: "staff",
+              pinned: true,
+              sentTime: new Date().toISOString(),
+              actionButtons: [{ label: "Claim Job", action: "accept_booking", url: "/employee" }]
+            }
+          )
+        )
       );
-    }
 
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("sim_booking_created", { detail: { bookingId: res.id } }));
-      window.dispatchEvent(new CustomEvent("sim_notification_created", { detail: { type: "crew_broadcast" } }));
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("sim_booking_created", { detail: { bookingId: res.id } }));
+        window.dispatchEvent(new CustomEvent("sim_notification_created", { detail: { type: "crew_broadcast" } }));
+      }
+    } catch (err) {
+      console.debug("Crew notification notice on booking creation:", err);
     }
-  } catch (err) {
-    console.debug("Crew notification notice on booking creation:", err);
-  }
+  })();
 
   return res.id;
 };
@@ -549,7 +547,7 @@ export const crewAcceptBooking = async (bookingId: string, crewUid: string, crew
     if (crewUser?.photo || (crewUser as any)?.photoURL) {
       crewPhoto = crewUser.photo || (crewUser as any).photoURL || "";
     }
-  } catch (e) {}
+  } catch (e) { }
 
   const now = new Date().toISOString();
   const updated: Partial<dbBooking> = {
@@ -643,6 +641,47 @@ export const updateBookingStatus = async (bookingId: string, status: dbBooking["
   await logAuditAction(`Update booking status ${bookingId} to ${status}`, prev, updated);
 };
 
+export const rescheduleBooking = async (
+  bookingId: string,
+  newDate: string,
+  newTimeSlot: string
+): Promise<void> => {
+  const ref = db.collection("bookings").doc(bookingId);
+  const snap = await ref.get();
+  if (!snap.exists()) {
+    throw new Error("Booking not found");
+  }
+
+  const prev = snap.data() as dbBooking;
+  const now = new Date().toISOString();
+  const updatedData = {
+    scheduledDate: newDate,
+    timeSlot: newTimeSlot,
+    rescheduledAt: now,
+    updatedAt: now,
+    updatedBy: auth.currentUser?.uid || prev.customerId
+  };
+
+  await ref.set(updatedData, { merge: true });
+  await logAuditAction(`Customer rescheduled booking ${bookingId} to ${newDate} (${newTimeSlot})`, prev, updatedData);
+
+  // Notify assigned crew if any
+  if (prev.assignedEmployee) {
+    try {
+      await sendNotification(
+        prev.assignedEmployee,
+        `📅 Booking Rescheduled by Customer`,
+        `Booking #${bookingId.slice(0, 8).toUpperCase()} for ${prev.serviceName} has been rescheduled to ${newDate} (${newTimeSlot}).`,
+        "Schedule Update",
+        "medium",
+        { deepLink: "/employee", receiverRole: "crew", sentTime: now }
+      );
+    } catch (e) { }
+  }
+
+  notifyGlobalDataChange("bookings");
+};
+
 export const updateBookingCrewLocation = async (
   bookingId: string,
   latitude: number,
@@ -692,30 +731,10 @@ export const assignEmployee = async (
   crewArrivingTime?: string
 ): Promise<void> => {
   const ref = db.collection("bookings").doc(bookingId);
-  const prevSnap = await ref.get();
-  const prev = prevSnap.data();
-
-  // Build booking summary for notification
-  const bookingData = prev as any;
-  const serviceName = bookingData?.serviceName || "Service";
-  const customerName = bookingData?.customerName || "Customer";
-  const scheduledDate = bookingData?.scheduledDate || crewArrivingDate || "";
-  const timeSlot = bookingData?.timeSlot || crewArrivingTime || "";
-  const address = bookingData?.notes || bookingData?.address || "Check booking for address";
-
-  let crewPhone = "";
-  try {
-    const crewUser = await getUserProfile(employeeId);
-    if (crewUser?.phone || crewUser?.contactNumber) {
-      crewPhone = crewUser.phone || crewUser.contactNumber || "";
-    }
-  } catch (e) {}
-
   const now = new Date().toISOString();
   const updated = {
     assignedEmployee: employeeId,
     assignedEmployeeName: employeeName,
-    assignedEmployeePhone: crewPhone,
     crewArrivingDate: crewArrivingDate || "",
     crewArrivingTime: crewArrivingTime || "",
     acceptedAt: now,
@@ -723,38 +742,67 @@ export const assignEmployee = async (
     updatedAt: now,
     updatedBy: auth.currentUser?.uid || "system"
   };
+
+  // Immediate database assignment save
   await ref.set(updated, { merge: true });
-  await logAuditAction(`Assigned booking ${bookingId} to ${employeeName}`, prev, updated);
 
-  // --- Force notification to the crew member ---
-  const arrivalInfo = crewArrivingDate
-    ? ` Arrive by ${crewArrivingDate}${crewArrivingTime ? " at " + crewArrivingTime : ""}.`
-    : "";
+  // Background non-blocking tasks (profile lookup, notification, audit logging)
+  (async () => {
+    try {
+      const prevSnap = await ref.get();
+      const prev = prevSnap.data();
+      const bookingData = prev as any;
+      const serviceName = bookingData?.serviceName || "Service";
+      const customerName = bookingData?.customerName || "Customer";
+      const scheduledDate = bookingData?.scheduledDate || crewArrivingDate || "";
+      const timeSlot = bookingData?.timeSlot || crewArrivingTime || "";
+      const address = bookingData?.notes || bookingData?.address || "Check booking for address";
 
-  await sendNotification(
-    employeeId,
-    `🚗 New Job Assigned: ${serviceName}`,
-    `You have been assigned a new booking for ${customerName}. Service: ${serviceName} | Date: ${scheduledDate} ${timeSlot} | Address: ${address}.${arrivalInfo}`,
-    "Job Assignment",
-    "critical",
-    {
-      subtitle: `Booking ID: ${bookingId}`,
-      deepLink: "/employee",
-      receiverRole: "staff",
-      sentTime: new Date().toISOString(),
-      pinned: true
+      let crewPhone = "";
+      try {
+        const crewUser = await getUserProfile(employeeId);
+        if (crewUser?.phone || crewUser?.contactNumber) {
+          crewPhone = crewUser.phone || crewUser.contactNumber || "";
+        }
+      } catch (e) { }
+
+      if (crewPhone) {
+        await ref.set({ assignedEmployeePhone: crewPhone }, { merge: true });
+      }
+
+      await logAuditAction(`Assigned booking ${bookingId} to ${employeeName}`, prev, { ...updated, assignedEmployeePhone: crewPhone });
+
+      const arrivalInfo = crewArrivingDate
+        ? ` Arrive by ${crewArrivingDate}${crewArrivingTime ? " at " + crewArrivingTime : ""}.`
+        : "";
+
+      await sendNotification(
+        employeeId,
+        `🚗 New Job Assigned: ${serviceName}`,
+        `You have been assigned a new booking for ${customerName}. Service: ${serviceName} | Date: ${scheduledDate} ${timeSlot} | Address: ${address}.${arrivalInfo}`,
+        "Job Assignment",
+        "critical",
+        {
+          subtitle: `Booking ID: ${bookingId}`,
+          deepLink: "/employee",
+          receiverRole: "staff",
+          sentTime: new Date().toISOString(),
+          pinned: true
+        }
+      );
+
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("crew_booking_assigned", { detail: { employeeId, bookingId } })
+        );
+        window.dispatchEvent(
+          new CustomEvent("sim_notification_created", { detail: { userId: employeeId } })
+        );
+      }
+    } catch (err) {
+      console.debug("Background crew assignment tasks error:", err);
     }
-  );
-
-  // Dispatch real-time event so crew dashboard refreshes instantly if open
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(
-      new CustomEvent("crew_booking_assigned", { detail: { employeeId, bookingId } })
-    );
-    window.dispatchEvent(
-      new CustomEvent("sim_notification_created", { detail: { userId: employeeId } })
-    );
-  }
+  })();
 };
 
 // 5. Payments CRUD
@@ -1020,11 +1068,11 @@ export const getUserNotifications = async (userId: string): Promise<dbNotificati
   try {
     const userDoc = await getUserProfile(userId);
     if (userDoc?.role) userRole = userDoc.role;
-  } catch (e) {}
+  } catch (e) { }
 
   try {
     const snap = await db.collection("notifications").get();
-    
+
     snap.forEach((doc: any) => {
       const data = doc.data() as dbNotification;
       const docId = doc.id;
@@ -1455,19 +1503,19 @@ export const getAllServicesSync = (): dbService[] => {
       const parsed = JSON.parse(cachedRaw);
       if (Array.isArray(parsed) && parsed.length > 0) {
         const cleaned = parsed.filter((s: any) => !isLegacyService(s));
-        try { localStorage.setItem("sim_db_services_cache", JSON.stringify(cleaned)); } catch (e) {}
+        try { localStorage.setItem("sim_db_services_cache", JSON.stringify(cleaned)); } catch (e) { }
         cachedServicesMap = cleaned;
         return cachedServicesMap;
       }
     }
-  } catch (e) {}
+  } catch (e) { }
 
   const servicesMap = new Map<string, dbService>();
 
   try {
     const customServicesRaw = JSON.parse(localStorage.getItem("admin_custom_services") || "[]");
     const cleanedCustom = customServicesRaw.filter((s: any) => !isLegacyService(s));
-    try { localStorage.setItem("admin_custom_services", JSON.stringify(cleanedCustom)); } catch (e) {}
+    try { localStorage.setItem("admin_custom_services", JSON.stringify(cleanedCustom)); } catch (e) { }
 
     cleanedCustom.forEach((cs: any) => {
       if (!cs.isDeleted && !isLegacyService(cs)) {
@@ -1513,7 +1561,7 @@ export const getAllServices = async (): Promise<dbService[]> => {
     try {
       const customServicesRaw = JSON.parse(localStorage.getItem("admin_custom_services") || "[]");
       const cleanedCustom = customServicesRaw.filter((s: any) => !isLegacyService(s));
-      try { localStorage.setItem("admin_custom_services", JSON.stringify(cleanedCustom)); } catch (e) {}
+      try { localStorage.setItem("admin_custom_services", JSON.stringify(cleanedCustom)); } catch (e) { }
 
       cleanedCustom.forEach((cs: any) => {
         if (cs.isDeleted || isLegacyService(cs)) {
@@ -1523,14 +1571,14 @@ export const getAllServices = async (): Promise<dbService[]> => {
           servicesMap.set(cs.id, { ...existing, ...cs });
         }
       });
-    } catch {}
+    } catch { }
 
     const freshList = Array.from(servicesMap.values()).filter(s => !isLegacyService(s));
     if (JSON.stringify(freshList) !== JSON.stringify(cachedServicesMap)) {
       cachedServicesMap = freshList;
       try {
         localStorage.setItem("sim_db_services_cache", JSON.stringify(freshList));
-      } catch (e) {}
+      } catch (e) { }
       notifyGlobalDataChange("services");
     }
   }).catch((err) => {
@@ -1782,7 +1830,7 @@ export const getUserLoyaltyPoints = async (userId: string): Promise<number> => {
     if (localPts !== null) {
       return parseInt(localPts, 10) || 0;
     }
-  } catch (e) {}
+  } catch (e) { }
 
   return 0;
 };
@@ -1812,7 +1860,7 @@ export const getUserLoyaltyHistory = async (userId: string): Promise<dbLoyaltyTr
       }
     });
     list.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-  } catch (e) {}
+  } catch (e) { }
 
   return list;
 };
@@ -1838,7 +1886,7 @@ export const grantOrAdjustLoyaltyPoints = async (
 
   try {
     localStorage.setItem(`user_loyalty_points_${userId}`, newBalance.toString());
-  } catch (e) {}
+  } catch (e) { }
 
   const tx: dbLoyaltyTransaction = {
     id: `tx-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -1860,7 +1908,7 @@ export const grantOrAdjustLoyaltyPoints = async (
     const localHistory = JSON.parse(localStorage.getItem(`user_loyalty_history_${userId}`) || "[]");
     localHistory.unshift(tx);
     localStorage.setItem(`user_loyalty_history_${userId}`, JSON.stringify(localHistory));
-  } catch (e) {}
+  } catch (e) { }
 
   await logAuditAction(`Loyalty Points adjustment (${points > 0 ? '+' : ''}${points}) for user ${userId}`, null, { points, type, newBalance });
 
@@ -1942,7 +1990,7 @@ export const getBeforeAfterItems = async (): Promise<dbBeforeAfterItem[]> => {
         map.set(item.id, { ...map.get(item.id), ...item });
       }
     });
-  } catch (e) {}
+  } catch (e) { }
 
   return Array.from(map.values()).sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
 };
@@ -1974,7 +2022,7 @@ export const createOrUpdateBeforeAfterItem = async (item: dbBeforeAfterItem): Pr
     const filtered = local.filter((i: any) => i.id !== item.id);
     filtered.push(docData);
     localStorage.setItem("admin_before_after_gallery", JSON.stringify(filtered));
-  } catch (e) {}
+  } catch (e) { }
 };
 
 export const deleteBeforeAfterItem = async (id: string): Promise<void> => {
@@ -1993,7 +2041,7 @@ export const deleteBeforeAfterItem = async (id: string): Promise<void> => {
       local.push({ id, isDeleted: true });
     }
     localStorage.setItem("admin_before_after_gallery", JSON.stringify(local));
-  } catch (e) {}
+  } catch (e) { }
 };
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -2078,24 +2126,24 @@ export interface ActiveSubscription extends dbBooking {
 export const getActiveSubscription = async (userId: string): Promise<ActiveSubscription | null> => {
   try {
     const bookings = await getBookingsByCustomer(userId);
-    const subscriptions = bookings.filter(b => 
+    const subscriptions = bookings.filter(b =>
       b.serviceId.includes("subscription") && b.bookingStatus === "Completed"
     );
-    
+
     if (subscriptions.length === 0) return null;
-    
+
     // Sort by scheduledDate descending to get the latest
     subscriptions.sort((a, b) => new Date(b.scheduledDate).getTime() - new Date(a.scheduledDate).getTime());
     const latest = subscriptions[0];
-    
+
     const scheduledDateObj = new Date(latest.scheduledDate);
     // Active for 30 days from the scheduled date of the first/latest completed service
     const expiryDateObj = new Date(scheduledDateObj.getTime());
     expiryDateObj.setDate(expiryDateObj.getDate() + 30);
-    
+
     const today = new Date();
     const msRemaining = expiryDateObj.getTime() - today.getTime();
-    
+
     if (msRemaining > 0) {
       const daysRemaining = Math.ceil(msRemaining / (1000 * 60 * 60 * 24));
       return {
@@ -2104,7 +2152,7 @@ export const getActiveSubscription = async (userId: string): Promise<ActiveSubsc
         daysRemaining
       };
     }
-    
+
     return null;
   } catch (error) {
     console.error("Error fetching active subscription:", error);
@@ -2165,6 +2213,125 @@ export const deleteBlogPost = async (id: string): Promise<void> => {
 };
 
 /* ─────────────────────────────────────────────────────────────────────────────
+   19. DATABASE-DRIVEN COUPONS SYSTEM
+   Stores and manages promo codes in Firestore database with full admin access
+   ───────────────────────────────────────────────────────────────────────────── */
+
+export interface dbCoupon extends BaseDoc {
+  id: string;
+  code: string;
+  discountType: "percentage" | "flat";
+  discountValue: number;
+  description: string;
+  minSpend?: number;
+  assignedUserId?: string; // "all" or specific user UID
+  assignedUserEmail?: string;
+  usedCount?: number;
+  maxUses?: number;
+  expiryDate?: string;
+  status: "active" | "inactive";
+}
+
+
+export const getAllCoupons = async (): Promise<dbCoupon[]> => {
+  const list: dbCoupon[] = [];
+  try {
+    if (isFirebaseConfigured) {
+      const snap = await db.collection("coupons").get();
+      snap.forEach((doc: any) => {
+        list.push({ id: doc.id, ...doc.data() } as dbCoupon);
+      });
+      return list;
+    }
+  } catch (e) {
+    console.warn("Error getting coupons from Firestore, checking local storage:", e);
+  }
+
+  // Local storage fallback
+  const raw = localStorage.getItem("sim_db_coupons");
+  if (raw) {
+    try {
+      return JSON.parse(raw);
+    } catch { }
+  }
+  return [];
+};
+
+export const createOrUpdateCoupon = async (couponData: Partial<dbCoupon> & { code: string }): Promise<string> => {
+  const id = couponData.id || "coupon-" + Math.random().toString(36).substring(2, 9);
+  const docData: dbCoupon = {
+    id,
+    code: couponData.code.toUpperCase().trim(),
+    discountType: couponData.discountType || "percentage",
+    discountValue: Number(couponData.discountValue) || 10,
+    description: couponData.description || `${couponData.code} Promo Code`,
+    minSpend: couponData.minSpend,
+    assignedUserId: couponData.assignedUserId || "all",
+    assignedUserEmail: couponData.assignedUserEmail,
+    status: couponData.status || "active",
+    createdAt: couponData.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  if (isFirebaseConfigured) {
+    await db.collection("coupons").doc(id).set(docData, { merge: true });
+  }
+
+  const existing = await getAllCoupons();
+  const updated = [docData, ...existing.filter(c => c.id !== id)];
+  localStorage.setItem("sim_db_coupons", JSON.stringify(updated));
+
+  await logAuditAction(`Create/Update coupon ${docData.code}`, null, docData);
+  notifyGlobalDataChange("coupons");
+  return id;
+};
+
+export const deleteCoupon = async (id: string): Promise<void> => {
+  if (isFirebaseConfigured) {
+    await db.collection("coupons").doc(id).delete();
+  }
+  const existing = await getAllCoupons();
+  const updated = existing.filter(c => c.id !== id);
+  localStorage.setItem("sim_db_coupons", JSON.stringify(updated));
+
+  await logAuditAction(`Deleted coupon ${id}`);
+  notifyGlobalDataChange("coupons");
+};
+
+export const assignCouponToUser = async (couponCode: string, targetUserId: string, targetUserEmail?: string): Promise<string> => {
+  const all = await getAllCoupons();
+  const found = all.find(c => c.code.toUpperCase() === couponCode.toUpperCase());
+
+  if (found) {
+    const newCouponId = `coupon-${targetUserId.slice(0, 5)}-${Date.now()}`;
+    const userCoupon: dbCoupon = {
+      ...found,
+      id: newCouponId,
+      assignedUserId: targetUserId,
+      assignedUserEmail: targetUserEmail || found.assignedUserEmail,
+      updatedAt: new Date().toISOString()
+    };
+    await createOrUpdateCoupon(userCoupon);
+    return newCouponId;
+  } else {
+    const newCoupon: dbCoupon = {
+      id: `coupon-${targetUserId.slice(0, 5)}-${Date.now()}`,
+      code: couponCode.toUpperCase().trim(),
+      discountType: "percentage",
+      discountValue: 15,
+      description: `Exclusive user offer: ${couponCode.toUpperCase()}`,
+      assignedUserId: targetUserId,
+      assignedUserEmail: targetUserEmail,
+      status: "active",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    await createOrUpdateCoupon(newCoupon);
+    return newCoupon.id;
+  }
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
    GLOBAL REALTIME EVENT BROADCASTER
    Synchronizes all Admin updates across all open tabs, windows & user/crew sessions
    ───────────────────────────────────────────────────────────────────────────── */
@@ -2202,4 +2369,72 @@ export const subscribeToDataChanges = (callback: (topic?: string) => void): (() 
     window.removeEventListener("va_data_change", handleCustomEvent);
     window.removeEventListener("storage", handleStorageEvent);
   };
+};
+
+export interface dbCouponSettings {
+  showCouponSection: boolean;
+}
+
+export const DEFAULT_COUPON_SETTINGS: dbCouponSettings = {
+  showCouponSection: true,
+};
+
+export const getCouponSettings = async (): Promise<dbCouponSettings> => {
+  try {
+    if (isFirebaseConfigured) {
+      const doc = await db.collection("settings").doc("coupons").get();
+      if (doc.exists) {
+        return { ...DEFAULT_COUPON_SETTINGS, ...doc.data() } as dbCouponSettings;
+      }
+    }
+  } catch (err) {
+    console.warn("Could not fetch coupon settings from Firestore:", err);
+  }
+  const local = localStorage.getItem("admin_coupon_settings");
+  if (local) {
+    try {
+      return { ...DEFAULT_COUPON_SETTINGS, ...JSON.parse(local) };
+    } catch (e) {
+      console.error("Failed to read local coupon settings:", e);
+    }
+  }
+  return DEFAULT_COUPON_SETTINGS;
+};
+
+export const updateCouponSettings = async (settings: Partial<dbCouponSettings>): Promise<void> => {
+  const updated = { ...settings };
+  try {
+    if (isFirebaseConfigured) {
+      await db.collection("settings").doc("coupons").set(updated, { merge: true });
+    }
+  } catch (err) {
+    console.warn("Could not save coupon settings to Firestore:", err);
+  }
+  try {
+    const current = await getCouponSettings();
+    localStorage.setItem("admin_coupon_settings", JSON.stringify({ ...current, ...updated }));
+  } catch (e) {
+    console.error("Failed to save local coupon settings:", e);
+  }
+  notifyGlobalDataChange("coupons");
+};
+
+/**
+ * Fetches all registered customer profiles from Firestore or returns default demo list.
+ */
+export const getAllCustomers = async (): Promise<any[]> => {
+  try {
+    if (isFirebaseConfigured) {
+      const snap = await db.collection("users").where("role", "==", "customer").get();
+      if (!snap.empty) {
+        return snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      }
+    }
+  } catch (err) {
+    console.warn("Error fetching customers from Firestore, using simulator fallback:", err);
+  }
+
+  return [
+
+  ];
 };

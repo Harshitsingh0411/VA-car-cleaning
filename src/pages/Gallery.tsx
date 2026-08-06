@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Camera, Star, Sparkles, X, Filter, Video as VideoIcon, CheckCircle2, Shield } from "lucide-react";
 import { getAllReviews, dbReview } from "../services/dbService";
 import { useImageLightbox } from "../context/ImageLightboxContext";
+import GlassImage from "../components/ui/GlassImage";
 
 interface GalleryItem {
   id: string;
@@ -123,6 +124,7 @@ export default function GalleryPage() {
 
   const filteredItems = items.filter((item) => {
     if (activeFilter === "all") return true;
+    if (activeFilter === "video") return item.type === "video";
     return item.category === activeFilter;
   });
 
@@ -241,10 +243,11 @@ export default function GalleryPage() {
                 {item.type === "video" ? (
                   <video src={item.url} className="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-500" />
                 ) : (
-                  <img
+                  <GlassImage
                     src={item.url}
                     alt={item.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    containerClassName="w-full h-full"
                   />
                 )}
 

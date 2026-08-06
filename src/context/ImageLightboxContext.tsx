@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { motion, AnimatePresence } from "motion/react";
 import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize2, RotateCcw, AlertTriangle } from "lucide-react";
 import { isLocalBlobUrl } from "../utils/mediaUtils";
+import GlassImage from "../components/ui/GlassImage";
 
 export interface LightboxMedia {
   url: string;
@@ -209,7 +210,7 @@ export const ImageLightboxProvider: React.FC<{ children: React.ReactNode }> = ({
                     />
                   )
                 ) : (
-                  <img
+                  <GlassImage
                     src={activeMedia.url}
                     alt={activeMedia.title || "Full display image"}
                     className="max-h-[85vh] max-w-[92vw] rounded-2xl shadow-2xl object-contain border border-white/10 cursor-zoom-in"

@@ -17,6 +17,12 @@ export interface Vehicle {
   id: string;
   name: string;
   number: string;
+  image?: string;
+  type?: string;
+  year?: string;
+  fuelType?: string;
+  mileage?: string;
+  status?: "ACTIVE" | "INACTIVE";
 }
 
 export interface Appointment {
@@ -31,7 +37,7 @@ export interface Appointment {
 
 export interface UserProfile {
   contactNumber: string;
-  addresses: string[];
+  addresses: any[];
   vehicles: Vehicle[];
   appointments: Appointment[];
   role?: "admin" | "customer" | "staff";
@@ -57,9 +63,9 @@ interface AuthContextType {
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   updateContactNumber: (phone: string) => Promise<void>;
-  addAddress: (address: string) => Promise<void>;
+  addAddress: (address: any) => Promise<void>;
   removeAddress: (idx: number) => Promise<void>;
-  addVehicle: (name: string, num: string) => Promise<void>;
+  addVehicle: (name: string, num: string, details?: Partial<Vehicle>) => Promise<void>;
   removeVehicle: (id: string) => Promise<void>;
   addAppointment: (service: string, vehicle: string, date: string, time: string, price: string) => Promise<void>;
   updateProfileDetails: (data: Partial<UserProfile>) => Promise<void>;
@@ -169,52 +175,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (!isFirebaseConfigured && !localStorage.getItem("sim_registered_users")) {
       const seededSimUsers = [
-        {
-          uid: "usr-1",
-          email: "rahul@gmail.com",
-          password: "password123",
-          displayName: "Rahul Sharma",
-          photoURL: "https://api.dicebear.com/7.x/avataaars/svg?seed=Rahul"
-        },
-        {
-          uid: "usr-2",
-          email: "arjun.m@yahoo.com",
-          password: "password123",
-          displayName: "Arjun Mehta",
-          photoURL: "https://api.dicebear.com/7.x/avataaars/svg?seed=Arjun"
-        },
-        {
-          uid: "usr-3",
-          email: "pooja.malhotra@outlook.com",
-          password: "password123",
-          displayName: "Pooja Malhotra",
-          photoURL: "https://api.dicebear.com/7.x/avataaars/svg?seed=Pooja"
-        }
+
       ];
       localStorage.setItem("sim_registered_users", JSON.stringify(seededSimUsers));
-      
+
       const defaultProfiles = {
-        "usr-1": {
-          contactNumber: "+91 98765 43210",
-          addresses: ["Flat 402, Sunshine Heights, Dwarka, New Delhi"],
-          vehicles: [{ id: "veh-1", name: "Hyundai Creta", number: "DL-3C-AS-1234" }],
-          appointments: [],
-          role: "customer"
-        },
-        "usr-2": {
-          contactNumber: "+91 88825 40255",
-          addresses: ["Sector 15, Golf Course Road, Gurugram"],
-          vehicles: [{ id: "veh-2", name: "Royal Enfield Bullet", number: "HR-26-DJ-9876" }],
-          appointments: [],
-          role: "staff"
-        },
-        "usr-3": {
-          contactNumber: "+91 95699 49626",
-          addresses: ["C-45, Vasant Kunj, New Delhi"],
-          vehicles: [{ id: "veh-3", name: "Kia Seltos", number: "DL-9C-XY-0001" }],
-          appointments: [],
-          role: "admin"
-        }
+
       };
 
       Object.entries(defaultProfiles).forEach(([uid, p]) => {
@@ -289,13 +255,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const updateProfileDetails = async (data: Partial<UserProfile>) => {
     if (!user) return;
     await updateUserProfile(user.uid, data);
-    
+
     // Update Firebase Auth profile if photo or name changed
     if (data.photo || data.name) {
       const authUpdates: any = {};
       if (data.name) authUpdates.displayName = data.name;
       if (data.photo) authUpdates.photoURL = data.photo;
-      
+
       try {
         if ((auth as any).updateCurrentUserProfile) {
           await (auth as any).updateCurrentUserProfile(authUpdates);
@@ -308,7 +274,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error("Failed to sync Firebase Auth profile", e);
       }
     }
-    
+
     setProfile((prev) => (prev ? { ...prev, ...data } : null));
   };
 
@@ -316,7 +282,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await updateProfileDetails({ contactNumber: phone });
   };
 
-  const addAddress = async (address: string) => {
+  const addAddress = async (address: any) => {
     if (!profile) return;
     const addresses = [...(profile.addresses || []), address];
     await updateProfileDetails({ addresses });
@@ -328,9 +294,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await updateProfileDetails({ addresses });
   };
 
-  const addVehicle = async (name: string, num: string) => {
+  const addVehicle = async (name: string, num: string, details?: Partial<Vehicle>) => {
     if (!profile) return;
-    const newV: Vehicle = { id: "veh-" + Math.random().toString(36).substring(2, 9), name, number: num };
+    const newV: Vehicle = { 
+      id: "veh-" + Math.random().toString(36).substring(2, 9), 
+      name, 
+      number: num,
+      ...details
+    };
     const vehicles = [...(profile.vehicles || []), newV];
     await updateProfileDetails({ vehicles });
   };
@@ -380,10 +351,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+const defaultAuthContext: AuthContextType = {
+  user: null,
+  loading: true,
+  profile: null,
+  loginWithEmail: async () => { },
+  registerWithEmail: async () => { },
+  loginWithGoogle: async () => { },
+  logout: async () => { },
+  updateContactNumber: async () => { },
+  addAddress: async () => { },
+  removeAddress: async () => { },
+  addVehicle: async (name: string, num: string, details?: Partial<Vehicle>) => { },
+  removeVehicle: async () => { },
+  addAppointment: async () => { },
+  updateProfileDetails: async () => { }
+};
+
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
+  if (!context) {
+    return defaultAuthContext;
   }
   return context;
 }

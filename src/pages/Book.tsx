@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useForm } from "react-hook-form";
-import { CheckCircle, Calendar, Sparkles, Car, ShieldCheck, User, Phone, Mail, Clock, MapPin, ArrowRight, Gift, Star } from "lucide-react";
+import { CheckCircle, Calendar, Sparkles, Car, ShieldCheck, User, Phone, Mail, Clock, MapPin, ArrowRight, Gift, Star, Tag, X } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { useAuth } from "../context/AuthContext";
 import { servicePrices } from "../lib/prices";
+import { validateCoupon, Coupon } from "../lib/coupons";
 import {
   createBooking,
   getAllServices,
@@ -13,9 +14,18 @@ import {
   getLoyaltySettings,
   getUserLoyaltyPoints,
   grantOrAdjustLoyaltyPoints,
-  dbLoyaltySettings
+  dbLoyaltySettings,
+  getAllCoupons,
+  getCouponSettings
 } from "../services/dbService";
 import { CustomerLocationPicker, LocationCoords } from "../components/location/LocationPickerMap";
+import { 
+  getVehicleBrands, 
+  getVehicleModels, 
+  getOrFetchVehicleImage,
+  VehicleBrand,
+  VehicleModel
+} from "../services/vehicleDbService";
 
 interface BookingInputs {
   name: string;
@@ -44,9 +54,40 @@ export default function BookPage() {
   const [pointsToRedeemInput, setPointsToRedeemInput] = useState<number>(0);
   const [saveNewVehicle, setSaveNewVehicle] = useState<boolean>(true);
 
+  // Vehicle system states
+  const [brands, setBrands] = useState<VehicleBrand[]>([]);
+  const [models, setModels] = useState<VehicleModel[]>([]);
+  const [vehicleType, setVehicleType] = useState<"Car" | "Bike">("Car");
+  const [selectedBrandId, setSelectedBrandId] = useState("");
+  const [selectedModelId, setSelectedModelId] = useState("");
+  const [customBrandName, setCustomBrandName] = useState("");
+  const [customModelName, setCustomModelName] = useState("");
+  const [vehicleImagePreview, setVehicleImagePreview] = useState("");
+  const [loadingImage, setLoadingImage] = useState(false);
+
   // Read query parameters
   const queryService = searchParams.get("service");
+  const queryCoupon = searchParams.get("coupon");
   const isRevisit = searchParams.get("revisit") === "true";
+
+  // Coupon state
+  const [dbCouponsList, setDbCouponsList] = useState<Coupon[]>([]);
+  const [couponInput, setCouponInput] = useState<string>(queryCoupon || "");
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+  const [couponDiscount, setCouponDiscount] = useState<number>(0);
+  const [couponError, setCouponError] = useState<string>("");
+  const [couponSuccessMsg, setCouponSuccessMsg] = useState<string>("");
+  const [showCouponSection, setShowCouponSection] = useState(true);
+
+  useEffect(() => {
+    getAllCoupons().then(list => {
+      const available = list.filter(c => c.status === "active" && (!c.assignedUserId || c.assignedUserId === "all" || (user && c.assignedUserId === user.uid)));
+      setDbCouponsList(available);
+    }).catch(console.error);
+    getCouponSettings().then((settings) => {
+      setShowCouponSection(settings.showCouponSection);
+    }).catch(console.error);
+  }, [user]);
 
   const { register, handleSubmit, formState: { errors }, watch, trigger, setValue } = useForm<BookingInputs>({
     defaultValues: {
@@ -87,6 +128,42 @@ export default function BookPage() {
     }
   }, [user, queryService, setValue]);
 
+  useEffect(() => {
+    getVehicleBrands().then(setBrands).catch(console.error);
+    getVehicleModels().then(setModels).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    let brandName = "";
+    let modelName = "";
+    
+    if (selectedBrandId && selectedBrandId !== "custom") {
+      const b = brands.find(brand => brand.id === selectedBrandId);
+      brandName = b ? b.name : "";
+    } else {
+      brandName = customBrandName;
+    }
+    
+    if (selectedModelId && selectedModelId !== "custom") {
+      const m = models.find(mod => mod.id === selectedModelId);
+      modelName = m ? m.name : "";
+    } else {
+      modelName = customModelName;
+    }
+    
+    if (brandName && modelName) {
+      setLoadingImage(true);
+      getOrFetchVehicleImage(brandName, modelName)
+        .then((url) => {
+          setVehicleImagePreview(url);
+        })
+        .catch(console.error)
+        .finally(() => setLoadingImage(false));
+    } else {
+      setVehicleImagePreview("");
+    }
+  }, [selectedBrandId, selectedModelId, customBrandName, customModelName, brands, models]);
+
   // Autofill user details if logged in
   useEffect(() => {
     if (user) {
@@ -96,7 +173,8 @@ export default function BookPage() {
         setValue("phone", profile.contactNumber);
       }
       if (profile?.addresses && profile.addresses.length > 0) {
-        setValue("address", profile.addresses[0]);
+        const firstAddr = profile.addresses[0];
+        setValue("address", typeof firstAddr === "string" ? firstAddr : `${firstAddr.addressLine}, ${firstAddr.cityStateZip}`);
       }
       if (profile?.vehicles && profile.vehicles.length > 0) {
         setValue("vehicleSelect", profile.vehicles[0].id);
@@ -113,27 +191,224 @@ export default function BookPage() {
   const fallbackPrice = services.length > 0 ? services[0].price : 0;
   const rawServicePrice = isRevisit ? 0 : (matchedService ? matchedService.price : fallbackPrice);
 
-  // Loyalty calculations
+  // Coupon validation handlers
+  const handleApplyCouponCode = useCallback((codeToApply: string) => {
+    setCouponError("");
+    setCouponSuccessMsg("");
+    const res = validateCoupon(codeToApply, rawServicePrice, dbCouponsList);
+    if (res.valid && res.coupon) {
+      setAppliedCoupon(res.coupon);
+      setCouponDiscount(res.discountAmount);
+      setCouponSuccessMsg(`${res.coupon.description} applied!`);
+      setCouponInput(res.coupon.code);
+    } else {
+      setAppliedCoupon(null);
+      setCouponDiscount(0);
+      setCouponError(res.error || "Invalid coupon code");
+    }
+  }, [rawServicePrice, dbCouponsList]);
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponDiscount(0);
+    setCouponInput("");
+    setCouponError("");
+    setCouponSuccessMsg("");
+  };
+
+  // Auto-apply query coupon code if passed in URL (/book?coupon=CLEAN15)
+  useEffect(() => {
+    if (queryCoupon && rawServicePrice > 0 && !appliedCoupon) {
+      handleApplyCouponCode(queryCoupon);
+    }
+  }, [queryCoupon, rawServicePrice, appliedCoupon, handleApplyCouponCode]);
+
+  // Recalculate coupon discount if raw service price changes
+  useEffect(() => {
+    if (appliedCoupon && rawServicePrice > 0) {
+      const res = validateCoupon(appliedCoupon.code, rawServicePrice);
+      if (res.valid) {
+        setCouponDiscount(res.discountAmount);
+      }
+    }
+  }, [rawServicePrice, appliedCoupon]);
+
+  // Pricing & Loyalty calculations (Price after Coupon -> then apply Loyalty Points)
+  const priceAfterCoupon = Math.max(0, rawServicePrice - couponDiscount);
   const pointValue = loyaltySettings?.pointRedemptionValue || 1;
   const maxDiscountPercent = loyaltySettings?.maxDiscountPercent || 50;
   const maxAllowedPoints = Math.min(
     userLoyaltyPoints,
-    Math.floor((rawServicePrice * (maxDiscountPercent / 100)) / pointValue)
+    Math.floor((priceAfterCoupon * (maxDiscountPercent / 100)) / pointValue)
   );
 
   const activeRedeemedPoints = (redeemLoyalty && loyaltySettings?.enabled)
     ? Math.min(pointsToRedeemInput > 0 ? pointsToRedeemInput : userLoyaltyPoints, maxAllowedPoints)
     : 0;
   const loyaltyDiscount = activeRedeemedPoints * pointValue;
-  const finalPayablePrice = Math.max(0, rawServicePrice - loyaltyDiscount);
+  const finalPayablePrice = Math.max(0, priceAfterCoupon - loyaltyDiscount);
   const estimatedEarnedPoints = Math.floor((finalPayablePrice / 100) * (loyaltySettings?.pointsPer100Spent || 10));
 
   const serviceInfo = {
     name: isRevisit ? `Revisit Request (${matchedService?.name || "Service"})` : (matchedService ? matchedService.name : (services[0]?.name || "Car Cleaning Service")),
     price: isRevisit ? "Included in Plan" : `₹${finalPayablePrice}`,
     rawPrice: rawServicePrice,
-    discount: loyaltyDiscount,
+    couponDiscount,
+    loyaltyDiscount,
     finalPrice: finalPayablePrice
+  };
+
+  const renderNewVehicleFields = () => {
+    const filteredModels = models.filter(m => {
+      const brandMatches = selectedBrandId === "custom" || m.brandId === selectedBrandId;
+      const typeMatches = vehicleType === "Car" ? m.type !== "Bike" : m.type === "Bike";
+      return brandMatches && typeMatches;
+    });
+
+    return (
+      <div className="p-5 border border-primary/10 bg-primary/5 rounded-2xl space-y-4 text-left">
+        <h4 className="text-xs font-extrabold text-primary uppercase tracking-wider">Configure Vehicle Detailing Target</h4>
+        
+        {/* Car / Bike Selector Toggle */}
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Vehicle Category</label>
+          <div className="flex gap-2">
+            {(["Car", "Bike"] as const).map(type => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => {
+                  setVehicleType(type);
+                  setSelectedBrandId("");
+                  setSelectedModelId("");
+                }}
+                className={`flex-1 py-2 rounded-xl text-xs font-extrabold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  vehicleType === type
+                    ? "bg-primary border-primary text-white shadow-xs"
+                    : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
+                }`}
+              >
+                <span>{type === "Car" ? "🚗" : "🏍️"}</span>
+                <span>{type}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Brand Selector */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Vehicle Brand</label>
+            <select
+              value={selectedBrandId}
+              onChange={(e) => {
+                setSelectedBrandId(e.target.value);
+                setSelectedModelId("");
+              }}
+              className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-dark focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
+            >
+              <option value="">-- Choose Brand --</option>
+              {brands.map(b => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+              <option value="custom">+ Other / Custom Brand</option>
+            </select>
+          </div>
+
+          {/* Model Selector */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Vehicle Model</label>
+            <select
+              value={selectedModelId}
+              onChange={(e) => setSelectedModelId(e.target.value)}
+              className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-dark focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
+              disabled={!selectedBrandId}
+            >
+              <option value="">-- Choose Model --</option>
+              {filteredModels.map(m => (
+                <option key={m.id} value={m.id}>{m.name}</option>
+              ))}
+              <option value="custom">+ Other / Custom Model</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Custom Brand / Model Input boxes */}
+        {(selectedBrandId === "custom" || selectedModelId === "custom") && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-gray-100 pt-3">
+            {selectedBrandId === "custom" && (
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Enter Brand Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Aston Martin, Vespa"
+                  value={customBrandName}
+                  onChange={(e) => setCustomBrandName(e.target.value)}
+                  className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-dark focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+            )}
+            {selectedModelId === "custom" && (
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Enter Model Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. DB11, SXL 150"
+                  value={customModelName}
+                  onChange={(e) => setCustomModelName(e.target.value)}
+                  className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-dark focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Registration Number */}
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Registration Number</label>
+          <input
+            type="text"
+            placeholder="e.g. UP-78-AB-1234"
+            {...register("customVehicleNumber", { required: "Registration number is required" })}
+            className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-dark focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+          {errors.customVehicleNumber && (
+            <p className="text-red-500 text-[10px] font-bold">{errors.customVehicleNumber.message}</p>
+          )}
+        </div>
+
+        {/* Live Image Preview frame */}
+        {(loadingImage || vehicleImagePreview) && (
+          <div className="border border-gray-100 rounded-2xl bg-white p-3 space-y-2 text-center shadow-2xs">
+            <span className="text-[9px] font-bold text-gray-400 uppercase block tracking-wider font-sans">Vehicle Visualization</span>
+            {loadingImage ? (
+              <div className="h-28 bg-gray-50 rounded-xl flex flex-col items-center justify-center gap-1.5 text-gray-400">
+                <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <span className="text-[9px] font-bold">Searching & caching vehicle model image...</span>
+              </div>
+            ) : (
+              <div className="relative h-28 bg-gray-50 rounded-xl overflow-hidden border border-gray-200/40">
+                <img src={vehicleImagePreview} alt="Vehicle preview" className="w-full h-full object-cover" />
+              </div>
+            )}
+          </div>
+        )}
+
+        {user && (
+          <label className="flex items-center gap-2 cursor-pointer select-none pt-1">
+            <input
+              type="checkbox"
+              checked={saveNewVehicle}
+              onChange={(e) => setSaveNewVehicle(e.target.checked)}
+              className="w-4 h-4 rounded text-primary focus:ring-primary accent-primary cursor-pointer"
+            />
+            <span className="text-xs font-bold text-gray-700">Save vehicle to my account for faster future bookings</span>
+          </label>
+        )}
+      </div>
+    );
   };
 
   const nextStep = async () => {
@@ -155,14 +430,34 @@ export default function BookPage() {
 
   const onSubmit = async (data: BookingInputs) => {
     let finalVehicle = "";
+    let vehicleNameText = "";
     if (user && profile?.vehicles && profile.vehicles.length > 0 && data.vehicleSelect !== "new") {
       const matched = profile.vehicles.find(v => v.id === data.vehicleSelect);
       finalVehicle = matched ? `${matched.name} (${matched.number})` : data.vehicleSelect;
     } else {
-      finalVehicle = `${data.customVehicleName} (${data.customVehicleNumber})`;
-      if (user && saveNewVehicle && data.customVehicleName && data.customVehicleNumber && addVehicle) {
+      let brand = "";
+      let model = "";
+      if (selectedBrandId && selectedBrandId !== "custom") {
+        const b = brands.find(brand => brand.id === selectedBrandId);
+        brand = b ? b.name : "";
+      } else {
+        brand = customBrandName;
+      }
+      if (selectedModelId && selectedModelId !== "custom") {
+        const m = models.find(mod => mod.id === selectedModelId);
+        model = m ? m.name : "";
+      } else {
+        model = customModelName;
+      }
+      vehicleNameText = `${brand} ${model}`.trim();
+      finalVehicle = `${vehicleNameText} (${data.customVehicleNumber})`;
+      
+      if (user && saveNewVehicle && vehicleNameText && data.customVehicleNumber && addVehicle) {
         try {
-          await addVehicle(data.customVehicleName, data.customVehicleNumber);
+          await addVehicle(vehicleNameText, data.customVehicleNumber, {
+            image: vehicleImagePreview,
+            status: "ACTIVE"
+          });
         } catch (e) {
           console.warn("Could not save new vehicle to user profile:", e);
         }
@@ -186,6 +481,8 @@ export default function BookPage() {
         scheduledDate: data.bookingDate,
         timeSlot: data.bookingTime,
         price: finalPayablePrice,
+        discount: couponDiscount + loyaltyDiscount,
+        couponCode: appliedCoupon ? appliedCoupon.code : undefined,
         notes: data.notes,
         address: data.address,
         customerLatitude: pinnedLocation?.latitude,
@@ -193,26 +490,28 @@ export default function BookPage() {
         customerLocationUrl: pinnedLocation?.mapsUrl,
         loyaltyPointsRedeemed: activeRedeemedPoints,
         loyaltyPointsDiscount: loyaltyDiscount,
-        loyaltyPointsEarned: estimatedEarnedPoints
+        loyaltyPointsEarned: estimatedEarnedPoints,
+        vehicleImageUrl: vehicleImagePreview || undefined
       });
 
-      await addAppointment(serviceName, finalVehicle, data.bookingDate, data.bookingTime, `₹${finalPayablePrice}`);
-
-      // Deduct redeemed points & grant earned points
+      // Execute post-booking side-effects in parallel for maximum speed
+      const sideEffects: Promise<any>[] = [];
+      if (addAppointment) {
+        sideEffects.push(addAppointment(serviceName, finalVehicle, data.bookingDate, data.bookingTime, `₹${finalPayablePrice}`));
+      }
       if (activeRedeemedPoints > 0) {
-        await grantOrAdjustLoyaltyPoints(user.uid, -activeRedeemedPoints, "redeemed", `Redeemed ${activeRedeemedPoints} pts on ${serviceName}`, newBookingId);
+        sideEffects.push(grantOrAdjustLoyaltyPoints(user.uid, -activeRedeemedPoints, "redeemed", `Redeemed ${activeRedeemedPoints} pts on ${serviceName}`, newBookingId));
       }
       if (estimatedEarnedPoints > 0) {
-        await grantOrAdjustLoyaltyPoints(user.uid, estimatedEarnedPoints, "earned", `Earned ${estimatedEarnedPoints} pts on ${serviceName}`, newBookingId);
+        sideEffects.push(grantOrAdjustLoyaltyPoints(user.uid, estimatedEarnedPoints, "earned", `Earned ${estimatedEarnedPoints} pts on ${serviceName}`, newBookingId));
       }
-
-      // Save address for future use if not already saved
       if (data.address) {
         const addressExists = profile?.addresses?.some((addr: string) => addr.trim() === data.address.trim());
         if (!addressExists && addAddress) {
-          await addAddress(data.address);
+          sideEffects.push(addAddress(data.address));
         }
       }
+      await Promise.all(sideEffects);
     }
 
     setBookedDetails({
@@ -415,17 +714,20 @@ export default function BookPage() {
                         <div className="space-y-2">
                           {user && profile?.addresses && profile.addresses.length > 0 && (
                             <div className="flex flex-wrap gap-2 mb-2">
-                              {profile.addresses.map((addr, idx) => (
-                                <button
-                                  key={idx}
-                                  type="button"
-                                  onClick={() => setValue("address", addr)}
-                                  className="bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold px-2.5 py-1.5 rounded-lg text-left truncate max-w-[200px] cursor-pointer hover:bg-primary/20"
-                                  title={addr}
-                                >
-                                  {addr}
-                                </button>
-                              ))}
+                              {profile.addresses.map((addr, idx) => {
+                                const textVal = typeof addr === "string" ? addr : `${addr.addressLine}, ${addr.cityStateZip}`;
+                                return (
+                                  <button
+                                    key={idx}
+                                    type="button"
+                                    onClick={() => setValue("address", textVal)}
+                                    className="bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold px-2.5 py-1.5 rounded-lg text-left truncate max-w-[200px] cursor-pointer hover:bg-primary/20"
+                                    title={textVal}
+                                  >
+                                    {typeof addr === "string" ? addr : (addr.name || "Address")}
+                                  </button>
+                                );
+                              })}
                             </div>
                           )}
                           <textarea
@@ -448,6 +750,94 @@ export default function BookPage() {
                           }}
                         />
                       </div>
+
+                      {/* Promo / Coupon Code Box */}
+                      {!isRevisit && showCouponSection && (
+                        <div className="p-4 bg-gradient-to-br from-blue-50/60 to-purple-50/40 border border-blue-100 rounded-2xl space-y-3 text-left shadow-xs">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-primary font-heading font-extrabold text-xs">
+                              <Tag size={18} className="text-[#F4B400]" />
+                              <span>Apply Promo / Coupon Code</span>
+                            </div>
+                            {appliedCoupon && (
+                              <span className="text-[10px] font-black text-emerald-700 bg-emerald-100/80 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                                {appliedCoupon.code} APPLIED
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Input & Apply Button */}
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              placeholder="Enter promo code (e.g. CLEAN15)"
+                              value={couponInput}
+                              onChange={(e) => {
+                                setCouponInput(e.target.value.toUpperCase());
+                                setCouponError("");
+                              }}
+                              className="flex-1 bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs font-bold font-mono uppercase text-dark focus:outline-none focus:ring-2 focus:ring-primary shadow-xs"
+                            />
+                            {appliedCoupon ? (
+                              <button
+                                type="button"
+                                onClick={handleRemoveCoupon}
+                                className="bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold px-4 py-2.5 rounded-xl text-xs cursor-pointer border border-rose-200 transition-colors flex items-center gap-1"
+                              >
+                                <X size={14} />
+                                Remove
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleApplyCouponCode(couponInput)}
+                                className="bg-primary hover:bg-[#0b327b] text-white font-bold px-5 py-2.5 rounded-xl text-xs cursor-pointer transition-colors shadow-xs"
+                              >
+                                Apply Code
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Success or Error feedback */}
+                          {couponSuccessMsg && (
+                            <div className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl flex items-center justify-between">
+                              <span>✅ {couponSuccessMsg}</span>
+                              <span className="font-black text-sm text-emerald-600">-₹{couponDiscount}</span>
+                            </div>
+                          )}
+                          {couponError && (
+                            <p className="text-xs font-bold text-rose-500 bg-rose-50 border border-rose-100 p-2 rounded-xl">
+                              ⚠️ {couponError}
+                            </p>
+                          )}
+
+                          {/* Available Coupons Badges */}
+                          {dbCouponsList.length > 0 && (
+                            <div className="pt-1 border-t border-blue-100/80">
+                              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1.5">
+                                Available Codes for You (Click to Apply):
+                              </span>
+                              <div className="flex flex-wrap gap-2">
+                                {dbCouponsList.map((c) => (
+                                  <button
+                                    key={c.code}
+                                    type="button"
+                                    onClick={() => handleApplyCouponCode(c.code)}
+                                    className={`text-[11px] font-mono font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                                      appliedCoupon?.code === c.code
+                                        ? "bg-primary text-white border-primary shadow-xs"
+                                        : "bg-white text-gray-700 border-gray-200 hover:border-primary hover:text-primary"
+                                    }`}
+                                    title={c.description}
+                                  >
+                                    🎁 {c.code} ({c.discountType === "percentage" ? `${c.discountValue}% OFF` : `₹${c.discountValue} OFF`})
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       {/* Loyalty Points Option & Redemption Box */}
                       {loyaltySettings?.enabled !== false && (
@@ -580,74 +970,10 @@ export default function BookPage() {
                               </select>
                             </div>
 
-                            {selectedVehicleId === "new" && (
-                              <div className="p-4 bg-primary/5 border border-primary/10 rounded-2xl space-y-3">
-                                <h4 className="text-xs font-extrabold text-primary uppercase tracking-wider">Enter New Vehicle Details</h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  <div className="space-y-1.5">
-                                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Vehicle Brand & Model</label>
-                                    <input
-                                      type="text"
-                                      placeholder="e.g. Hyundai Creta, Honda City"
-                                      {...register("customVehicleName", { required: selectedVehicleId === "new" ? "Vehicle model is required" : false })}
-                                      className="w-full bg-white border border-gray-200 rounded-2xl py-3 px-4 font-semibold text-dark text-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all"
-                                    />
-                                    {errors.customVehicleName && (
-                                      <p className="text-red-500 text-[10px] font-bold">{errors.customVehicleName.message}</p>
-                                    )}
-                                  </div>
-                                  <div className="space-y-1.5">
-                                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Registration Number</label>
-                                    <input
-                                      type="text"
-                                      placeholder="e.g. UP-78-AB-1234"
-                                      {...register("customVehicleNumber", { required: selectedVehicleId === "new" ? "Registration number is required" : false })}
-                                      className="w-full bg-white border border-gray-200 rounded-2xl py-3 px-4 font-semibold text-dark text-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all"
-                                    />
-                                    {errors.customVehicleNumber && (
-                                      <p className="text-red-500 text-[10px] font-bold">{errors.customVehicleNumber.message}</p>
-                                    )}
-                                  </div>
-                                </div>
-                                <label className="flex items-center gap-2 cursor-pointer select-none pt-1">
-                                  <input
-                                    type="checkbox"
-                                    checked={saveNewVehicle}
-                                    onChange={(e) => setSaveNewVehicle(e.target.checked)}
-                                    className="w-4 h-4 rounded text-primary focus:ring-primary accent-primary cursor-pointer"
-                                  />
-                                  <span className="text-xs font-bold text-gray-700">Save vehicle to my account for faster future bookings</span>
-                                </label>
-                              </div>
-                            )}
+                            {selectedVehicleId === "new" && renderNewVehicleFields()}
                           </div>
                         ) : (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-1.5">
-                              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Vehicle Brand & Model</label>
-                              <input
-                                type="text"
-                                placeholder="e.g. Hyundai Creta, Honda City"
-                                {...register("customVehicleName", { required: "Vehicle details required" })}
-                                className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3.5 px-4 font-semibold text-dark text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition-all"
-                              />
-                              {errors.customVehicleName && (
-                                <p className="text-red-500 text-[10px] font-bold">{errors.customVehicleName.message}</p>
-                              )}
-                            </div>
-                            <div className="space-y-1.5">
-                              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Registration Number</label>
-                              <input
-                                type="text"
-                                placeholder="e.g. UP-78-AB-1234"
-                                {...register("customVehicleNumber", { required: "Registration number required" })}
-                                className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3.5 px-4 font-semibold text-dark text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition-all"
-                              />
-                              {errors.customVehicleNumber && (
-                                <p className="text-red-500 text-[10px] font-bold">{errors.customVehicleNumber.message}</p>
-                              )}
-                            </div>
-                          </div>
+                          renderNewVehicleFields()
                         )}
                       </div>
 
@@ -708,10 +1034,17 @@ export default function BookPage() {
                               <span className="font-bold text-dark">₹{rawServicePrice}</span>
                             </div>
 
+                            {couponDiscount > 0 && (
+                              <div className="flex justify-between text-purple-700 font-bold bg-purple-50 p-2.5 rounded-xl border border-purple-200">
+                                <span>Promo Coupon Discount ({appliedCoupon?.code}):</span>
+                                <span className="font-extrabold text-purple-600">-₹{couponDiscount}</span>
+                              </div>
+                            )}
+
                             {loyaltyDiscount > 0 && (
-                              <div className="flex justify-between text-emerald-600 font-bold bg-emerald-50 p-2 rounded-xl border border-emerald-200">
+                              <div className="flex justify-between text-emerald-700 font-bold bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
                                 <span>Loyalty Points Cash Discount:</span>
-                                <span className="font-extrabold">-₹{loyaltyDiscount}</span>
+                                <span className="font-extrabold text-emerald-600">-₹{loyaltyDiscount}</span>
                               </div>
                             )}
 

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Star, Upload, X, CheckCircle2, Image as ImageIcon, Sparkles, AlertCircle, Loader2 } from "lucide-react";
+import { Star, Upload, X, CheckCircle2, Image as ImageIcon, Video as VideoIcon, Sparkles, AlertCircle, Loader2, Play } from "lucide-react";
 import { dbBooking, submitReview } from "../../services/dbService";
 import { uploadMediaToCloudinary } from "../../services/cloudinaryService";
 import { compressImage } from "../../utils/imageCompressor";
@@ -16,7 +16,7 @@ interface MediaItem {
   id: string;
   file: File;
   previewUrl: string;
-  type: "image";
+  type: "image" | "video";
   originalSize: number;
   compressedSize: number;
   reductionPercentage: number;
@@ -46,7 +46,7 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
   const activeStarRating = hoverStars || stars;
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files: File[] = Array.from(e.target.files);
+    const files: File[] = Array.from(e.target.files || []);
     if (!files.length) return;
 
     setIsCompressing(true);
@@ -57,46 +57,61 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const isImage = file.type.startsWith("image/");
+      const isVideo = file.type.startsWith("video/");
 
-      if (!isImage) {
-        setErrorMsg("Please upload only valid Image files (PNG, JPG, WebP).");
+      if (!isImage && !isVideo) {
+        setErrorMsg("Please upload valid Image (PNG, JPG, WebP) or Video (MP4, WebM, MOV) files.");
         continue;
       }
 
-      setCompressionStatus(`Compressing photo ${i + 1}/${files.length}...`);
-      try {
-        const compResult = await compressImage(file, {
-          maxWidth: 1200,
-          maxHeight: 1200,
-          quality: 0.75
-        });
-
-        newMediaItems.push({
-          id: Math.random().toString(36).substring(2, 9),
-          file: compResult.compressedFile,
-          previewUrl: compResult.dataUrl,
-          type: "image",
-          originalSize: compResult.originalSize,
-          compressedSize: compResult.compressedSize,
-          reductionPercentage: compResult.reductionPercentage
-        });
-      } catch (err) {
-        console.error("Compression error, fallback to raw photo:", err);
+      if (isVideo) {
+        setCompressionStatus(`Processing video ${i + 1}/${files.length}...`);
+        const previewUrl = URL.createObjectURL(file);
         newMediaItems.push({
           id: Math.random().toString(36).substring(2, 9),
           file,
-          previewUrl: URL.createObjectURL(file),
-          type: "image",
+          previewUrl,
+          type: "video",
           originalSize: file.size,
           compressedSize: file.size,
           reductionPercentage: 0
         });
+      } else {
+        setCompressionStatus(`Compressing photo ${i + 1}/${files.length}...`);
+        try {
+          const compResult = await compressImage(file, {
+            maxWidth: 1200,
+            maxHeight: 1200,
+            quality: 0.75
+          });
+
+          newMediaItems.push({
+            id: Math.random().toString(36).substring(2, 9),
+            file: compResult.compressedFile,
+            previewUrl: compResult.dataUrl,
+            type: "image",
+            originalSize: compResult.originalSize,
+            compressedSize: compResult.compressedSize,
+            reductionPercentage: compResult.reductionPercentage
+          });
+        } catch (err) {
+          console.error("Compression error, fallback to raw photo:", err);
+          newMediaItems.push({
+            id: Math.random().toString(36).substring(2, 9),
+            file,
+            previewUrl: URL.createObjectURL(file),
+            type: "image",
+            originalSize: file.size,
+            compressedSize: file.size,
+            reductionPercentage: 0
+          });
+        }
       }
     }
 
     setMediaItems((prev) => [...prev, ...newMediaItems]);
     setIsCompressing(false);
-    e.target.value = "";
+    if (e.target) e.target.value = "";
   };
 
   const handleRemoveMedia = (id: string) => {
@@ -115,14 +130,17 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
 
     try {
       const imageUrls: string[] = [];
+      const videoUrls: string[] = [];
 
-      // Upload each compressed photo to Cloudinary pipeline (or persistent Base64 Data URL)
       for (const item of mediaItems) {
         const uploadRes = await uploadMediaToCloudinary(item.file);
         const validUrl = uploadRes.url;
-        // Never save temporary blob: URLs to database
         if (validUrl && !validUrl.startsWith("blob:")) {
-          imageUrls.push(validUrl);
+          if (item.type === "video" || uploadRes.resourceType === "video") {
+            videoUrls.push(validUrl);
+          } else {
+            imageUrls.push(validUrl);
+          }
         }
       }
 
@@ -133,7 +151,7 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
         stars,
         review: reviewText,
         images: imageUrls,
-        videos: [],
+        videos: videoUrls,
         serviceName: booking.serviceName || "Car Cleaning Service",
         serviceDate: booking.scheduledDate || new Date().toISOString().split("T")[0]
       });
@@ -161,11 +179,10 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
         exit={{ opacity: 0, scale: 0.95 }}
         className="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-100 relative text-left space-y-6"
       >
-        {/* Header bar */}
         <div className="flex justify-between items-center border-b border-gray-100 pb-4">
           <div>
             <span className="text-[9px] font-black uppercase tracking-widest bg-yellow-100 text-yellow-800 py-0.5 px-2 rounded-full">
-              -Style Verified Review
+              VA-Style Verified Review
             </span>
             <h3 className="font-heading font-extrabold text-dark text-xl mt-1">
               Rate Your Car Cleaning Experience
@@ -183,36 +200,32 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
         </div>
 
         {submitSuccess ? (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center py-10 space-y-4"
-          >
-            <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-lg">
+          <div className="py-12 text-center space-y-4">
+            <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
               <CheckCircle2 size={36} />
             </div>
-            <div>
-              <h4 className="text-2xl font-heading font-extrabold text-dark">Thank You For Your Review!</h4>
-              <p className="text-gray-500 text-xs mt-1 max-w-sm mx-auto">
-                Your star rating, feedback, and photos have been published successfully.
-              </p>
-            </div>
-          </motion.div>
+            <h4 className="font-heading font-extrabold text-dark text-2xl">
+              Thank You for Your Feedback!
+            </h4>
+            <p className="text-gray-500 text-sm max-w-xs mx-auto">
+              Your verified review and media have been successfully submitted and saved.
+            </p>
+          </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
             {errorMsg && (
-              <div className="p-3 bg-rose-50 border border-rose-100 text-rose-600 text-xs font-bold rounded-2xl flex items-center gap-2">
-                <AlertCircle size={16} />
+              <div className="p-3.5 bg-rose-50 border border-rose-100 text-rose-600 rounded-2xl text-xs font-bold flex items-center gap-2">
+                <AlertCircle size={16} className="shrink-0" />
                 <span>{errorMsg}</span>
               </div>
             )}
 
-            {/* 1.    Interactive Star Ratings */}
-            <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100 text-center space-y-2">
+            <div className="space-y-2 text-center">
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-                Overall Service Rating
+                Overall Satisfaction Rating
               </label>
-              <div className="flex justify-center items-center gap-2 py-1">
+
+              <div className="flex items-center justify-center gap-2">
                 {[1, 2, 3, 4, 5].map((starVal) => (
                   <button
                     key={starVal}
@@ -226,42 +239,40 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
                       size={32}
                       className={
                         starVal <= activeStarRating
-                          ? "fill-[#F4B400] text-[#F4B400] drop-shadow-sm"
-                          : "text-gray-300 hover:text-amber-300 transition-colors"
+                          ? "fill-[#F4B400] text-[#F4B400]"
+                          : "text-gray-200"
                       }
                     />
                   </button>
                 ))}
               </div>
-              <div className="text-xs font-black text-[#0B1220] h-5 transition-all">
+
+              <p className="text-xs font-extrabold text-primary h-4">
                 {ratingLabels[activeStarRating]}
-              </div>
+              </p>
             </div>
 
-            {/* 2. Written Review Feedback */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                Detailed Review & Feedback
+              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
+                Your Review Details
               </label>
               <textarea
-                required
                 rows={4}
-                placeholder="Share what you liked about the foam wash, interior detailing, or crew behavior..."
+                placeholder="How clean was your car? Describe the interior shine, paint finish, or technician professionalism..."
                 value={reviewText}
                 onChange={(e) => setReviewText(e.target.value)}
                 className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-3.5 text-xs font-semibold text-dark focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition-all resize-none"
               />
             </div>
 
-            {/* 3. Media Upload (Photos) + Image Size Reducer notice */}
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                   <ImageIcon size={14} className="text-primary" />
-                  Add Photos (Cloudinary Upload)
+                  Add Photos & Videos (Cloudinary Upload)
                 </label>
                 <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 py-0.5 px-2 rounded-full flex items-center gap-1">
-                  <Sparkles size={11} /> Size Reducer Enabled
+                  <Sparkles size={11} /> Cloudinary Media Enabled
                 </span>
               </div>
 
@@ -269,7 +280,7 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
                 <input
                   type="file"
                   multiple
-                  accept="image/*"
+                  accept="image/*,video/*"
                   onChange={handleFileSelect}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                 />
@@ -277,8 +288,8 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
                   <div className="w-10 h-10 bg-primary/10 text-primary rounded-full flex items-center justify-center">
                     <Upload size={20} />
                   </div>
-                  <p className="text-xs font-bold text-dark">Click or Drag to upload Photos</p>
-                  <p className="text-[10px] text-gray-400">Automatic HTML5 Canvas Compression reduces storage size before upload</p>
+                  <p className="text-xs font-bold text-dark">Click or Drag to upload Photos & Videos</p>
+                  <p className="text-[10px] text-gray-400">Upload photos (JPG, PNG, WebP) or video clips (MP4, WebM)</p>
                 </div>
               </div>
 
@@ -289,12 +300,25 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
                 </div>
               )}
 
-              {/* Media Thumbnails preview */}
               {mediaItems.length > 0 && (
                 <div className="grid grid-cols-3 gap-3 pt-2">
                   {mediaItems.map((item) => (
                     <div key={item.id} className="relative group rounded-xl overflow-hidden border border-gray-200 aspect-square bg-black">
-                      <img src={item.previewUrl} alt="Review upload" className="w-full h-full object-cover" />
+                      {item.type === "video" ? (
+                        <>
+                          <video src={item.previewUrl} className="w-full h-full object-cover opacity-80" />
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <span className="w-7 h-7 rounded-full bg-amber-500 text-dark flex items-center justify-center font-bold text-xs shadow-md">
+                              <Play size={12} className="fill-dark ml-0.5" />
+                            </span>
+                          </div>
+                          <span className="absolute top-1 left-1 bg-amber-500 text-dark text-[8px] font-black px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                            <VideoIcon size={8} /> Video
+                          </span>
+                        </>
+                      ) : (
+                        <img src={item.previewUrl} alt="Review upload" className="w-full h-full object-cover" />
+                      )}
 
                       <button
                         type="button"
@@ -305,7 +329,7 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
                         <X size={12} />
                       </button>
 
-                      {item.reductionPercentage > 0 && (
+                      {item.reductionPercentage > 0 && item.type === "image" && (
                         <span className="absolute bottom-1 left-1 bg-emerald-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded">
                           -{item.reductionPercentage}% KB
                         </span>
@@ -316,7 +340,6 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
               )}
             </div>
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={isSubmitting || isCompressing}
@@ -325,12 +348,12 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
               {isSubmitting ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  <span>Uploading to Cloudinary...</span>
+                  <span>Uploading Media to Cloudinary...</span>
                 </>
               ) : (
                 <>
                   <Star size={16} className="fill-white" />
-                  <span>Submit    Review</span>
+                  <span>Submit Review</span>
                 </>
               )}
             </button>

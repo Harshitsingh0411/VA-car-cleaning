@@ -2,7 +2,7 @@ import { compressImage } from "../utils/imageCompressor";
 import { compressVideo } from "../utils/videoCompressor";
 
 export interface UploadMediaResult {
-  url: string;
+  url: string;        // Always starts with https://res.cloudinary.com/
   publicId?: string;
   resourceType: "image" | "video";
   originalSize?: number;
@@ -11,39 +11,61 @@ export interface UploadMediaResult {
 }
 
 /**
- * Uploads media (images/videos) to Cloudinary with automatic client-side compression.
- * If Cloudinary environment variables are not set, it gracefully returns an optimized Object/Data URL.
+ * Uploads media (images/videos) to Cloudinary.
+ *
+ * POLICY: This function MUST NEVER return a data: URL or blob: URL.
+ * If Cloudinary upload fails or credentials are missing, it throws an error.
+ * Callers MUST NOT save any image data to Firestore unless this resolves.
+ *
+ * Correct flow:
+ *   User selects file → compress → upload to Cloudinary → store secure_url
  */
 export async function uploadMediaToCloudinary(
   file: File,
   onProgress?: (percent: number) => void
 ): Promise<UploadMediaResult> {
+  // Priority: env var → localStorage → empty string
+  const cloudName =
+    (import.meta.env.VITE_CLOUDINARY_CLOUD_NAME as string | undefined) ||
+    (typeof localStorage !== "undefined" && localStorage.getItem("admin_cloudinary_cloud_name")) ||
+    "";
+  const uploadPreset =
+    (import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET as string | undefined) ||
+    (typeof localStorage !== "undefined" && localStorage.getItem("admin_cloudinary_upload_preset")) ||
+    "";
+
+  // ─── Validate Cloudinary credentials before doing anything ───────────────
+  if (!cloudName || !cloudName.trim() || !uploadPreset || !uploadPreset.trim()) {
+    throw new Error(
+      "Cloudinary is not configured. Please set VITE_CLOUDINARY_CLOUD_NAME and " +
+      "VITE_CLOUDINARY_UPLOAD_PRESET (or configure them via Admin Settings). " +
+      "Image upload failed — record was not saved."
+    );
+  }
+
+  // ─── Detect resource type ────────────────────────────────────────────────
   const isVideo = file.type.startsWith("video/");
-  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "";
-  const apiKey = import.meta.env.VITE_CLOUDINARY_API_KEY || "795785485242389";
-  const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "unsigned_reviews";
 
   let fileToUpload: File = file;
-  let dataUrlPreview = "";
   let originalSize = file.size;
   let compressedSize = file.size;
   let reductionPercentage = 0;
 
-  // 1. Client-side Image & Video Reducer pipeline
+  // ─── 1. Client-side compression pipeline (before upload) ─────────────────
   if (!isVideo && file.type.startsWith("image/")) {
     try {
       const compResult = await compressImage(file, {
-        maxWidth: 1200,
-        maxHeight: 1200,
-        quality: 0.75
+        maxWidth: 1920,
+        maxHeight: 1920,
+        quality: 0.80
       });
       fileToUpload = compResult.compressedFile;
-      dataUrlPreview = compResult.dataUrl;
       originalSize = compResult.originalSize;
       compressedSize = compResult.compressedSize;
       reductionPercentage = compResult.reductionPercentage;
     } catch (err) {
       console.warn("Image compression fallback to raw file:", err);
+      // Continue with original file — still upload to Cloudinary
     }
   } else if (isVideo) {
     try {
@@ -53,97 +75,75 @@ export async function uploadMediaToCloudinary(
         targetBitrate: 1500000
       }, onProgress);
       fileToUpload = vidResult.compressedFile;
-      dataUrlPreview = vidResult.previewUrl;
       originalSize = vidResult.originalSize;
       compressedSize = vidResult.compressedSize;
       reductionPercentage = vidResult.reductionPercentage;
     } catch (err) {
       console.warn("Video compression fallback to raw file:", err);
-      dataUrlPreview = URL.createObjectURL(file);
+      // Continue with original file — still upload to Cloudinary
     }
   }
 
-  // 2. Upload to Cloudinary API if valid Cloud Name and Preset exist
-  const hasCloudinaryConfig =
-    Boolean(cloudName && cloudName.trim().length > 0 && uploadPreset && uploadPreset.trim().length > 0);
+  // ─── 2. Upload to Cloudinary via multipart/form-data (NEVER base64) ──────
+  const resourceType = isVideo ? "video" : "image";
+  const formData = new FormData();
+  formData.append("file", fileToUpload);           // Raw File object — NOT base64
+  formData.append("upload_preset", uploadPreset.trim());
+  formData.append("folder", "va-car-bike-care");
 
-  if (hasCloudinaryConfig) {
-    try {
-      const resourceType = isVideo ? "video" : "image";
-      const formData = new FormData();
-      formData.append("file", fileToUpload);
-      formData.append("upload_preset", uploadPreset.trim());
+  const endpoint = `https://api.cloudinary.com/v1_1/${cloudName.trim()}/${resourceType}/upload`;
 
-      const endpoint = `https://api.cloudinary.com/v1_1/${cloudName.trim()}/${resourceType}/upload`;
+  let response = await fetch(endpoint, {
+    method: "POST",
+    body: formData
+  });
 
-      let response = await fetch(endpoint, {
-        method: "POST",
-        body: formData
-      });
-
-      // Retry via 'auto' resourceType endpoint if video upload returned 401/400
-      if (!response.ok && isVideo) {
-        const autoEndpoint = `https://api.cloudinary.com/v1_1/${cloudName.trim()}/auto/upload`;
-        const autoResp = await fetch(autoEndpoint, {
-          method: "POST",
-          body: formData
-        });
-        if (autoResp.ok) {
-          response = autoResp;
-        }
-      }
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.secure_url || data.url) {
-          return {
-            url: data.secure_url || data.url,
-            publicId: data.public_id,
-            resourceType,
-            originalSize,
-            compressedSize,
-            reductionPercentage
-          };
-        }
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        console.warn("Cloudinary upload status notice:", response.status, errorData);
-      }
-    } catch (err) {
-      console.warn("⚠️ Cloudinary network upload notice, using compressed fallback URL:", err);
-    }
-  }
-
-  // 3. Persistent Local Fallback: Generate compact poster data URL for videos & compressed data URL for photos
-  let persistentDataUrl = dataUrlPreview;
-  if (isVideo) {
-    persistentDataUrl = await generateVideoPosterDataUrl(file);
-  }
-
-  if (!persistentDataUrl || persistentDataUrl.startsWith("blob:")) {
-    persistentDataUrl = await new Promise<string>((resolve) => {
-      const reader = new FileReader();
-      reader.onload = (e) => resolve((e.target?.result as string) || "");
-      reader.onerror = () => resolve("");
-      reader.readAsDataURL(fileToUpload);
+  // Retry via 'auto' resourceType endpoint if video returned 401/400
+  if (!response.ok && isVideo) {
+    const autoEndpoint = `https://api.cloudinary.com/v1_1/${cloudName.trim()}/auto/upload`;
+    const autoResp = await fetch(autoEndpoint, {
+      method: "POST",
+      body: formData
     });
+    if (autoResp.ok) {
+      response = autoResp;
+    }
   }
 
-  // Safety cap: Ensure data URL never exceeds 400KB to fit safely in Firestore limits
-  if (persistentDataUrl.length > 400000 && persistentDataUrl.startsWith("data:")) {
-    persistentDataUrl = persistentDataUrl.substring(0, 400000);
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    console.error("Cloudinary upload failed:", response.status, errorData);
+    throw new Error(
+      `Image upload failed (Cloudinary responded with ${response.status}). ` +
+      "Record was not saved. Please check your Cloudinary credentials and try again."
+    );
   }
 
+  const data = await response.json();
+
+  if (!data.secure_url) {
+    throw new Error(
+      "Image upload failed — Cloudinary did not return a secure URL. Record was not saved."
+    );
+  }
+
+  // ─── 3. Return ONLY Cloudinary metadata — NEVER a data: URL ──────────────
   return {
-    url: persistentDataUrl,
-    resourceType: isVideo ? "video" : "image",
+    url: data.secure_url,           // Always https://res.cloudinary.com/...
+    publicId: data.public_id,
+    resourceType,
     originalSize,
     compressedSize,
     reductionPercentage
   };
 }
 
-/** Helper to generate lightweight (< 50KB) JPEG poster snapshot from video files */
+/**
+ * Generates a lightweight JPEG poster snapshot from a video file.
+ *
+ * ⚠️  FOR LOCAL PREVIEW ONLY — NEVER save this data URL to Firestore.
+ * Use it only to show a thumbnail in the UI while the video uploads to Cloudinary.
+ */
 export async function generateVideoPosterDataUrl(file: File): Promise<string> {
   return new Promise((resolve) => {
     try {
@@ -170,6 +170,7 @@ export async function generateVideoPosterDataUrl(file: File): Promise<string> {
           const ctx = canvas.getContext("2d");
           if (ctx) {
             ctx.drawImage(video, 0, 0, width, height);
+            // toDataURL is PREVIEW-ONLY — do NOT save this to Firestore
             const posterDataUrl = canvas.toDataURL("image/jpeg", 0.6);
             cleanup();
             resolve(posterDataUrl);

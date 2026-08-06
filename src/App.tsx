@@ -33,6 +33,7 @@ import WorkWithUs from "./pages/jobs/WorkWithUs";
 import DynamicLandingPage from "./pages/seo/DynamicLandingPage";
 import TermsConditions from "./pages/TermsConditions";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
+import FAQs from "./pages/FAQs";
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -42,8 +43,15 @@ function AnimatedRoutes() {
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />
           <Route path="services" element={<Services />} />
+          <Route path="pricing" element={<Services />} />
+          <Route path="subscription" element={<Services />} />
+          <Route path="subscription-plans" element={<Services />} />
+          <Route path="locations" element={<Services />} />
+          <Route path="membership" element={<Services />} />
           <Route path="gallery" element={<Gallery />} />
+          <Route path="reviews" element={<Gallery />} />
           <Route path="about" element={<About />} />
+          <Route path="about-us" element={<About />} />
           <Route path="jobs" element={<Jobs />} />
           <Route 
             path="book" 
@@ -53,9 +61,23 @@ function AnimatedRoutes() {
               </ProtectedRoute>
             } 
           />
+          <Route 
+            path="book-now" 
+            element={
+              <ProtectedRoute allowedRoles={["admin", "staff", "customer"]}>
+                <Book />
+              </ProtectedRoute>
+            } 
+          />
           <Route path="contact" element={<Contact />} />
           <Route path="terms" element={<TermsConditions />} />
+          <Route path="terms-and-conditions" element={<TermsConditions />} />
           <Route path="privacy" element={<PrivacyPolicy />} />
+          <Route path="privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="refund-policy" element={<TermsConditions />} />
+          <Route path="faqs" element={<FAQs />} />
+          <Route path="faq" element={<FAQs />} />
+          <Route path="help-center" element={<FAQs />} />
 
           {/* Dynamic SEO Routes for Content Scaling */}
           <Route path="services/:serviceSlug" element={<DynamicLandingPage type="service" />} />
@@ -80,7 +102,15 @@ function AnimatedRoutes() {
             } 
           />
           <Route 
-            path="admin" 
+            path="account/:section" 
+            element={
+              <ProtectedRoute allowedRoles={["admin", "staff", "customer"]}>
+                <Account />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="admin/*" 
             element={
               <ProtectedRoute allowedRoles={["admin", "staff"]}>
                 <Admin />
@@ -114,6 +144,7 @@ function AnimatedRoutes() {
 import ErrorBoundary from "./components/common/ErrorBoundary";
 import { ImageLightboxProvider } from "./context/ImageLightboxContext";
 
+// Updated at 2026-08-05 for Admin Dashboard HMR Refresh
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
 
@@ -123,7 +154,7 @@ export default function App() {
         {isLoading && <Loader onComplete={() => setIsLoading(false)} />}
         {!isLoading && (
           <Router>
-            <ErrorBoundary>
+            <ErrorBoundary key={Date.now()}>
               <AnimatedRoutes />
             </ErrorBoundary>
           </Router>

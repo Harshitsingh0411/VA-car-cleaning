@@ -24,24 +24,8 @@ import {
 } from "lucide-react";
 import { getContactSettings, dbContactSettings, DEFAULT_CONTACT_SETTINGS } from "../services/dbService";
 import SEO from "../components/seo/SEO";
-
-// Service zones definition for the animated map
-interface Zone {
-  id: string;
-  name: string;
-  x: number; // percentage width
-  y: number; // percentage height
-  eta: string;
-  desc: string;
-}
-
-const serviceZones: Zone[] = [
-  { id: "north", name: "North VA District", x: 50, y: 15, eta: "30-45 mins", desc: "Residential estates & golf club details" },
-  { id: "central", name: "Downtown Metro Hub", x: 50, y: 50, eta: "15-20 mins", desc: "Corporate garages & office detailing" },
-  { id: "south", name: "South VA Shoreline", x: 50, y: 85, eta: "35-50 mins", desc: "Eco-wash & coastal paint protection" },
-  { id: "west", name: "West Valley Suburbs", x: 15, y: 50, eta: "25-35 mins", desc: "SUV family wash & leather treatment" },
-  { id: "east", name: "East Industrial Park", x: 85, y: 50, eta: "20-30 mins", desc: "Fleet washing & heavy duty stain removal" }
-];
+import Breadcrumbs from "../components/common/Breadcrumbs";
+import { getBreadcrumbSchema, getLocalBusinessSchema } from "../utils/seoSchemas";
 
 export default function ContactPage() {
   const [contactSettings, setContactSettings] = useState<dbContactSettings>(DEFAULT_CONTACT_SETTINGS);
@@ -54,10 +38,7 @@ export default function ContactPage() {
     loadContactSettings();
   }, []);
 
-  // --- VEHICLE MODE STATE (CAR VS BIKE) ---
   const [vehicleMode, setVehicleMode] = useState<"car" | "bike">("car");
-
-  // --- FORM STATES ---
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [rating, setRating] = useState(0);
@@ -66,16 +47,10 @@ export default function ContactPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">("idle");
 
-  // --- MAP STATES ---
-  const [selectedZone, setSelectedZone] = useState<Zone>(serviceZones[1]); // default to central
-  const [carPosition, setCarPosition] = useState({ x: 50, y: 50 }); // start at central
-
-  // 3D Card Hover Ref
   const cardRef = useRef<HTMLDivElement>(null);
   const cardX = useMotionValue(0);
   const cardY = useMotionValue(0);
 
-  // Rotation matrices for 3D card tilt
   const rotateX = useTransform(cardY, [-150, 150], [12, -12]);
   const rotateY = useTransform(cardX, [-150, 150], [-12, 12]);
 
@@ -95,13 +70,6 @@ export default function ContactPage() {
     cardY.set(0);
   };
 
-  // Trigger vehicle drive animation to selected zone
-  const handleZoneSelect = (zone: Zone) => {
-    setSelectedZone(zone);
-    setCarPosition({ x: zone.x, y: zone.y });
-  };
-
-  // Handle form submit post to FormSubmit
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!name || !email || !message || rating === 0) {
@@ -110,7 +78,6 @@ export default function ContactPage() {
     }
 
     setIsSubmitting(true);
-
     const formEl = e.currentTarget;
     const formData = new FormData(formEl);
 
@@ -135,16 +102,24 @@ export default function ContactPage() {
     }
   };
 
+  const breadcrumbs = [{ name: "Contact Us", path: "/contact" }];
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-24 relative overflow-hidden">
       <SEO 
-        title="Contact Us | Book Doorstep Car Wash in Kanpur"
-        description="Contact VaCar Cleaning Service to book your premium doorstep car wash, detailing, or ceramic coating in Kanpur. Call us or book online instantly."
+        title="Contact Us | Book Doorstep Car & Bike Wash"
+        description="Contact VA Car & Bike Care to book your premium doorstep car wash, detailing, or ceramic coating in Kanpur. Call us or book online instantly."
+        keywords="Contact VA Car Care, car wash phone number, doorstep car wash booking, kanpur car detailing helpline"
+        schemas={[
+          getBreadcrumbSchema(breadcrumbs),
+          getLocalBusinessSchema()
+        ]}
       />
       {/* Dark Header Banner */}
       <div className="bg-[#070C16] text-white pt-24 pb-12 md:pt-28 md:pb-14 relative overflow-hidden mb-10 text-center">
         <div className="absolute inset-0 bg-primary/10" />
         <div className="container mx-auto px-4 md:px-6 relative z-10">
+          <Breadcrumbs items={breadcrumbs} className="mb-4 max-w-xs mx-auto text-center justify-center bg-white/10 text-white border-white/10" />
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -185,7 +160,7 @@ export default function ContactPage() {
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="bg-white rounded-3xl p-8 shadow-xl border border-gray-100 max-w-6xl mx-auto mb-16"
+          className="bg-white rounded-3xl p-8 shadow-xl border border-gray-100 max-w-6xl mx-auto mb-16 text-left"
         >
           <div className="text-center mb-8">
             <h3 className="text-2xl font-heading font-bold text-dark">Why Home Detailing is Superior</h3>
@@ -194,7 +169,6 @@ export default function ContactPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             
-            {/* Compare item 1: Time */}
             <div className="p-6 bg-gradient-to-br from-emerald-50/50 to-teal-50/30 rounded-2xl border border-emerald-100/50">
               <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 mb-4">
                 <Clock size={24} />
@@ -208,7 +182,6 @@ export default function ContactPage() {
               </div>
             </div>
 
-            {/* Compare item 2: Eco Water */}
             <div className="p-6 bg-gradient-to-br from-sky-50/50 to-blue-50/30 rounded-2xl border border-sky-100/50">
               <div className="w-12 h-12 rounded-xl bg-sky-500/10 flex items-center justify-center text-sky-600 mb-4">
                 <Droplet size={24} />
@@ -222,7 +195,6 @@ export default function ContactPage() {
               </div>
             </div>
 
-            {/* Compare item 3: Safe Paint */}
             <div className="p-6 bg-gradient-to-br from-amber-50/50 to-orange-50/30 rounded-2xl border border-amber-100/50">
               <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600 mb-4">
                 <ShieldCheck size={24} />
@@ -242,10 +214,8 @@ export default function ContactPage() {
         {/* 2-COLUMN DETAILS + FORM GRID */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start max-w-6xl mx-auto">
           
-          {/* LEFT COLUMN: 3D CARD & MAP SIMULATOR */}
           <div className="lg:col-span-6 space-y-10">
             
-            {/* VEHICLE TOGGLE SWITCH */}
             <div className="bg-white rounded-3xl p-6 shadow-xl border border-gray-100 flex items-center justify-between">
               <span className="font-heading font-bold text-dark text-sm">Select Service Mode:</span>
               <div className="flex bg-gray-100 p-1 rounded-2xl border border-gray-200">
@@ -276,7 +246,6 @@ export default function ContactPage() {
               </div>
             </div>
 
-            {/* WIDGET 1: 3D PERSPECTIVE TILT COMPANY INFO CARD */}
             <div className="perspective-1000">
               <motion.div
                 ref={cardRef}
@@ -288,9 +257,8 @@ export default function ContactPage() {
                   transformStyle: "preserve-3d"
                 }}
                 transition={{ type: "spring", stiffness: 350, damping: 25 }}
-                className="bg-gradient-to-br from-[#0D3B8E] to-[#1E293B] rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden border border-white/10"
+                className="bg-gradient-to-br from-[#0D3B8E] to-[#1E293B] rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden border border-white/10 text-left"
               >
-                {/* Holographic background grid */}
                 <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:20px_20px]" />
                 <div className="absolute -top-16 -right-16 w-36 h-36 bg-[#F4B400]/20 rounded-full blur-2xl pointer-events-none" />
 
@@ -361,106 +329,14 @@ export default function ContactPage() {
               </motion.div>
             </div>
 
-            {/* WIDGET 2: DOORSTEP MOBILE SERVICE MAP SIMULATOR */}
-            <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="bg-white rounded-3xl p-8 shadow-xl border border-gray-100 relative"
-            >
-              <h3 className="text-2xl font-heading font-bold text-dark mb-2 flex items-center gap-2">
-                <span className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                  🗺️
-                </span>
-                Active Service Zones
-              </h3>
-              <p className="text-gray-500 text-sm mb-6">
-                Click any zone to test mobile dispatch. See how quickly our {vehicleMode === "car" ? "vans" : "motorcycles"} reach you!
-              </p>
-
-              {/* Grid map wrapper */}
-              <div className="relative h-64 bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 shadow-inner">
-                {/* SVG background styling roads & routes */}
-                <svg className="absolute inset-0 w-full h-full stroke-slate-800/80 fill-none" xmlns="http://www.w3.org/2000/svg">
-                  <line x1="0" y1="50%" x2="100%" y2="50%" strokeWidth="2" strokeDasharray="4 4" />
-                  <line x1="50%" y1="0" x2="50%" y2="100%" strokeWidth="2" strokeDasharray="4 4" />
-                  <line x1="0" y1="0" x2="100%" y2="100%" strokeWidth="1" strokeDasharray="5 5" />
-                  <line x1="100%" y1="0" x2="0" y2="100%" strokeWidth="1" strokeDasharray="5 5" />
-                  <circle cx="50%" cy="50%" r="40" strokeWidth="1" />
-                  <circle cx="50%" cy="50%" r="80" strokeWidth="1" />
-                </svg>
-
-                {/* Dispatch HQ Center */}
-                <div className="absolute left-[50%] top-[50%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
-                  <div className="w-6 h-6 rounded-full bg-primary/80 border-2 border-white animate-pulse flex items-center justify-center text-[10px] font-bold text-white z-10">
-                    HQ
-                  </div>
-                </div>
-
-                {/* Service Zone Hotspots */}
-                {serviceZones.map((zone) => (
-                  <button
-                    key={zone.id}
-                    type="button"
-                    onClick={() => handleZoneSelect(zone)}
-                    className="absolute cursor-pointer -translate-x-1/2 -translate-y-1/2 transition-transform hover:scale-125 focus:outline-none"
-                    style={{ left: `${zone.x}%`, top: `${zone.y}%` }}
-                  >
-                    <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
-                      selectedZone.id === zone.id 
-                        ? "bg-secondary text-dark border-2 border-white scale-110 shadow-lg shadow-secondary/40" 
-                        : "bg-slate-700 text-slate-300 border border-slate-500"
-                    }`}>
-                      <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                    </div>
-                  </button>
-                ))}
-
-                {/* Traveling Mobile Detailing Vehicle (Varying based on toggle selection) */}
-                <motion.div
-                  animate={{ left: `${carPosition.x}%`, top: `${carPosition.y}%` }}
-                  transition={{ type: "spring", stiffness: 70, damping: 15 }}
-                  className="absolute -translate-x-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-secondary border border-dark flex items-center justify-center text-dark shadow-md z-20 pointer-events-none"
-                >
-                  {vehicleMode === "car" ? (
-                    <Car size={16} className="text-dark" />
-                  ) : (
-                    <span className="text-sm">🏍️</span>
-                  )}
-                </motion.div>
-              </div>
-
-              {/* Selected Zone ETA Details */}
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={selectedZone.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-xl flex items-center justify-between"
-                >
-                  <div>
-                    <h4 className="font-heading font-bold text-dark text-sm">{selectedZone.name}</h4>
-                    <p className="text-gray-500 text-xs mt-0.5">{selectedZone.desc}</p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <span className="block text-[9px] uppercase font-bold text-gray-400">Dispatch ETA</span>
-                    <span className="text-sm font-extrabold text-primary">{selectedZone.eta}</span>
-                  </div>
-                </motion.div>
-              </AnimatePresence>
-            </motion.div>
-
           </div>
 
-          {/* RIGHT COLUMN: CONTACT & REVIEW FORMSUBMIT FORM */}
           <div className="lg:col-span-6">
-            
             <motion.div
               initial={{ opacity: 0, y: 40 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="bg-white rounded-3xl p-8 shadow-xl border border-gray-100 relative overflow-hidden"
+              className="bg-white rounded-3xl p-8 shadow-xl border border-gray-100 relative overflow-hidden text-left"
             >
               <h3 className="text-2xl font-heading font-bold text-dark mb-2 flex items-center gap-2.5">
                 <span className="w-8 h-8 rounded-lg bg-secondary/15 flex items-center justify-center text-[#F4B400]">
@@ -481,15 +357,11 @@ export default function ContactPage() {
                     onSubmit={handleSubmit}
                     className="space-y-5"
                   >
-                    {/* Formsubmit Configuration settings */}
                     <input type="hidden" name="_subject" value={`New ${vehicleMode === "car" ? "Car" : "Bike"} Detailing Service Review!`} />
                     <input type="hidden" name="_template" value="table" />
                     <input type="hidden" name="_captcha" value="false" />
-                    
-                    {/* Hidden Vehicle selection for FormSubmit */}
                     <input type="hidden" name="vehicle-type" value={vehicleMode} />
 
-                    {/* Name input */}
                     <div className="space-y-1.5">
                       <label htmlFor="form-name" className="text-xs font-bold text-gray-500 uppercase">
                         Full Name
@@ -506,7 +378,6 @@ export default function ContactPage() {
                       />
                     </div>
 
-                    {/* Email input */}
                     <div className="space-y-1.5">
                       <label htmlFor="form-email" className="text-xs font-bold text-gray-500 uppercase">
                         Email Address
@@ -523,13 +394,11 @@ export default function ContactPage() {
                       />
                     </div>
 
-                    {/* Active vehicle type confirmation */}
                     <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl flex items-center justify-between text-xs text-gray-600">
                       <span>Service vehicle category:</span>
                       <span className="font-bold text-primary uppercase">{vehicleMode === "car" ? "🚗 Car Detailing" : "🏍️ Bike Detailing"}</span>
                     </div>
 
-                    {/* Interactive Star Rating */}
                     <div className="space-y-1.5">
                       <span className="block text-xs font-bold text-gray-500 uppercase">
                         Service Rating
@@ -560,7 +429,6 @@ export default function ContactPage() {
                       </div>
                     </div>
 
-                    {/* Review text field */}
                     <div className="space-y-1.5">
                       <label htmlFor="form-message" className="text-xs font-bold text-gray-500 uppercase">
                         Review Feedback
@@ -581,7 +449,6 @@ export default function ContactPage() {
                       />
                     </div>
 
-                    {/* Submit Button */}
                     <button
                       type="submit"
                       disabled={isSubmitting}
@@ -661,11 +528,8 @@ export default function ContactPage() {
                 )}
               </AnimatePresence>
             </motion.div>
-
           </div>
-
         </div>
-
       </div>
     </div>
   );

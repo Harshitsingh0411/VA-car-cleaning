@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { isLocalBlobUrl } from "../utils/mediaUtils";
-import { motion } from "motion/react";
-import { Link } from "react-router-dom";
+import { useImageLightbox } from "../context/ImageLightboxContext";
+import { motion, AnimatePresence } from "motion/react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { db, isFirebaseConfigured } from "../lib/firebase";
 import { GoogleMapEmbed } from "../components/location/LocationPickerMap";
+import SEO from "../components/seo/SEO";
 
 import {
   getAuditLogs,
@@ -47,11 +49,20 @@ import {
   getAllBlogPosts,
   createOrUpdateBlogPost,
   deleteBlogPost,
-  dbBlogPost
+  dbBlogPost,
+  dbCoupon,
+  getAllCoupons,
+  createOrUpdateCoupon,
+  deleteCoupon,
+  assignCouponToUser,
+  getCouponSettings,
+  updateCouponSettings
 } from "../services/dbService";
 import NotificationCenterTab from "../components/admin/NotificationCenterTab";
+import MobileAdminSuite from "../components/admin/MobileAdminSuite";
 import CloudinaryUploader from "../components/common/CloudinaryUploader";
-import { getCartoonAvatar, handleAvatarError } from "../utils/avatar";
+import AdminVehicleManager from "../components/admin/AdminVehicleManager";
+import { getCartoonAvatar, getUserAvatar, handleAvatarError } from "../utils/avatar";
 import {
   ShieldAlert,
   Users,
@@ -79,7 +90,21 @@ import {
   MessageCircle,
   Loader2,
   Eye,
-  EyeOff
+  EyeOff,
+  Tag,
+  MapPin,
+  Menu,
+  X,
+  ChevronRight,
+  Car,
+  LayoutDashboard,
+  BarChart3,
+  LogOut,
+  User,
+  Clock,
+  Wrench,
+  FileText,
+  ShieldCheck
 } from "lucide-react";
 import { servicePrices } from "../lib/prices";
 
@@ -100,8 +125,12 @@ interface AdminAppointment {
   crewLongitude?: number;
   assignedEmployee?: string;
   assignedEmployeeName?: string;
+  assignedEmployeePhone?: string;
   crewArrivingDate?: string;
   crewArrivingTime?: string;
+  createdAt?: string;
+  acceptedAt?: string;
+  completedAt?: string;
 }
 
 interface AdminUser {
@@ -111,7 +140,14 @@ interface AdminUser {
   phone: string;
   vehicleCount: number;
   addressCount: number;
-  role?: "admin" | "customer" | "staff";
+  role?: "admin" | "customer" | "staff" | "super_admin";
+  addresses?: string[];
+  vehicles?: any[];
+  userCoupons?: dbCoupon[];
+  loyaltyPoints?: number;
+  createdAt?: string;
+  photoURL?: string;
+  photo?: string;
 }
 
 interface AdminJobApp {
@@ -137,18 +173,236 @@ interface AdminReview {
   serviceName?: string;
   adminReply?: string;
   isHidden?: boolean;
+  createdAt?: string;
 }
 
 export default function Admin() {
-  const { user, profile, loading: authLoading } = useAuth();
+  const { user, profile, logout, loading: authLoading } = useAuth();
+  const { openLightbox } = useImageLightbox();
   const isAdminUser = profile?.role === "admin";
-  const [activeTab, setActiveTab] = useState<"stats" | "appointments" | "users" | "jobs" | "services" | "pricing" | "reviews" | "logs" | "notifications" | "staff" | "loyalty" | "blogs">("stats");
+  const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return window.innerWidth < 1024;
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileViewport(window.innerWidth < 1024);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const tabToUrlMap: Record<string, string> = {
+    stats: "/admin/dashboard",
+    appointments: "/admin/bookings",
+    users: "/admin/customers",
+    team_accounts: "/admin/team-accounts",
+    staff: "/admin/mechanics",
+    jobs: "/admin/job-applications",
+    services: "/admin/services",
+    loyalty: "/admin/loyalty",
+    reviews: "/admin/reviews",
+    notifications: "/admin/notifications",
+    logs: "/admin/audits",
+    coupons: "/admin/coupons",
+    before_after: "/admin/before-after",
+    blogs: "/admin/blogs",
+    vehicles: "/admin/vehicles"
+  };
+
+  const urlToTabMap: Record<string, any> = {
+    "/admin": "stats",
+    "/admin/": "stats",
+    "/admin/dashboard": "stats",
+    "/admin/overview": "stats",
+    "/admin/bookings": "appointments",
+    "/admin/appointments": "appointments",
+    "/admin/customers": "users",
+    "/admin/users": "users",
+    "/admin/team-accounts": "team_accounts",
+    "/admin/mechanics": "staff",
+    "/admin/staff": "staff",
+    "/admin/job-applications": "jobs",
+    "/admin/jobs": "jobs",
+    "/admin/services": "services",
+    "/admin/loyalty": "loyalty",
+    "/admin/reviews": "reviews",
+    "/admin/notifications": "notifications",
+    "/admin/audits": "logs",
+    "/admin/logs": "logs",
+    "/admin/coupons": "coupons",
+    "/admin/before-after": "before_after",
+    "/admin/blogs": "blogs",
+    "/admin/vehicles": "vehicles"
+  };
+
+  const activeTab = useMemo(() => {
+    return urlToTabMap[location.pathname] || "stats";
+  }, [location.pathname]);
+
+  const setActiveTab = (tabId: string) => {
+    const targetUrl = tabToUrlMap[tabId] || "/admin/dashboard";
+    if (location.pathname !== targetUrl) {
+      navigate(targetUrl);
+    }
+  };
+
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [hoveredChartIdx, setHoveredChartIdx] = useState<number | null>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileDrawerOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  // Mobile Touch Swipe Gesture Handler (Swipe Right from edge to open, Swipe Left to close)
+  useEffect(() => {
+    let startX = 0;
+    let startY = 0;
+
+    const onGlobalTouchStart = (e: TouchEvent) => {
+      if (e.touches && e.touches.length > 0) {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+      }
+    };
+
+    const onGlobalTouchEnd = (e: TouchEvent) => {
+      if (!e.changedTouches || e.changedTouches.length === 0) return;
+      const endX = e.changedTouches[0].clientX;
+      const endY = e.changedTouches[0].clientY;
+      const deltaX = endX - startX;
+      const deltaY = endY - startY;
+
+      // Ensure horizontal gesture is dominant over vertical scroll
+      if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 40) {
+        // Swipe Right from left edge (startX < 60px) -> Open Drawer
+        if (deltaX > 0 && startX < 60) {
+          setMobileDrawerOpen(true);
+        }
+        // Swipe Left (deltaX < -40px) -> Close Drawer
+        else if (deltaX < -40) {
+          setMobileDrawerOpen(false);
+        }
+      }
+    };
+
+    window.addEventListener("touchstart", onGlobalTouchStart, { passive: true });
+    window.addEventListener("touchend", onGlobalTouchEnd, { passive: true });
+
+    return () => {
+      window.removeEventListener("touchstart", onGlobalTouchStart);
+      window.removeEventListener("touchend", onGlobalTouchEnd);
+    };
+  }, []);
+
+  // Client Directory Search & Sorting State
+  const [clientSearchQuery, setClientSearchQuery] = useState("");
+  const [clientSortOption, setClientSortOption] = useState<"recent" | "name_asc" | "points_desc">("recent");
 
   // Loyalty Management State
   const [loyaltyConfig, setLoyaltyConfig] = useState<dbLoyaltySettings>(DEFAULT_LOYALTY_SETTINGS);
   const [loyaltySavedAlert, setLoyaltySavedAlert] = useState(false);
   const [targetLoyaltyUserId, setTargetLoyaltyUserId] = useState("");
   const [pointsAmountInput, setPointsAmountInput] = useState(100);
+
+  // Assign Coupon Modal State
+  const [selectedUserForCoupon, setSelectedUserForCoupon] = useState<AdminUser | null>(null);
+  const [assignCouponInput, setAssignCouponInput] = useState("CLEAN15");
+  const [assignCouponMsg, setAssignCouponMsg] = useState(false);
+
+  // Coupons Manager Tab State
+  const [couponsList, setCouponsList] = useState<dbCoupon[]>([]);
+  const [showAddCouponModal, setShowAddCouponModal] = useState(false);
+  const [editingCoupon, setEditingCoupon] = useState<dbCoupon | null>(null);
+  const [showCouponSection, setShowCouponSection] = useState(true);
+
+  const [couponFormCode, setCouponFormCode] = useState("");
+  const [couponFormType, setCouponFormType] = useState<"percentage" | "flat">("percentage");
+  const [couponFormValue, setCouponFormValue] = useState<number>(15);
+  const [couponFormDesc, setCouponFormDesc] = useState("");
+  const [couponFormMinSpend, setCouponFormMinSpend] = useState<string>("");
+  const [couponFormTargetUser, setCouponFormTargetUser] = useState("all");
+  const [couponFormStatus, setCouponFormStatus] = useState<"active" | "inactive">("active");
+  const [couponSavedAlert, setCouponSavedAlert] = useState(false);
+
+  const fetchAdminCoupons = async () => {
+    try {
+      const data = await getAllCoupons();
+      setCouponsList(data);
+      const settings = await getCouponSettings();
+      setShowCouponSection(settings.showCouponSection);
+    } catch (e) {
+      console.error("Error fetching admin coupons:", e);
+    }
+  };
+
+  const resetCouponForm = () => {
+    setEditingCoupon(null);
+    setCouponFormCode("");
+    setCouponFormType("percentage");
+    setCouponFormValue(15);
+    setCouponFormDesc("");
+    setCouponFormMinSpend("");
+    setCouponFormTargetUser("all");
+    setCouponFormStatus("active");
+  };
+
+  const handleSaveCoupon = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!couponFormCode || !couponFormDesc) {
+      alert("Please enter coupon code and description!");
+      return;
+    }
+
+    const payload: Partial<dbCoupon> & { code: string } = {
+      id: editingCoupon ? editingCoupon.id : undefined,
+      code: couponFormCode.toUpperCase().trim(),
+      discountType: couponFormType,
+      discountValue: Number(couponFormValue) || 10,
+      description: couponFormDesc,
+      minSpend: couponFormMinSpend ? Number(couponFormMinSpend) : undefined,
+      assignedUserId: couponFormTargetUser,
+      status: couponFormStatus
+    };
+
+    await createOrUpdateCoupon(payload);
+    setCouponSavedAlert(true);
+    setTimeout(() => setCouponSavedAlert(false), 3000);
+    setShowAddCouponModal(false);
+    resetCouponForm();
+    fetchAdminCoupons();
+    fetchDirectoryUsers();
+  };
+
+  const handleDeleteCouponItem = async (couponId: string) => {
+    if (!confirm("Are you sure you want to delete this coupon code from the database?")) return;
+    await deleteCoupon(couponId);
+    fetchAdminCoupons();
+    fetchDirectoryUsers();
+  };
+
+  const handleGrantCouponToClient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUserForCoupon || !assignCouponInput) return;
+    await assignCouponToUser(assignCouponInput, selectedUserForCoupon.uid, selectedUserForCoupon.email);
+    setAssignCouponMsg(true);
+    setTimeout(() => {
+      setAssignCouponMsg(false);
+      setSelectedUserForCoupon(null);
+    }, 2000);
+    fetchDirectoryUsers();
+    fetchAdminCoupons();
+  };
   const [pointsTypeInput, setPointsTypeInput] = useState<"admin_bonus" | "admin_adjustment">("admin_bonus");
   const [pointsDescInput, setPointsDescInput] = useState("Loyalty Bonus Grant");
   const [grantSuccessMsg, setGrantSuccessMsg] = useState(false);
@@ -231,6 +485,12 @@ export default function Admin() {
   const filteredAndSortedAppointments = useMemo(() => {
     let result = [...appointments];
 
+    if (result.length === 0 && !bookingSearchQuery.trim() && bookingStatusFilter === "all") {
+      result = [
+
+      ];
+    }
+
     if (bookingSearchQuery.trim()) {
       const q = bookingSearchQuery.toLowerCase();
       result = result.filter(
@@ -298,6 +558,34 @@ export default function Admin() {
       cancelled: appointments.filter((a) => a.status === "Cancelled").length
     };
   }, [appointments]);
+
+  const filteredUsers = useMemo(() => {
+    let clientList = users.filter(u => u.role !== "admin" && u.role !== "staff" && u.role !== "super_admin");
+
+    // Add rich fallback users matching the screenshot design if empty
+    if (clientList.length === 0) {
+      clientList = [
+
+      ];
+    }
+
+    if (clientSearchQuery.trim()) {
+      const q = clientSearchQuery.toLowerCase();
+      clientList = clientList.filter(u =>
+        (u.name && u.name.toLowerCase().includes(q)) ||
+        (u.email && u.email.toLowerCase().includes(q)) ||
+        (u.phone && u.phone.includes(q))
+      );
+    }
+
+    if (clientSortOption === "name_asc") {
+      clientList.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    } else if (clientSortOption === "points_desc") {
+      clientList.sort((a, b) => (b.loyaltyPoints || 0) - (a.loyaltyPoints || 0));
+    }
+
+    return clientList;
+  }, [users, clientSearchQuery, clientSortOption]);
 
   // Single unified management sub-tab for Services, Pricing, Before & After, About & Contact
   const [serviceSubTab, setServiceSubTab] = useState<"catalog" | "pricing" | "before_after" | "about" | "contact">("catalog");
@@ -449,20 +737,38 @@ export default function Admin() {
 
   const fetchDirectoryUsers = async () => {
     try {
+      const allCoupons = await getAllCoupons();
+
       if (isFirebaseConfigured) {
         try {
           const querySnapshot = await db.collection("users").get();
           const fbUsersList: AdminUser[] = [];
           querySnapshot.forEach((docSnap) => {
             const data = docSnap.data();
+            const userAddrs: string[] = Array.isArray(data.addresses) ? [...data.addresses] : [];
+            const userVehs: any[] = Array.isArray(data.vehicles) ? [...data.vehicles] : [];
+
+            if (userAddrs.length === 0) {
+              const userAppts = appointments.filter(a => a.name === data.name || (data.contactNumber && a.phone === data.contactNumber));
+              userAppts.forEach(a => {
+                if (a.address && !userAddrs.includes(a.address)) userAddrs.push(a.address);
+              });
+            }
+
+            const userCouponsList = allCoupons.filter(c => c.assignedUserId === docSnap.id || c.assignedUserId === "all" || (data.email && c.assignedUserEmail === data.email));
+
             fbUsersList.push({
               uid: docSnap.id,
               name: data.name || data.displayName || "Unknown User",
               email: data.email || "",
               phone: data.contactNumber || "",
-              vehicleCount: data.vehicles?.length || 0,
-              addressCount: data.addresses?.length || 0,
-              role: data.role || "customer"
+              vehicleCount: userVehs.length,
+              addressCount: userAddrs.length,
+              role: data.role || "customer",
+              addresses: userAddrs,
+              vehicles: userVehs,
+              userCoupons: userCouponsList,
+              loyaltyPoints: data.loyaltyPoints || 0
             });
           });
           if (fbUsersList.length > 0) {
@@ -480,14 +786,23 @@ export default function Admin() {
       for (const u of simUsers) {
         const profileRaw = localStorage.getItem(`sim_db_users_${u.uid}`);
         const profileData = profileRaw ? JSON.parse(profileRaw) : null;
+        const userAddrs: string[] = Array.isArray(profileData?.addresses) ? [...profileData.addresses] : [];
+        const userVehs: any[] = Array.isArray(profileData?.vehicles) ? [...profileData.vehicles] : [];
+
+        const userCouponsList = allCoupons.filter(c => c.assignedUserId === u.uid || c.assignedUserId === "all" || (u.email && c.assignedUserEmail === u.email));
+
         list.push({
           uid: u.uid,
           name: u.displayName || "Valued Customer",
           email: u.email,
           phone: profileData?.contactNumber || "",
-          vehicleCount: profileData?.vehicles?.length || 0,
-          addressCount: profileData?.addresses?.length || 0,
-          role: profileData?.role || "customer"
+          vehicleCount: userVehs.length,
+          addressCount: userAddrs.length,
+          role: profileData?.role || "customer",
+          addresses: userAddrs,
+          vehicles: userVehs,
+          userCoupons: userCouponsList,
+          loyaltyPoints: profileData?.loyaltyPoints || 0
         });
       }
       setUsers(list);
@@ -984,6 +1299,10 @@ export default function Admin() {
       fetchLoyaltyConfig();
       fetchDirectoryUsers();
     }
+    if (activeTab === "coupons") {
+      fetchAdminCoupons();
+      fetchDirectoryUsers();
+    }
     if ((activeTab === "users" || activeTab === "team_accounts") && isAdminUser) {
       fetchDirectoryUsers();
     }
@@ -1006,6 +1325,7 @@ export default function Admin() {
     // 2. Users Directory Setup
     if (isAdminUser) {
       fetchDirectoryUsers();
+      fetchAdminCoupons();
     }
 
     // 3. Job Applications Setup
@@ -1296,17 +1616,225 @@ export default function Admin() {
   }
 
   return (
-    <div className="pt-24 min-h-screen bg-[#070C16] pb-24 relative overflow-hidden flex">
-      <div className="container mx-auto px-4 md:px-6 relative z-10 flex flex-col md:flex-row gap-8">
+    <div className="pt-20 md:pt-24 min-h-screen bg-[#070C16] pb-24 relative overflow-hidden flex">
+      <SEO title="Admin Control Dashboard | VA Car & Bike Care" noindex={true} />
+      <div className="absolute inset-x-0 top-0 h-80 bg-[linear-gradient(180deg,#0B1424_0%,#070C16_100%)] pointer-events-none" />
+      <div className="container mx-auto px-4 md:px-6 relative z-10 flex flex-col md:flex-row gap-5 xl:gap-8">
 
-        {/* LEFT Sidebar */}
-        <div className="w-full md:w-64 shrink-0 bg-white border border-gray-100 rounded-3xl p-6 shadow-sm h-fit space-y-6">
-          <div className="space-y-1 text-center md:text-left">
+        {/* MOBILE TOP HEADER BAR & NAVIGATION DRAWER (Visible on Mobile Screens) */}
+        <div className="md:hidden w-full bg-[#081220] border border-white/10 rounded-2xl p-3 shadow-lg flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setMobileDrawerOpen(true)}
+              className="w-10 h-10 bg-[#101B2D] hover:bg-[#1A2C4B] text-white rounded-xl flex items-center justify-center border border-white/10 shadow-sm cursor-pointer transition-transform active:scale-95"
+            >
+              <Menu size={20} className="text-blue-400" />
+            </button>
+
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-primary text-amber-400 flex items-center justify-center font-black text-xs shadow-md">
+                VA
+              </div>
+              <div>
+                <h3 className="font-heading font-extrabold text-xs text-white leading-tight">VA Car & Bike Care</h3>
+                <span className="text-[9px] text-amber-400 font-bold uppercase tracking-wider block">Super Admin</span>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setMobileDrawerOpen(true)}
+            className="px-3 py-1.5 bg-[#101B2D] text-blue-400 text-[10px] font-bold rounded-xl border border-blue-500/20 flex items-center gap-1 cursor-pointer"
+          >
+            <span className="capitalize">{activeTab}</span>
+            <ChevronRight size={12} />
+          </button>
+        </div>
+
+        {/* FULL-HEIGHT MATERIAL DESIGN 3 SIDE DRAWER */}
+        <AnimatePresence>
+          {mobileDrawerOpen && (
+            <div className="fixed inset-0 z-50 flex">
+              {/* Overlay Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25 }}
+                onClick={() => setMobileDrawerOpen(false)}
+                className="fixed inset-0 bg-black/60 backdrop-blur-xs cursor-pointer"
+              />
+
+              {/* Slide-over Left Drawer */}
+              <motion.div
+                initial={{ x: "-100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "-100%" }}
+                transition={{ duration: 0.28, ease: "easeInOut" }}
+                className="relative w-[85vw] max-w-[320px] h-full fixed top-0 left-0 z-50 bg-[#081220] border-r border-white/10 text-white shadow-2xl flex flex-col justify-between overflow-hidden"
+              >
+                {/* DRAWER HEADER */}
+                <div className="p-5 space-y-4 border-b border-white/10 bg-[#070D18]">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-primary text-amber-400 flex items-center justify-center font-black text-sm shadow-md">
+                        VA
+                      </div>
+                      <div>
+                        <h3 className="font-heading font-extrabold text-xs text-white">VA Car & Bike Care</h3>
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                          <span className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider">Online</span>
+                          <span className="text-[9px] text-amber-400 font-bold uppercase tracking-wider ml-1">• Super Admin</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => setMobileDrawerOpen(false)}
+                      className="w-8 h-8 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-xl flex items-center justify-center transition-colors cursor-pointer"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+
+                  {/* WELCOME BANNER */}
+                  <div className="bg-gradient-to-r from-[#101B2D] via-[#16253D] to-[#1D2F4E] border border-blue-500/20 rounded-2xl p-3.5 space-y-1 shadow-md">
+                    <span className="text-[10px] text-blue-400 font-bold uppercase tracking-wider block">Welcome back,</span>
+                    <h4 className="font-heading font-extrabold text-sm text-white">{profile?.name || "Divyanshu"}</h4>
+                    <span className="text-[9px] text-gray-400 font-semibold block">{new Date().toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                  </div>
+                </div>
+
+                {/* DRAWER MENU ITEMS (SECTION GROUPED) */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-5 no-scrollbar">
+                  {/* GROUP 1: MAIN */}
+                  <div className="space-y-1.5">
+                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-2 block">MAIN</span>
+
+                    {[
+                      { id: "stats", label: "Dashboard", icon: LayoutDashboard },
+                      { id: "appointments", label: "Bookings", badge: pendingAppts, icon: Calendar },
+                      { id: "users", label: "Customers", icon: Users },
+                      { id: "services", label: "Services", icon: Wrench }
+                    ].map((item, idx) => {
+                      const Icon = item.icon;
+                      const isActive = activeTab === item.id;
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => { setActiveTab(item.id as any); setMobileDrawerOpen(false); }}
+                          className={`w-full h-14 px-4 py-3.5 rounded-2xl flex items-center justify-between gap-3.5 transition-all duration-200 cursor-pointer active:scale-98 ${isActive
+                            ? "bg-[#2563EB] text-white shadow-lg shadow-blue-600/30 border border-blue-400/30 font-bold"
+                            : "bg-[#101B2D] text-gray-300 hover:bg-[#1A283E] hover:text-white border border-white/5 font-semibold"
+                            }`}
+                        >
+                          <div className="flex items-center gap-3.5">
+                            <Icon size={18} className={isActive ? "text-white" : "text-blue-400"} />
+                            <span className="text-xs">{item.label}</span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {item.badge !== undefined && item.badge > 0 && (
+                              <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${isActive ? "bg-white text-blue-600" : "bg-blue-500/20 text-blue-400"}`}>
+                                {item.badge}
+                              </span>
+                            )}
+                            <ChevronRight size={14} className={isActive ? "text-white/70" : "text-gray-500"} />
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* GROUP 2: OPERATIONS */}
+                  <div className="space-y-1.5">
+                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-2 block">OPERATIONS</span>
+
+                    {[
+                      { id: "staff", label: "Mechanics", icon: UserCheck },
+                      { id: "jobs", label: "Job Applications", badge: pendingJobs, icon: Briefcase }
+                    ].map((item, idx) => {
+                      const Icon = item.icon;
+                      const isActive = activeTab === item.id;
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => { setActiveTab(item.id as any); setMobileDrawerOpen(false); }}
+                          className={`w-full h-14 px-4 py-3.5 rounded-2xl flex items-center justify-between gap-3.5 transition-all duration-200 cursor-pointer active:scale-98 ${isActive
+                            ? "bg-[#2563EB] text-white shadow-lg shadow-blue-600/30 border border-blue-400/30 font-bold"
+                            : "bg-[#101B2D] text-gray-300 hover:bg-[#1A283E] hover:text-white border border-white/5 font-semibold"
+                            }`}
+                        >
+                          <div className="flex items-center gap-3.5">
+                            <Icon size={18} className={isActive ? "text-white" : "text-blue-400"} />
+                            <span className="text-xs">{item.label}</span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {item.badge !== undefined && item.badge > 0 && (
+                              <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${isActive ? "bg-white text-blue-600" : "bg-blue-500/20 text-blue-400"}`}>
+                                {item.badge}
+                              </span>
+                            )}
+                            <ChevronRight size={14} className={isActive ? "text-white/70" : "text-gray-500"} />
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* GROUP 3: MANAGEMENT */}
+                  <div className="space-y-1.5">
+                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-2 block">MANAGEMENT</span>
+
+                    {[
+                      { id: "coupons", label: "Coupons", icon: Tag },
+                      { id: "loyalty", label: "Loyalty & Rewards", icon: Gift },
+                      { id: "vehicles", label: "Vehicles & Media", icon: Car },
+                      { id: "reviews", label: "Reviews", icon: Star },
+                      { id: "notifications", label: "Notifications", icon: Bell }
+                    ].map((item, idx) => {
+                      const Icon = item.icon;
+                      const isActive = activeTab === item.id;
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => { setActiveTab(item.id as any); setMobileDrawerOpen(false); }}
+                          className={`w-full h-14 px-4 py-3.5 rounded-2xl flex items-center justify-between gap-3.5 transition-all duration-200 cursor-pointer active:scale-98 ${isActive
+                            ? "bg-[#2563EB] text-white shadow-lg shadow-blue-600/30 border border-blue-400/30 font-bold"
+                            : "bg-[#101B2D] text-gray-300 hover:bg-[#1A283E] hover:text-white border border-white/5 font-semibold"
+                            }`}
+                        >
+                          <div className="flex items-center gap-3.5">
+                            <Icon size={18} className={isActive ? "text-white" : "text-blue-400"} />
+                            <span className="text-xs">{item.label}</span>
+                          </div>
+                          <ChevronRight size={14} className={isActive ? "text-white/70" : "text-gray-500"} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* DRAWER FOOTER */}
+                <div className="p-4 border-t border-white/10 bg-[#070D18] text-[10px] text-gray-400 font-medium text-center">
+                  <span className="font-bold text-white block">© VA Car & Bike Care</span>
+                  <span className="text-gray-500">Enterprise SaaS Platform v1.0.0</span>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* DESKTOP LEFT Sidebar (Visible on Tablet & Desktop Screens) */}
+        <div className="hidden md:block w-full md:w-72 shrink-0 bg-white border border-white/70 rounded-2xl p-5 shadow-[0_24px_70px_rgba(0,0,0,0.22)] h-fit sticky top-24 space-y-5">
+          <div className="space-y-2 text-center md:text-left border-b border-gray-100 pb-5">
             <span className={`${profile?.role === "staff" ? "bg-[#34A853] text-white" : "bg-[#F4B400] text-dark"
-              } text-[9px] font-black uppercase tracking-wider py-0.5 px-2 rounded`}>
+              } text-[9px] font-black uppercase tracking-wider py-1 px-2 rounded-md`}>
               {profile?.role === "staff" ? "Crew" : "Super Admin"}
             </span>
-            <h2 className="text-xl font-heading font-extrabold text-dark tracking-tight">
+            <h2 className="text-xl font-heading font-extrabold text-dark tracking-tight leading-tight">
               {profile?.role === "staff" ? "Crew Control Panel" : "VA Control Panel"}
             </h2>
             <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
@@ -1317,7 +1845,7 @@ export default function Admin() {
           <nav className="flex flex-col gap-1 text-xs font-bold text-gray-500">
             <button
               onClick={() => setActiveTab("stats")}
-              className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${activeTab === "stats" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
+              className={`flex items-center gap-3 py-3 px-3.5 rounded-lg transition-all cursor-pointer ${activeTab === "stats" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
                 }`}
             >
               <TrendingUp size={16} />
@@ -1325,7 +1853,7 @@ export default function Admin() {
             </button>
             <button
               onClick={() => setActiveTab("appointments")}
-              className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${activeTab === "appointments" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
+              className={`flex items-center gap-3 py-3 px-3.5 rounded-lg transition-all cursor-pointer ${activeTab === "appointments" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
                 }`}
             >
               <Calendar size={16} />
@@ -1333,7 +1861,7 @@ export default function Admin() {
             </button>
             <button
               onClick={() => setActiveTab("users")}
-              className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${activeTab === "users" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
+              className={`flex items-center gap-3 py-3 px-3.5 rounded-lg transition-all cursor-pointer ${activeTab === "users" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
                 }`}
             >
               <Users size={16} />
@@ -1342,7 +1870,7 @@ export default function Admin() {
             {profile?.role !== "staff" && (
               <button
                 onClick={() => setActiveTab("team_accounts")}
-                className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${activeTab === "team_accounts" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
+                className={`flex items-center gap-3 py-3 px-3.5 rounded-lg transition-all cursor-pointer ${activeTab === "team_accounts" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
                   }`}
               >
                 <UserCheck size={16} />
@@ -1352,7 +1880,7 @@ export default function Admin() {
             {profile?.role !== "staff" && (
               <button
                 onClick={() => setActiveTab("staff")}
-                className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${activeTab === "staff" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
+                className={`flex items-center gap-3 py-3 px-3.5 rounded-lg transition-all cursor-pointer ${activeTab === "staff" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
                   }`}
               >
                 <UserCheck size={16} />
@@ -1361,7 +1889,7 @@ export default function Admin() {
             )}
             <button
               onClick={() => setActiveTab("jobs")}
-              className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${activeTab === "jobs" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
+              className={`flex items-center gap-3 py-3 px-3.5 rounded-lg transition-all cursor-pointer ${activeTab === "jobs" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
                 }`}
             >
               <Briefcase size={16} />
@@ -1369,7 +1897,7 @@ export default function Admin() {
             </button>
             <button
               onClick={() => setActiveTab("services")}
-              className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${activeTab === "services" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
+              className={`flex items-center gap-3 py-3 px-3.5 rounded-lg transition-all cursor-pointer ${activeTab === "services" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
                 }`}
             >
               <Layers size={16} />
@@ -1378,16 +1906,36 @@ export default function Admin() {
             {profile?.role !== "staff" && (
               <button
                 onClick={() => setActiveTab("loyalty")}
-                className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${activeTab === "loyalty" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
+                className={`flex items-center gap-3 py-3 px-3.5 rounded-lg transition-all cursor-pointer ${activeTab === "loyalty" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
                   }`}
               >
                 <Gift size={16} />
                 Loyalty & Rewards
               </button>
             )}
+            {profile?.role !== "staff" && (
+              <>
+                <button
+                  onClick={() => setActiveTab("coupons")}
+                  className={`flex items-center gap-3 py-3 px-3.5 rounded-lg transition-all cursor-pointer ${activeTab === "coupons" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
+                    }`}
+                >
+                  <Tag size={16} />
+                  Coupon Manager ({couponsList.length})
+                </button>
+                <button
+                  onClick={() => setActiveTab("vehicles")}
+                  className={`flex items-center gap-3 py-3 px-3.5 rounded-lg transition-all cursor-pointer ${activeTab === "vehicles" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
+                    }`}
+                >
+                  <Car size={16} />
+                  Vehicles & Media
+                </button>
+              </>
+            )}
             <button
               onClick={() => setActiveTab("reviews")}
-              className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${activeTab === "reviews" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
+              className={`flex items-center gap-3 py-3 px-3.5 rounded-lg transition-all cursor-pointer ${activeTab === "reviews" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
                 }`}
             >
               <Star size={16} />
@@ -1397,7 +1945,7 @@ export default function Admin() {
               <>
                 <button
                   onClick={() => setActiveTab("notifications")}
-                  className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${activeTab === "notifications" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
+                  className={`flex items-center gap-3 py-3 px-3.5 rounded-lg transition-all cursor-pointer ${activeTab === "notifications" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
                     }`}
                 >
                   <Bell size={16} />
@@ -1405,7 +1953,7 @@ export default function Admin() {
                 </button>
                 <button
                   onClick={() => setActiveTab("logs")}
-                  className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all cursor-pointer ${activeTab === "logs" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
+                  className={`flex items-center gap-3 py-3 px-3.5 rounded-lg transition-all cursor-pointer ${activeTab === "logs" ? "bg-primary text-white shadow shadow-primary/20" : "hover:bg-gray-50 text-gray-500"
                     }`}
                 >
                   <Clipboard size={16} />
@@ -1419,50 +1967,415 @@ export default function Admin() {
         {/* RIGHT Main Content panels */}
         <div className="flex-1 space-y-6">
 
-          {/* STATS PANEL */}
-          {activeTab === "stats" && (
-            <div className="space-y-6">
-              {/* Summary Cards */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="p-5 bg-white border border-gray-100 rounded-3xl shadow-sm">
-                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">Total Bookings</span>
-                  <div className="text-2xl font-black text-dark leading-none">{appointments.length}</div>
-                </div>
-                <div className="p-5 bg-white border border-gray-100 rounded-3xl shadow-sm">
-                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">Completed Earnings</span>
-                  <div className="text-2xl font-black text-emerald-500 leading-none">₹{totalRevenue}</div>
-                </div>
-                <div className="p-5 bg-white border border-gray-100 rounded-3xl shadow-sm">
-                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">Active Clients</span>
-                  <div className="text-2xl font-black text-dark leading-none">{users.length}</div>
-                </div>
-                <div className="p-5 bg-white border border-gray-100 rounded-3xl shadow-sm">
-                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">Open Job Apps</span>
-                  <div className="text-2xl font-black text-dark leading-none">{pendingJobs}</div>
-                </div>
-              </div>
+          {/* SYSTEM OVERVIEW PANEL */}
+          {activeTab === "stats" && (() => {
+            const completedBookings = appointments.filter(a => a.status === "Completed" || a.status === "finish" || a.status === "done" || a.status === "completed");
+            const inProgressBookings = appointments.filter(a => a.status === "In Progress" || a.status === "in_progress");
+            const scheduledBookings = appointments.filter(a => a.status === "Scheduled" || a.status === "Pending" || a.status === "pending" || a.status === "scheduled");
+            const cancelledBookings = appointments.filter(a => a.status === "Cancelled" || a.status === "cancelled");
+            const totalRevLocal = completedBookings.reduce((sum, a) => sum + Number(a.price.replace(/[^\d]/g, "")), 0);
+            const pendingPayments = scheduledBookings.reduce((sum, a) => sum + Number(a.price.replace(/[^\d]/g, "")), 0);
 
-              {/* Graphical info block */}
-              <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm space-y-4">
-                <h3 className="font-heading font-extrabold text-dark text-base flex items-center gap-2">
-                  <TrendingUp size={18} className="text-primary" />
-                  Detailing Bookings Growth
-                </h3>
-                <div className="h-44 flex items-end justify-between gap-2 pt-6 border-b border-gray-100">
-                  {weeklyCounts.map((val, idx) => (
-                    <div key={idx} className="flex-1 flex flex-col items-center gap-2">
-                      <div className="w-full bg-primary/10 rounded-t-lg group hover:bg-primary transition-all relative cursor-pointer" style={{ height: `${(val / maxWeeklyCount) * 120}px` }}>
-                        <span className="absolute -top-6 left-[50%] -translate-x-1/2 bg-dark text-white text-[9px] font-bold px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                          {val}
+            // Date range
+            const today = new Date();
+            const sevenDaysAgo = new Date(today); sevenDaysAgo.setDate(today.getDate() - 6);
+            const formatDate = (d: Date) => d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+
+            // Weekly daily data for chart
+            const dailyLabels: string[] = [];
+            const dailyTotals: number[] = [];
+            const dailyCompleted: number[] = [];
+            for (let i = 6; i >= 0; i--) {
+              const d = new Date(today); d.setDate(today.getDate() - i);
+              const label = d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+              dailyLabels.push(label);
+              const dayStr = d.toISOString().slice(0, 10);
+              const dayBookings = appointments.filter(a => (a.date || "").slice(0, 10) === dayStr);
+              dailyTotals.push(dayBookings.length);
+              dailyCompleted.push(dayBookings.filter(a => a.status === "Completed" || a.status === "finish" || a.status === "done").length);
+            }
+            const maxVal = Math.max(...dailyTotals, 1);
+
+            // Top Services
+            const serviceCountMap: Record<string, number> = {};
+            appointments.forEach(a => { if (a.service) { serviceCountMap[a.service] = (serviceCountMap[a.service] || 0) + 1; } });
+            const topServices = Object.entries(serviceCountMap).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+            // Donut chart percentages
+            const total = appointments.length || 1;
+            const compPct = Math.round((completedBookings.length / total) * 100);
+            const inPrgPct = Math.round((inProgressBookings.length / total) * 100);
+            const schPct = Math.round((scheduledBookings.length / total) * 100);
+            const canPct = Math.round((cancelledBookings.length / total) * 100);
+
+            // Donut SVG
+            const radius = 50;
+            const circ = 2 * Math.PI * radius;
+            const seg = (pct: number) => (pct / 100) * circ;
+            const statColors = ["#1B5EFF", "#F4B400", "#8B5CF6", "#EF4444"];
+            const statPcts = [compPct, inPrgPct, schPct, canPct];
+            let offset = 0;
+            const segments = statPcts.map((pct, i) => {
+              const dash = seg(pct);
+              const gap = circ - dash;
+              const el = { dash, gap, offset, color: statColors[i] };
+              offset += dash;
+              return el;
+            });
+
+            // Today's stats
+            const todayStr = today.toISOString().slice(0, 10);
+            const todayBookings = appointments.filter(a => (a.date || "").slice(0, 10) === todayStr);
+            const todayRevenue = todayBookings.filter(a => a.status === "Completed" || a.status === "finish").reduce((s, a) => s + Number(a.price.replace(/[^\d]/g, "")), 0);
+            const reviewsThisWeek = reviews.filter(r => { if (!r.createdAt) return false; const d = new Date(r.createdAt); return d >= sevenDaysAgo; }).length;
+            const newClientsThisWeek = users.filter(u => { if (!u.createdAt) return false; const d = new Date(u.createdAt); return d >= sevenDaysAgo; }).length;
+
+            return (
+              <div className="space-y-6">
+                {/* PAGE HEADER */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-2xl font-heading font-extrabold text-white">System Overview</h2>
+                    <p className="text-sm text-gray-500 mt-0.5 font-medium">Complete overview of your car &amp; bike care business</p>
+                  </div>
+                  <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 text-xs text-gray-500 font-semibold">
+                    <Calendar size={13} className="text-primary" />
+                    <span className="text-dark font-bold">{formatDate(sevenDaysAgo)}</span>
+                    <span className="text-gray-400">–</span>
+                    <span className="text-dark font-bold">{formatDate(today)}</span>
+                  </div>
+                </div>
+
+                {/* TOP KPI CARDS ROW */}
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                  {[
+                    { label: "Total Bookings", value: appointments.length, icon: "📋", color: "text-blue-600", bg: "bg-blue-50 border-blue-100", trend: "+18.6%" },
+                    { label: "Completed Bookings", value: completedBookings.length, icon: "✅", color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-100", trend: "+16.3%" },
+                    { label: "Total Revenue", value: `₹${totalRevLocal.toLocaleString("en-IN")}`, icon: "💰", color: "text-amber-600", bg: "bg-amber-50 border-amber-100", trend: "+22.4%" },
+                    { label: "Active Clients", value: users.length, icon: "👥", color: "text-purple-600", bg: "bg-purple-50 border-purple-100", trend: "+14.2%" },
+                    { label: "Crew Members", value: employees.length, icon: "🧑‍🔧", color: "text-rose-600", bg: "bg-rose-50 border-rose-100", trend: "-2.0%" }
+                  ].map((card, i) => (
+                    <div key={i} className={`bg-white border ${card.bg} rounded-2xl p-4 space-y-2 shadow-sm`}>
+                      <div className="flex items-center justify-between">
+                        <span className="text-lg">{card.icon}</span>
+                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${card.trend.startsWith("+") ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
+                          {card.trend} from last week
                         </span>
                       </div>
-                      <span className="text-[9px] font-bold text-gray-400 uppercase">W{idx + 1}</span>
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{card.label}</p>
+                      <p className={`text-2xl font-black ${card.color} leading-none`}>{card.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* MIDDLE ROW: Chart + Donut */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Bookings Overview Interactive Chart */}
+                  {(() => {
+                    const chartW = 420;
+                    const chartH = 120;
+                    return (
+                      <div className="lg:col-span-2 bg-white border border-gray-100 rounded-2xl p-5 space-y-4 shadow-sm">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-heading font-extrabold text-dark text-sm">Bookings Overview</h3>
+                          <span className="text-[10px] bg-primary/10 text-primary border border-primary/20 font-bold px-3 py-1 rounded-lg">Last 7 Days</span>
+                        </div>
+                        {/* Legend */}
+                        <div className="flex gap-4 text-[10px] font-bold text-gray-500">
+                          <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-primary inline-block rounded" />Total Bookings</span>
+                          <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-emerald-500 inline-block rounded" />Completed</span>
+                        </div>
+                        {/* Interactive SVG Chart */}
+                        <div className="relative h-44 select-none">
+                          <svg
+                            viewBox={`0 0 ${chartW} ${chartH}`}
+                            className="w-full h-full overflow-visible"
+                            preserveAspectRatio="none"
+                          >
+                            {/* Horizontal grid lines */}
+                            {[0, 25, 50, 75, 100].map(y => (
+                              <line key={y} x1="0" y1={y} x2={chartW} y2={y} stroke="#F3F4F6" strokeWidth="1" />
+                            ))}
+                            <defs>
+                              <linearGradient id="ovTotalGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#1B5EFF" stopOpacity="0.15" />
+                                <stop offset="100%" stopColor="#1B5EFF" stopOpacity="0" />
+                              </linearGradient>
+                              <linearGradient id="ovCompGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#34A853" stopOpacity="0.1" />
+                                <stop offset="100%" stopColor="#34A853" stopOpacity="0" />
+                              </linearGradient>
+                            </defs>
+                            {/* Area fill for total */}
+                            <polygon
+                              points={[
+                                ...dailyTotals.map((v, i) => `${(i / 6) * chartW},${chartH - (v / maxVal) * 100}`),
+                                `${chartW},${chartH}`, `0,${chartH}`
+                              ].join(" ")}
+                              fill="url(#ovTotalGrad)"
+                            />
+                            {/* Area fill for completed */}
+                            <polygon
+                              points={[
+                                ...dailyCompleted.map((v, i) => `${(i / 6) * chartW},${chartH - (v / maxVal) * 100}`),
+                                `${chartW},${chartH}`, `0,${chartH}`
+                              ].join(" ")}
+                              fill="url(#ovCompGrad)"
+                            />
+                            {/* Total Bookings line */}
+                            <polyline
+                              points={dailyTotals.map((v, i) => `${(i / 6) * chartW},${chartH - (v / maxVal) * 100}`).join(" ")}
+                              fill="none" stroke="#1B5EFF" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"
+                            />
+                            {/* Completed Bookings line */}
+                            <polyline
+                              points={dailyCompleted.map((v, i) => `${(i / 6) * chartW},${chartH - (v / maxVal) * 100}`).join(" ")}
+                              fill="none" stroke="#34A853" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"
+                            />
+                            {/* Hover vertical line */}
+                            {hoveredChartIdx !== null && (
+                              <line
+                                x1={(hoveredChartIdx / 6) * chartW}
+                                y1="0"
+                                x2={(hoveredChartIdx / 6) * chartW}
+                                y2={chartH}
+                                stroke="#6B7280"
+                                strokeWidth="1"
+                                strokeDasharray="3 2"
+                              />
+                            )}
+                            {/* Interactive dots for total */}
+                            {dailyTotals.map((v, i) => (
+                              <g key={i}>
+                                <circle
+                                  cx={(i / 6) * chartW}
+                                  cy={chartH - (v / maxVal) * 100}
+                                  r="16"
+                                  fill="transparent"
+                                  className="cursor-pointer"
+                                  onMouseEnter={() => setHoveredChartIdx(i)}
+                                  onMouseLeave={() => setHoveredChartIdx(null)}
+                                />
+                                <circle
+                                  cx={(i / 6) * chartW}
+                                  cy={chartH - (v / maxVal) * 100}
+                                  r={hoveredChartIdx === i ? 6 : 4}
+                                  fill="#1B5EFF"
+                                  stroke="white"
+                                  strokeWidth="2"
+                                  className="cursor-pointer transition-all"
+                                  onMouseEnter={() => setHoveredChartIdx(i)}
+                                  onMouseLeave={() => setHoveredChartIdx(null)}
+                                />
+                              </g>
+                            ))}
+                            {/* Dots for completed */}
+                            {dailyCompleted.map((v, i) => (
+                              <circle
+                                key={i}
+                                cx={(i / 6) * chartW}
+                                cy={chartH - (v / maxVal) * 100}
+                                r={hoveredChartIdx === i ? 5 : 3}
+                                fill="#34A853"
+                                stroke="white"
+                                strokeWidth="1.5"
+                                className="transition-all"
+                              />
+                            ))}
+                          </svg>
+
+                          {/* Hover Tooltip */}
+                          {hoveredChartIdx !== null && (() => {
+                            const pctX = (hoveredChartIdx / 6) * 100;
+                            const alignRight = hoveredChartIdx >= 4;
+                            return (
+                              <div
+                                className="absolute top-0 pointer-events-none z-20"
+                                style={{
+                                  left: alignRight ? undefined : `${pctX}%`,
+                                  right: alignRight ? `${100 - pctX}%` : undefined,
+                                  transform: alignRight ? "translateX(8px)" : "translateX(-50%)"
+                                }}
+                              >
+                                <div className="bg-dark text-white text-[10px] font-bold px-3 py-2 rounded-xl shadow-lg whitespace-nowrap">
+                                  <p className="text-gray-400 text-[9px] mb-1">{dailyLabels[hoveredChartIdx]}</p>
+                                  <p className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-400 inline-block" />Total: <span className="text-blue-300 font-black ml-1">{dailyTotals[hoveredChartIdx]}</span></p>
+                                  <p className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />Completed: <span className="text-emerald-300 font-black ml-1">{dailyCompleted[hoveredChartIdx]}</span></p>
+                                </div>
+                              </div>
+                            );
+                          })()}
+
+                          {/* X-axis Labels */}
+                          <div className="absolute -bottom-5 left-0 right-0 flex justify-between text-[9px] text-gray-400 font-bold">
+                            {dailyLabels.map((l, i) => (
+                              <span
+                                key={i}
+                                className={`cursor-pointer transition-colors ${hoveredChartIdx === i ? "text-primary font-black" : ""}`}
+                                onMouseEnter={() => setHoveredChartIdx(i)}
+                                onMouseLeave={() => setHoveredChartIdx(null)}
+                              >{l}</span>
+                            ))}
+                          </div>
+                        </div>
+                        {/* Y-axis hint */}
+                        <div className="flex justify-between text-[8px] text-gray-300 font-bold mt-2 border-t border-gray-100 pt-2">
+                          {[maxVal, Math.round(maxVal * 0.75), Math.round(maxVal * 0.5), Math.round(maxVal * 0.25), 0].map((v, i) => (
+                            <span key={i}>{v}</span>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Bookings by Status Donut */}
+
+                  <div className="bg-white border border-gray-100 rounded-2xl p-5 space-y-4 shadow-sm">
+                    <h3 className="font-heading font-extrabold text-dark text-sm">Bookings by Status</h3>
+                    <div className="flex justify-center">
+                      <svg viewBox="0 0 120 120" className="w-32 h-32">
+                        <circle cx="60" cy="60" r={radius} fill="transparent" stroke="#F3F4F6" strokeWidth="18" />
+                        {segments.map((seg, i) => (
+                          <circle
+                            key={i}
+                            cx="60" cy="60" r={radius}
+                            fill="transparent"
+                            stroke={seg.color}
+                            strokeWidth="18"
+                            strokeDasharray={`${seg.dash} ${seg.gap}`}
+                            strokeDashoffset={-seg.offset}
+                            transform="rotate(-90 60 60)"
+                            strokeLinecap="butt"
+                            opacity={seg.dash > 0 ? 1 : 0}
+                          />
+                        ))}
+                        <text x="60" y="58" textAnchor="middle" fill="#0F172A" fontSize="14" fontWeight="900" fontFamily="sans-serif">{appointments.length}</text>
+                        <text x="60" y="70" textAnchor="middle" fill="#9CA3AF" fontSize="6" fontFamily="sans-serif">Total</text>
+                      </svg>
+                    </div>
+                    <div className="space-y-2">
+                      {[
+                        { label: "Completed", count: completedBookings.length, pct: compPct, color: "bg-blue-500" },
+                        { label: "In Progress", count: inProgressBookings.length, pct: inPrgPct, color: "bg-amber-400" },
+                        { label: "Scheduled", count: scheduledBookings.length, pct: schPct, color: "bg-purple-500" },
+                        { label: "Cancelled", count: cancelledBookings.length, pct: canPct, color: "bg-rose-500" }
+                      ].map((item, i) => (
+                        <div key={i} className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className={`w-2.5 h-2.5 rounded-full ${item.color} shrink-0`} />
+                            <span className="text-gray-600 font-semibold">{item.label}</span>
+                          </div>
+                          <span className="text-dark font-bold">{item.count} ({item.pct}%)</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* BOTTOM ROW: Top Services + Recent Bookings + Quick Actions */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Top Services This Week */}
+                  <div className="bg-white border border-gray-100 rounded-2xl p-5 space-y-4 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-heading font-extrabold text-dark text-sm">Top Services This Week</h3>
+                      <button onClick={() => setActiveTab("services")} className="text-[10px] text-primary font-bold hover:underline cursor-pointer">View All</button>
+                    </div>
+                    <div className="space-y-3">
+                      {topServices.length > 0 ? topServices.map(([name, count], i) => (
+                        <div key={i} className="flex items-center gap-3">
+                          <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-[9px] font-black flex items-center justify-center shrink-0">{i + 1}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-dark truncate">{name}</p>
+                          </div>
+                          <span className="text-[10px] text-gray-400 font-bold shrink-0">{count} Bookings</span>
+                        </div>
+                      )) : (
+                        <div className="py-6 text-center text-gray-400 text-xs">No service data yet.</div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Recent Bookings */}
+                  <div className="bg-white border border-gray-100 rounded-2xl p-5 space-y-4 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-heading font-extrabold text-dark text-sm">Recent Bookings</h3>
+                      <button onClick={() => setActiveTab("appointments")} className="text-[10px] text-primary font-bold hover:underline cursor-pointer">View All</button>
+                    </div>
+                    <div className="space-y-3">
+                      {appointments.slice(0, 4).map((a, i) => {
+                        const statusConfig: Record<string, { label: string; cls: string }> = {
+                          "Completed": { label: "Completed", cls: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+                          "finish": { label: "Completed", cls: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+                          "done": { label: "Completed", cls: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+                          "In Progress": { label: "In Progress", cls: "bg-amber-100 text-amber-700 border-amber-200" },
+                          "Scheduled": { label: "Scheduled", cls: "bg-purple-100 text-purple-700 border-purple-200" },
+                          "Pending": { label: "Scheduled", cls: "bg-purple-100 text-purple-700 border-purple-200" },
+                          "Cancelled": { label: "Cancelled", cls: "bg-rose-100 text-rose-700 border-rose-200" }
+                        };
+                        const sc = statusConfig[a.status] || { label: a.status, cls: "bg-gray-100 text-gray-600 border-gray-200" };
+                        return (
+                          <div key={i} className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/10 flex items-center justify-center shrink-0">
+                              <Car size={14} className="text-primary" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-bold text-dark truncate">{a.service}</p>
+                              <p className="text-[10px] text-gray-400 font-medium">{a.name} • {a.date} {a.time ? `• ${a.time}` : ""}</p>
+                            </div>
+                            <span className={`text-[8px] font-black px-2 py-0.5 rounded-full border ${sc.cls} shrink-0 uppercase`}>{sc.label}</span>
+                          </div>
+                        );
+                      })}
+                      {appointments.length === 0 && (
+                        <div className="py-6 text-center text-gray-400 text-xs">No bookings yet.</div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Quick Actions */}
+                  <div className="bg-white border border-gray-100 rounded-2xl p-5 space-y-4 shadow-sm">
+                    <h3 className="font-heading font-extrabold text-dark text-sm">Quick Actions</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      {([
+                        { label: "Manage Crew", Icon: UserCheck, tab: "staff", color: "border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700" },
+                        { label: "Manage Services", Icon: Wrench, tab: "services", color: "border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-700" },
+                        { label: "View Reports", Icon: BarChart3, tab: "logs", color: "border-cyan-200 bg-cyan-50 hover:bg-cyan-100 text-cyan-700" },
+                        { label: "System Settings", Icon: Settings, tab: "notifications", color: "border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-600" }
+                      ] as const).map((action, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setActiveTab(action.tab)}
+                          className={`border rounded-xl p-3 text-left space-y-2 transition-all cursor-pointer ${action.color}`}
+                        >
+                          <action.Icon size={18} className="block" />
+                          <span className="text-[10px] font-extrabold leading-tight block">{action.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* BOTTOM KPI STRIP */}
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                  {[
+                    { label: "Today's Bookings", value: todayBookings.length, icon: "📋", color: "text-blue-600" },
+                    { label: "Today's Revenue", value: `₹${todayRevenue.toLocaleString("en-IN")}`, icon: "💵", color: "text-emerald-600" },
+                    { label: "Pending Payments", value: `₹${pendingPayments.toLocaleString("en-IN")}`, icon: "💳", color: "text-rose-600" },
+                    { label: "Reviews This Week", value: reviewsThisWeek, icon: "⭐", color: "text-amber-600" },
+                    { label: "New Clients This Week", value: newClientsThisWeek, icon: "👥", color: "text-purple-600" }
+                  ].map((kpi, i) => (
+                    <div key={i} className="bg-white border border-gray-100 rounded-xl p-4 flex items-center gap-3 shadow-sm">
+                      <span className="text-xl shrink-0">{kpi.icon}</span>
+                      <div>
+                        <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider leading-tight">{kpi.label}</p>
+                        <p className={`text-lg font-black leading-tight ${kpi.color}`}>{kpi.value}</p>
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* APPOINTMENTS PANEL */}
           {activeTab === "appointments" && (
@@ -1563,225 +2476,254 @@ export default function Admin() {
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-gray-500 border-collapse">
-                  <thead>
-                    <tr className="border-b border-gray-100 text-gray-400 font-bold uppercase tracking-wider">
-                      <th className="pb-3 pr-2 w-10 text-center">#</th>
-                      <th className="pb-3 pr-4">Customer</th>
-                      <th className="pb-3 pr-4">Service Package</th>
-                      <th className="pb-3 pr-4">Vehicle</th>
-                      <th className="pb-3 pr-4">Date/Time</th>
-                      <th className="pb-3 pr-4 text-right">Price</th>
-                      <th className="pb-3 pr-4">Status</th>
-                      <th className="pb-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredAndSortedAppointments.length > 0 ? (
-                      filteredAndSortedAppointments.map((a, idx) => (
-                        <tr key={a.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                          <td className="py-4 pr-2 text-center font-black text-gray-400 text-[11px] shrink-0">
-                            #{idx + 1}
-                          </td>
-                        <td className="py-4 pr-4">
-                          <button
-                            onClick={() => setViewingBookingDetails(a)}
-                            className="text-left cursor-pointer hover:text-primary transition-colors group block"
-                          >
-                            <div className="font-bold text-dark group-hover:text-primary">{a.name}</div>
-                            <div className="text-[10px] text-gray-400 font-mono mt-0.5">{a.phone}</div>
-                            <div className="text-[10px] text-primary font-bold mt-1 group-hover:underline">
-                              View details →
+              {/* Booking Cards Grid */}
+              {filteredAndSortedAppointments.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {filteredAndSortedAppointments.map((a) => {
+                    const statusColors: Record<string, string> = {
+                      Completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
+                      Pending: "bg-amber-50 text-amber-700 border-amber-200",
+                      Cancelled: "bg-rose-50 text-rose-700 border-rose-200",
+                      "In Progress": "bg-blue-50 text-blue-700 border-blue-200",
+                      Assigned: "bg-purple-50 text-purple-700 border-purple-200",
+                    };
+                    const statusClass = statusColors[a.status] || "bg-gray-50 text-gray-500 border-gray-200";
+                    return (
+                      <div key={a.id} className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col gap-3">
+                        {/* Card Header */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                              <span className="text-primary font-black text-sm">{a.name?.charAt(0)?.toUpperCase() || "?"}</span>
                             </div>
-                          </button>
-                        </td>
-                        <td className="py-4 pr-4 font-semibold text-gray-700">{a.service}</td>
-                        <td className="py-4 pr-4 font-mono text-gray-500">{a.vehicle}</td>
-                        <td className="py-4 pr-4 space-y-1.5">
-                          <div>
-                            <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Scheduled</div>
-                            <div className="font-semibold text-gray-700">{a.date}</div>
-                            <div className="text-[10px] text-gray-400 mt-0.5">{a.time}</div>
+                            <div>
+                              <button
+                                onClick={() => setViewingBookingDetails(a)}
+                                className="font-bold text-dark text-sm hover:text-primary transition-colors text-left leading-tight block"
+                              >
+                                {a.name}
+                              </button>
+                              <div className="text-[10px] text-gray-400 font-mono">{a.phone}</div>
+                            </div>
                           </div>
-                          {(a.assignedEmployeeName || a.assignedEmployee || a.crewArrivingDate) ? (
-                            <div className="pt-1.5 border-t border-gray-100 space-y-0.5 text-[10px]">
-                              <div className="text-[#0f3b94] font-black uppercase tracking-wider flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
-                                Crew: {a.assignedEmployeeName || a.assignedEmployee}
-                              </div>
-                              {a.assignedEmployeePhone && (
-                                <div className="text-gray-500 font-mono">📞 {a.assignedEmployeePhone}</div>
-                              )}
-                              {a.crewArrivingDate && (
-                                <div className="text-gray-600 font-semibold">
-                                  ETA: {a.crewArrivingDate} ({a.crewArrivingTime})
-                                </div>
-                              )}
-                              {a.acceptedAt && (
-                                <div className="text-gray-400">
-                                  Accepted: {new Date(a.acceptedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
-                                </div>
-                              )}
-                              {a.completedAt && (
-                                <div className="text-emerald-600 font-bold">
-                                  Completed: {new Date(a.completedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="pt-1.5 border-t border-gray-100 text-gray-400 text-[10px] font-semibold">
-                              Crew: Unassigned
-                            </div>
-                          )}
-                        </td>
-                        <td className="py-4 pr-4 text-right font-black text-dark">{a.price}</td>
-                        <td className="py-4 pr-4">
-                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${a.status === "Completed"
-                            ? "bg-emerald-50 text-emerald-600 border-emerald-100"
-                            : a.status === "Pending"
-                              ? "bg-amber-50 text-amber-600 border-amber-100"
-                              : a.status === "Cancelled"
-                                ? "bg-rose-50 text-rose-600 border-rose-100"
-                                : "bg-blue-50 text-blue-600 border-blue-100"
-                            }`}>
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${statusClass}`}>
                             {a.status}
                           </span>
-                        </td>
-                        <td className="py-4 text-right space-y-1.5 shrink-0">
-                          {a.status !== "Completed" && a.status !== "Cancelled" && (
-                            <button
-                              onClick={() => {
-                                setSelectedBookingForAssign(a);
-                                setAssignCrewId(a.assignedEmployee || "");
-                                setAssignArrivalDate(a.crewArrivingDate || a.date);
-                                setAssignArrivalTime(a.crewArrivingTime || "");
-                              }}
-                              className="bg-purple-50 hover:bg-purple-100 text-purple-600 py-1 px-2.5 rounded-lg font-bold text-[10px] cursor-pointer block w-full text-center"
-                            >
-                              {a.assignedEmployee ? "Reassign Crew" : "Assign Crew"}
-                            </button>
-                          )}
+                        </div>
 
-                          {a.status === "Pending" && (
-                            <div className="flex gap-1.5 justify-end">
+                        {/* Service & Vehicle */}
+                        <div className="flex flex-col gap-1 bg-gray-50 rounded-xl px-3 py-2">
+                          <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-700">
+                            <span></span>
+                            {a.service}
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs text-gray-500 font-mono">
+                            <span>🚗</span>
+                            {a.vehicle}
+                          </div>
+                        </div>
+
+                        {/* Date / Crew row */}
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="bg-gray-50 rounded-xl px-3 py-2">
+                            <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Scheduled</div>
+                            <div className="font-bold text-dark leading-tight">{a.date}</div>
+                            <div className="text-[10px] text-gray-400">{a.time}</div>
+                          </div>
+                          <div className="bg-gray-50 rounded-xl px-3 py-2">
+                            <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Crew</div>
+                            {(a.assignedEmployeeName || a.assignedEmployee) ? (
+                              <>
+                                <div className="font-bold text-[#0f3b94] leading-tight truncate text-[10px]">{a.assignedEmployeeName || a.assignedEmployee}</div>
+                                {a.crewArrivingDate && (
+                                  <div className="text-[10px] text-gray-500">ETA: {a.crewArrivingDate}</div>
+                                )}
+                              </>
+                            ) : (
+                              <div className="text-[10px] text-gray-400 font-semibold">Unassigned</div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Price + Actions */}
+                        <div className="flex items-center justify-between pt-2 border-t border-gray-100 gap-2 flex-wrap">
+                          <span className="font-black text-dark text-sm">{a.price}</span>
+                          <div className="flex flex-wrap gap-1.5 justify-end">
+                            {a.status !== "Completed" && a.status !== "Cancelled" && (
+                              <button
+                                onClick={() => {
+                                  setSelectedBookingForAssign(a);
+                                  setAssignCrewId(a.assignedEmployee || "");
+                                  setAssignArrivalDate(a.crewArrivingDate || a.date);
+                                  setAssignArrivalTime(a.crewArrivingTime || "");
+                                }}
+                                className="bg-purple-50 hover:bg-purple-100 text-purple-700 py-1 px-2.5 rounded-lg font-bold text-[10px] cursor-pointer border border-purple-200"
+                              >
+                                {a.assignedEmployee ? "Reassign" : "Assign Crew"}
+                              </button>
+                            )}
+                            {a.status === "Pending" && (
+                              <>
+                                <button
+                                  onClick={() => updateAppointmentStatus(a.id, "In Progress")}
+                                  className="bg-blue-50 hover:bg-blue-100 text-blue-700 py-1 px-2.5 rounded-lg font-bold text-[10px] cursor-pointer border border-blue-200"
+                                >
+                                  Dispatch
+                                </button>
+                                <button
+                                  onClick={() => updateAppointmentStatus(a.id, "Cancelled")}
+                                  className="bg-rose-50 hover:bg-rose-100 text-rose-700 py-1 px-2.5 rounded-lg font-bold text-[10px] cursor-pointer border border-rose-200"
+                                >
+                                  Cancel
+                                </button>
+                              </>
+                            )}
+                            {a.status === "Assigned" && (
                               <button
                                 onClick={() => updateAppointmentStatus(a.id, "In Progress")}
-                                className="bg-blue-50 hover:bg-blue-100 text-blue-600 py-1 px-2.5 rounded-lg font-bold text-[10px] cursor-pointer"
+                                className="bg-blue-50 hover:bg-blue-100 text-blue-700 py-1 px-2.5 rounded-lg font-bold text-[10px] cursor-pointer border border-blue-200 animate-pulse"
                               >
-                                Dispatch
+                                Dispatch Crew
                               </button>
+                            )}
+                            {a.status === "In Progress" && (
                               <button
-                                onClick={() => updateAppointmentStatus(a.id, "Cancelled")}
-                                className="bg-rose-50 hover:bg-rose-100 text-rose-600 py-1 px-2.5 rounded-lg font-bold text-[10px] cursor-pointer"
+                                onClick={() => updateAppointmentStatus(a.id, "Completed")}
+                                className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-1 px-2.5 rounded-lg font-bold text-[10px] cursor-pointer border border-emerald-200"
                               >
-                                Cancel
+                                Mark Complete
                               </button>
-                            </div>
-                          )}
-
-                          {a.status === "Assigned" && (
-                            <button
-                              onClick={() => updateAppointmentStatus(a.id, "In Progress")}
-                              className="bg-blue-50 hover:bg-blue-100 text-blue-600 py-1 px-2.5 rounded-lg font-bold text-[10px] cursor-pointer block w-full text-center animate-pulse"
-                            >
-                              Dispatch Crew
-                            </button>
-                          )}
-
-                          {a.status === "In Progress" && (
-                            <button
-                              onClick={() => updateAppointmentStatus(a.id, "Completed")}
-                              className="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 py-1 px-2.5 rounded-lg font-bold text-[10px] cursor-pointer block w-full text-center"
-                            >
-                              Complete Detox
-                            </button>
-                          )}
-
-                          {(a.status === "Completed" || a.status === "Cancelled") && (
-                            <span className="text-[10px] text-gray-300 font-bold uppercase block text-center">Locked</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={8} className="py-12 text-center text-gray-400">
-                        <div className="flex flex-col items-center justify-center space-y-2">
-                          <Calendar size={32} className="text-gray-300 stroke-1" />
-                          <p className="font-semibold text-sm">No bookings found matching filter criteria</p>
-                          <button
-                            onClick={() => {
-                              setBookingStatusFilter("all");
-                              setBookingSearchQuery("");
-                            }}
-                            className="text-xs text-primary font-bold hover:underline cursor-pointer"
-                          >
-                            Reset filters & search
-                          </button>
+                            )}
+                            {(a.status === "Completed" || a.status === "Cancelled") && (
+                              <button
+                                onClick={() => setViewingBookingDetails(a)}
+                                className="bg-gray-50 hover:bg-gray-100 text-gray-500 py-1 px-2.5 rounded-lg font-bold text-[10px] cursor-pointer border border-gray-200"
+                              >
+                                View Details
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      </td>
-                    </tr>
-                  )}
-                  </tbody>
-                </table>
-              </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-16 space-y-3 text-center">
+                  <Calendar size={36} className="text-gray-300 stroke-1" />
+                  <p className="font-semibold text-sm text-gray-400">No bookings found matching the current filters.</p>
+                  <button
+                    onClick={() => { setBookingStatusFilter("all"); setBookingSearchQuery(""); }}
+                    className="text-xs text-primary font-bold hover:underline cursor-pointer"
+                  >
+                    Reset filters & search
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
-          {/* USERS DIRECTORY */}
+          {/* USERS DIRECTORY (Ultra-Compact White Theme View - Fits 5+ users on screen without scrolling) */}
           {activeTab === "users" && (
-            <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm space-y-6">
-              <h3 className="font-heading font-extrabold text-dark text-lg">Registered Clients Directory</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-gray-500 border-collapse">
-                  <thead>
-                    <tr className="border-b border-gray-100 text-gray-400 font-bold uppercase tracking-wider">
-                      <th className="pb-3 pr-4">User Details</th>
-                      <th className="pb-3 pr-4">Email</th>
-                      <th className="pb-3 pr-4">Saved Contact</th>
-                      <th className="pb-3 pr-4 text-center">Vehicles</th>
-                      <th className="pb-3 text-center">Addresses</th>
-                      <th className="pb-3 text-right">Role</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {users.filter(u => u.role !== "admin" && u.role !== "staff" && u.role !== "super_admin").map((u) => (
-                      <tr key={u.uid} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                        <td className="py-4 pr-4">
-                          <div className="font-bold text-dark">{u.name}</div>
-                          <div className="text-[10px] text-gray-400 font-mono mt-0.5">{u.uid}</div>
-                        </td>
-                        <td className="py-4 pr-4 font-mono">{u.email}</td>
-                        <td className="py-4 pr-4 font-semibold text-gray-700">{u.phone}</td>
-                        <td className="py-4 pr-4 text-center font-bold text-dark">{u.vehicleCount}</td>
-                        <td className="py-4 text-center font-bold text-dark">{u.addressCount}</td>
-                        <td className="py-4 text-right">
-                          {profile?.role === "staff" ? (
-                            <span className={`text-[10px] font-black uppercase tracking-wider py-1 px-2.5 rounded-full border ${u.role === "admin"
-                              ? "bg-amber-50 text-amber-600 border-amber-200"
-                              : u.role === "staff"
-                                ? "bg-emerald-50 text-emerald-600 border-emerald-200"
-                                : "bg-blue-50 text-blue-600 border-blue-200"
-                              }`}>
-                              {u.role || "customer"}
-                            </span>
-                          ) : (
-                            <select
-                              value={u.role || "customer"}
-                              onChange={(e) => handleRoleChange(u.uid, e.target.value as any)}
-                              className="bg-gray-50 border border-gray-200 rounded-xl px-2 py-1 text-xs font-bold text-dark focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
-                            >
-                              <option value="customer">Customer</option>
-                              <option value="staff">Crew</option>
-                              <option value="admin">Admin</option>
-                            </select>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <div className="space-y-3">
+              {/* Header & Controls Bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-2">
+                <div>
+                  <h2 className="font-heading font-extrabold text-white text-lg tracking-tight">Client Directory</h2>
+                  <p className="text-gray-400 text-[11px]">Registered clients directory ({filteredUsers.length} total)</p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1 sm:w-64">
+                    <input
+                      type="text"
+                      placeholder="Search name, email, phone..."
+                      value={clientSearchQuery}
+                      onChange={(e) => setClientSearchQuery(e.target.value)}
+                      className="w-full bg-white border border-gray-200 rounded-xl pl-8 pr-3 py-1.5 text-xs font-semibold text-dark focus:ring-2 focus:ring-primary focus:outline-none shadow-2xs"
+                    />
+                    <Users size={14} className="absolute left-2.5 top-2.5 text-gray-400" />
+                  </div>
+
+                  <select
+                    value={clientSortOption}
+                    onChange={(e) => setClientSortOption(e.target.value as any)}
+                    className="bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-dark focus:outline-none cursor-pointer shrink-0 shadow-2xs"
+                  >
+                    <option value="recent">Sort: Recent</option>
+                    <option value="name_asc">Sort: A-Z</option>
+                    <option value="points_desc">Sort: Points</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Ultra-Compact Client List (Each card ~48px height -> 5-8 users visible at once) */}
+              <div className="space-y-2">
+                {filteredUsers.map((u) => (
+                  <div key={u.uid} className="bg-white border border-gray-200/80 hover:border-blue-300 rounded-2xl p-2.5 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between gap-2.5">
+                    {/* Left: Compact Avatar & Client Summary */}
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <div className="relative shrink-0">
+                        {u.photoURL || u.photo ? (
+                          <img
+                            src={u.photoURL || u.photo}
+                            alt={u.name}
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = "none";
+                            }}
+                            className="w-9 h-9 rounded-xl object-cover border border-gray-100 shadow-2xs"
+                          />
+                        ) : (
+                          <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 font-black text-xs border border-blue-100 flex items-center justify-center shadow-2xs">
+                            {(u.name || "C").charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border border-white rounded-full" />
+                      </div>
+
+                      <div className="min-w-0 flex-1 space-y-0.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h4 className="font-heading font-extrabold text-dark text-xs truncate max-w-[140px] sm:max-w-xs">{u.name || "Client"}</h4>
+                          <span className="bg-blue-50 text-blue-700 text-[9px] font-bold px-1.5 py-0.2 rounded-full border border-blue-100 shrink-0">
+                            Active
+                          </span>
+                          <span className="bg-amber-50 text-amber-800 border border-amber-200 text-[9px] font-extrabold px-1.5 py-0.2 rounded-full inline-flex items-center gap-0.5 shrink-0">
+                            ⭐ {u.loyaltyPoints || 0} Pts
+                          </span>
+                        </div>
+
+                        <div className="text-[10px] font-mono text-gray-400 truncate flex items-center gap-2">
+                          <span className="truncate">{u.email}</span>
+                          {u.phone && <span className="font-semibold text-gray-600 shrink-0">• {u.phone}</span>}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right: Compact Actions */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedUserForCoupon(u)}
+                        className="text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2 py-1 rounded-xl transition-colors cursor-pointer flex items-center gap-1 shrink-0"
+                      >
+                        <span>{u.userCoupons && u.userCoupons.length > 0 ? `${u.userCoupons.length} Coupons` : "No Coupons"}</span>
+                        <ChevronRight size={12} />
+                      </button>
+
+                      {profile?.role !== "staff" && (
+                        <select
+                          value={u.role || "customer"}
+                          onChange={(e) => handleRoleChange(u.uid, e.target.value as any)}
+                          className="bg-gray-50 border border-gray-200 rounded-xl px-1.5 py-1 text-[10px] font-bold text-dark focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer shrink-0"
+                        >
+                          <option value="customer">Customer</option>
+                          <option value="staff">Crew</option>
+                          <option value="admin">Admin</option>
+                        </select>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -1889,13 +2831,12 @@ export default function Admin() {
                             </div>
                           </div>
 
-                          <span className={`text-[10px] font-black py-1.5 px-3 rounded-full border uppercase tracking-wider ${
-                            j.status === "Approved"
-                              ? "bg-emerald-50 text-emerald-600 border-emerald-200"
-                              : j.status === "Rejected"
-                                ? "bg-rose-50 text-rose-600 border-rose-200"
-                                : "bg-amber-50 text-amber-600 border-amber-200"
-                          }`}>
+                          <span className={`text-[10px] font-black py-1.5 px-3 rounded-full border uppercase tracking-wider ${j.status === "Approved"
+                            ? "bg-emerald-50 text-emerald-600 border-emerald-200"
+                            : j.status === "Rejected"
+                              ? "bg-rose-50 text-rose-600 border-rose-200"
+                              : "bg-amber-50 text-amber-600 border-amber-200"
+                            }`}>
                             {j.status}
                           </span>
                         </div>
@@ -1989,8 +2930,8 @@ export default function Admin() {
                   <button
                     onClick={() => setServiceSubTab("catalog")}
                     className={`py-2 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${serviceSubTab === "catalog"
-                        ? "bg-primary text-white shadow"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      ? "bg-primary text-white shadow"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                       }`}
                   >
                     <Layers size={14} />
@@ -2000,8 +2941,8 @@ export default function Admin() {
                   <button
                     onClick={() => setServiceSubTab("before_after")}
                     className={`py-2 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${serviceSubTab === "before_after"
-                        ? "bg-primary text-white shadow"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      ? "bg-primary text-white shadow"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                       }`}
                   >
                     <Image size={14} />
@@ -2011,8 +2952,8 @@ export default function Admin() {
                   <button
                     onClick={() => setServiceSubTab("about")}
                     className={`py-2 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${serviceSubTab === "about"
-                        ? "bg-primary text-white shadow"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      ? "bg-primary text-white shadow"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                       }`}
                   >
                     <Info size={14} />
@@ -2022,8 +2963,8 @@ export default function Admin() {
                   <button
                     onClick={() => setServiceSubTab("contact")}
                     className={`py-2 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${serviceSubTab === "contact"
-                        ? "bg-primary text-white shadow"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      ? "bg-primary text-white shadow"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                       }`}
                   >
                     <Phone size={14} />
@@ -2305,10 +3246,9 @@ export default function Admin() {
 
                     <div className="space-y-1 md:col-span-2">
                       <CloudinaryUploader
-                        label="Story Showcase Image (Cloudinary / File)"
+                        label="Story Showcase Image"
                         value={aboutInputs.storyImageUrl}
                         onChange={(url) => setAboutInputs({ ...aboutInputs, storyImageUrl: url })}
-                        placeholder="https://res.cloudinary.com/... or upload image"
                       />
                     </div>
                   </div>
@@ -2567,30 +3507,27 @@ export default function Admin() {
                   <h3 className="font-heading font-extrabold text-dark text-lg">Customer Reviews & Public Visibility</h3>
                   <p className="text-xs text-gray-500 mt-0.5">Control which customer reviews are visible on service pages and the public website.</p>
                 </div>
-                
+
                 {/* Filter Buttons */}
                 <div className="flex items-center gap-1 bg-gray-100/70 p-1 rounded-xl border border-gray-200/50">
                   <button
                     onClick={() => setReviewFilter("all")}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                      reviewFilter === "all" ? "bg-white text-dark shadow-sm" : "text-gray-500 hover:text-dark"
-                    }`}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${reviewFilter === "all" ? "bg-white text-dark shadow-sm" : "text-gray-500 hover:text-dark"
+                      }`}
                   >
                     All ({reviews.length})
                   </button>
                   <button
                     onClick={() => setReviewFilter("visible")}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                      reviewFilter === "visible" ? "bg-white text-emerald-600 shadow-sm" : "text-gray-500 hover:text-dark"
-                    }`}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${reviewFilter === "visible" ? "bg-white text-emerald-600 shadow-sm" : "text-gray-500 hover:text-dark"
+                      }`}
                   >
                     Visible ({reviews.filter((r) => !r.isHidden).length})
                   </button>
                   <button
                     onClick={() => setReviewFilter("hidden")}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                      reviewFilter === "hidden" ? "bg-white text-amber-600 shadow-sm" : "text-gray-500 hover:text-dark"
-                    }`}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${reviewFilter === "hidden" ? "bg-white text-amber-600 shadow-sm" : "text-gray-500 hover:text-dark"
+                      }`}
                   >
                     Hidden ({reviews.filter((r) => r.isHidden).length})
                   </button>
@@ -2607,11 +3544,10 @@ export default function Admin() {
                   .map((r) => (
                     <div
                       key={r.id}
-                      className={`p-5 border rounded-2xl space-y-3 transition-all ${
-                        r.isHidden
-                          ? "border-amber-200 bg-amber-50/20 opacity-90"
-                          : "border-gray-100 bg-gray-50/30"
-                      }`}
+                      className={`p-5 border rounded-2xl space-y-3 transition-all ${r.isHidden
+                        ? "border-amber-200 bg-amber-50/20 opacity-90"
+                        : "border-gray-100 bg-gray-50/30"
+                        }`}
                     >
                       <div className="flex justify-between items-start gap-2">
                         <div>
@@ -2654,19 +3590,36 @@ export default function Admin() {
                           </span>
                           <div className="flex flex-wrap gap-2">
                             {r.images?.map((imgUrl, i) => (
-                              <a key={i} href={imgUrl} target="_blank" rel="noopener noreferrer" className="relative group">
-                                <img src={imgUrl} alt="Customer review photo" className="w-16 h-16 rounded-xl object-cover border border-gray-200 shadow-sm group-hover:scale-105 transition-transform" />
-                              </a>
+                              <button
+                                key={i}
+                                type="button"
+                                onClick={() => openLightbox({ url: imgUrl, type: "image", title: `Review photo by ${r.name}` })}
+                                className="cursor-pointer group relative overflow-hidden rounded-xl border border-gray-200 shadow-sm"
+                              >
+                                <img src={imgUrl} alt="Customer review photo" className="w-16 h-16 object-cover group-hover:scale-105 transition-transform" />
+                              </button>
                             ))}
                             {r.videos?.map((vidUrl, i) => (
-                              !isLocalBlobUrl(vidUrl) ? (
-                                <video key={i} src={vidUrl} controls className="w-24 h-16 rounded-xl object-cover border border-gray-200 shadow-sm bg-black" />
-                              ) : (
-                                <div key={i} className="w-28 h-16 rounded-xl bg-amber-50 border border-amber-200 p-1 flex flex-col justify-center items-center text-center text-amber-800 text-[8px] font-bold">
-                                  <span>⚠️ Local Session Blob</span>
-                                  <span className="text-[7px] text-amber-600 font-normal">Re-upload required</span>
+                              <button
+                                key={i}
+                                type="button"
+                                onClick={() => openLightbox({ url: vidUrl, type: "video", title: `Review video by ${r.name}` })}
+                                className="cursor-pointer group relative overflow-hidden rounded-xl border border-gray-200 shadow-sm bg-black"
+                              >
+                                {!isLocalBlobUrl(vidUrl) ? (
+                                  <video src={vidUrl} className="w-24 h-16 object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                                ) : (
+                                  <div className="w-28 h-16 bg-amber-50 border border-amber-200 p-1 flex flex-col justify-center items-center text-center text-amber-800 text-[8px] font-bold">
+                                    <span>⚠️ Local Session Blob</span>
+                                    <span className="text-[7px] text-amber-600 font-normal">Re-upload required</span>
+                                  </div>
+                                )}
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <span className="w-7 h-7 rounded-full bg-amber-500 text-dark flex items-center justify-center font-bold text-xs shadow-md">
+                                    ▶
+                                  </span>
                                 </div>
-                              )
+                              </button>
                             ))}
                           </div>
                         </div>
@@ -2683,11 +3636,10 @@ export default function Admin() {
                           <button
                             onClick={() => handleToggleHideReview(r.id, Boolean(r.isHidden))}
                             disabled={togglingReviewId === r.id}
-                            className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl transition-all cursor-pointer border ${
-                              r.isHidden
-                                ? "text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-200 shadow-sm"
-                                : "text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-200"
-                            }`}
+                            className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl transition-all cursor-pointer border ${r.isHidden
+                              ? "text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-200 shadow-sm"
+                              : "text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-200"
+                              }`}
                             title={r.isHidden ? "Click to make this review visible on website & service pages" : "Click to hide this review from website & service pages"}
                           >
                             {togglingReviewId === r.id ? (
@@ -2717,10 +3669,10 @@ export default function Admin() {
                   if (reviewFilter === "hidden") return r.isHidden;
                   return true;
                 }).length === 0 && (
-                  <div className="text-center py-10 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
-                    <p className="text-xs text-gray-500 font-medium">No reviews match the selected filter ({reviewFilter}).</p>
-                  </div>
-                )}
+                    <div className="text-center py-10 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+                      <p className="text-xs text-gray-500 font-medium">No reviews match the selected filter ({reviewFilter}).</p>
+                    </div>
+                  )}
               </div>
             </div>
           )}
@@ -3086,6 +4038,191 @@ export default function Admin() {
                 </div>
               </form>
             </div>
+          )}
+
+          {/* COUPONS MANAGEMENT TAB */}
+          {activeTab === "coupons" && (
+            <div className="space-y-6">
+
+              {/* Analytics / Overview Cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="p-5 bg-white border border-gray-100 rounded-3xl shadow-sm text-left">
+                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">Database Coupons</span>
+                  <div className="text-2xl font-black text-dark leading-none">{couponsList.length}</div>
+                </div>
+                <div className="p-5 bg-white border border-gray-100 rounded-3xl shadow-sm text-left">
+                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">Active Global Offers</span>
+                  <div className="text-2xl font-black text-emerald-500 leading-none">
+                    {couponsList.filter(c => c.status === "active" && (!c.assignedUserId || c.assignedUserId === "all")).length}
+                  </div>
+                </div>
+                <div className="p-5 bg-white border border-gray-100 rounded-3xl shadow-sm text-left">
+                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">User Assigned Promos</span>
+                  <div className="text-2xl font-black text-purple-600 leading-none">
+                    {couponsList.filter(c => c.assignedUserId && c.assignedUserId !== "all").length}
+                  </div>
+                </div>
+                <div className="p-5 bg-white border border-gray-100 rounded-3xl shadow-sm text-left">
+                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">System Engine</span>
+                  <div className="text-2xl font-black text-primary leading-none">Realtime DB</div>
+                </div>
+              </div>
+
+              {/* Main Coupon Manager Panel */}
+              <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm space-y-6 text-left">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-100 pb-4">
+                  <div>
+                    <h3 className="font-heading font-extrabold text-dark text-lg flex items-center gap-2">
+                      <Tag size={20} className="text-[#F4B400]" />
+                      Coupons & Promo Codes Manager
+                    </h3>
+                    <p className="text-gray-400 text-xs mt-0.5">
+                      Create, edit, or delete database promo coupons. Assign offers to all users or target specific clients.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetCouponForm();
+                      setShowAddCouponModal(true);
+                    }}
+                    className="bg-primary hover:bg-[#0b327b] text-white font-bold py-2.5 px-5 rounded-2xl text-xs uppercase tracking-wider cursor-pointer transition-all shadow-xs flex items-center gap-1.5 shrink-0"
+                  >
+                    <Plus size={14} />
+                    Create New Coupon
+                  </button>
+                </div>
+
+                <div className="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex flex-wrap items-center justify-between gap-4">
+                  <div className="space-y-0.5">
+                    <h4 className="font-heading font-extrabold text-dark text-xs">Apply Promo / Coupon Code Section Visibility</h4>
+                    <p className="text-[10px] text-gray-500 font-medium">When checked, users will see the coupon application block at booking checkout.</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <input
+                      type="checkbox"
+                      id="showCouponSectionToggle"
+                      checked={showCouponSection}
+                      onChange={async (e) => {
+                        const val = e.target.checked;
+                        setShowCouponSection(val);
+                        await updateCouponSettings({ showCouponSection: val });
+                      }}
+                      className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary cursor-pointer"
+                    />
+                    <label htmlFor="showCouponSectionToggle" className="text-xs font-bold text-gray-600 cursor-pointer select-none">
+                      Visible to Users
+                    </label>
+                  </div>
+                </div>
+
+                {couponSavedAlert && (
+                  <div className="p-4 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-2xl text-xs font-bold flex items-center gap-2">
+                    <CheckCircle size={16} />
+                    <span>Coupon saved to database successfully!</span>
+                  </div>
+                )}
+
+                {/* Coupons Table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-gray-500 border-collapse">
+                    <thead>
+                      <tr className="border-b border-gray-100 text-gray-400 font-bold uppercase tracking-wider">
+                        <th className="pb-3 pr-4">Code</th>
+                        <th className="pb-3 pr-4">Discount Type & Value</th>
+                        <th className="pb-3 pr-4">Description</th>
+                        <th className="pb-3 pr-4">Audience Segment</th>
+                        <th className="pb-3 pr-4 text-center">Status</th>
+                        <th className="pb-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {couponsList.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="py-12 text-center text-gray-400 italic">
+                            No coupons created yet in database. Click "Create New Coupon" above.
+                          </td>
+                        </tr>
+                      ) : (
+                        couponsList.map((c) => (
+                          <tr key={c.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                            <td className="py-4 pr-4 font-mono font-black text-dark text-sm">
+                              <span className="bg-purple-50 text-purple-700 border border-purple-200 px-3 py-1 rounded-xl">
+                                🎟️ {c.code}
+                              </span>
+                            </td>
+                            <td className="py-4 pr-4 font-bold text-dark">
+                              {c.discountType === "percentage" ? (
+                                <span className="text-primary">{c.discountValue}% OFF</span>
+                              ) : (
+                                <span className="text-emerald-600">Flat ₹{c.discountValue} OFF</span>
+                              )}
+                              {c.minSpend && (
+                                <div className="text-[10px] text-gray-400 font-normal">Min Spend: ₹{c.minSpend}</div>
+                              )}
+                            </td>
+                            <td className="py-4 pr-4 text-gray-700 font-medium max-w-xs">{c.description}</td>
+                            <td className="py-4 pr-4 font-semibold text-gray-600">
+                              {c.assignedUserId === "all" || !c.assignedUserId ? (
+                                <span className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase">
+                                  🌐 All Users (Global)
+                                </span>
+                              ) : (
+                                <span className="bg-amber-50 text-amber-800 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
+                                  👤 {c.assignedUserEmail || `Target Client (${c.assignedUserId.slice(0, 8)})`}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-4 pr-4 text-center">
+                              <span
+                                className={`text-[10px] font-black uppercase tracking-wider py-1 px-2.5 rounded-full border ${c.status === "active"
+                                  ? "bg-emerald-50 text-emerald-600 border-emerald-200"
+                                  : "bg-gray-100 text-gray-400 border-gray-200"
+                                  }`}
+                              >
+                                {c.status}
+                              </span>
+                            </td>
+                            <td className="py-4 text-right space-x-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingCoupon(c);
+                                  setCouponFormCode(c.code);
+                                  setCouponFormType(c.discountType);
+                                  setCouponFormValue(c.discountValue);
+                                  setCouponFormDesc(c.description);
+                                  setCouponFormMinSpend(c.minSpend ? String(c.minSpend) : "");
+                                  setCouponFormTargetUser(c.assignedUserId || "all");
+                                  setCouponFormStatus(c.status);
+                                  setShowAddCouponModal(true);
+                                }}
+                                className="text-primary hover:underline font-bold cursor-pointer"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteCouponItem(c.id)}
+                                className="text-rose-500 hover:underline font-bold cursor-pointer"
+                              >
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* VEHICLES MANAGEMENT TAB */}
+          {activeTab === "vehicles" && (
+            <AdminVehicleManager />
           )}
 
         </div>
@@ -3598,12 +4735,11 @@ export default function Admin() {
                 />
               </div>
 
-              {/* Image URL with Cloudinary Upload */}
+              {/* Showcase Image Upload */}
               <CloudinaryUploader
-                label="Showcase Image (Cloudinary / File)"
+                label="Showcase Image"
                 value={serviceFormImage}
                 onChange={setServiceFormImage}
-                placeholder="https://images.unsplash.com/... or upload file"
               />
 
               {/* Description */}
@@ -3839,19 +4975,17 @@ export default function Admin() {
                 />
               </div>
 
-              {/* Cloudinary Image Uploaders */}
+              {/* Image Uploaders */}
               <CloudinaryUploader
-                label="Before Detailing Image (Cloudinary / File)"
+                label="Before Detailing Image"
                 value={baFormBeforeImage}
                 onChange={setBaFormBeforeImage}
-                placeholder="https://res.cloudinary.com/..."
               />
 
               <CloudinaryUploader
-                label="After Detailing Image (Cloudinary / File)"
+                label="After Detailing Image"
                 value={baFormAfterImage}
                 onChange={setBaFormAfterImage}
-                placeholder="https://res.cloudinary.com/..."
               />
 
               <button
@@ -3871,6 +5005,218 @@ export default function Admin() {
             </form>
           </motion.div>
         </div>
+      )}
+
+      {/* ISSUE COUPON CODE MODAL */}
+      {selectedUserForCoupon && createPortal(
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-3xl p-6 max-w-md w-full border border-gray-100 shadow-2xl space-y-4 text-left"
+          >
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="font-heading font-extrabold text-dark text-base">Issue Coupon Code</h3>
+                <p className="text-xs text-gray-400">Assign promo discount to <strong>{selectedUserForCoupon.name}</strong> ({selectedUserForCoupon.email})</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedUserForCoupon(null)}
+                className="p-1 text-gray-400 hover:text-dark rounded-xl cursor-pointer"
+              >
+                <XCircle size={18} />
+              </button>
+            </div>
+
+            {assignCouponMsg && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-xs rounded-2xl flex items-center gap-2">
+                <CheckCircle size={16} />
+                <span>Coupon assigned to client successfully!</span>
+              </div>
+            )}
+
+            <form onSubmit={handleGrantCouponToClient} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-gray-400 uppercase">Coupon Code to Assign</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. CLEAN15 or FESTIVE25"
+                  value={assignCouponInput}
+                  onChange={(e) => setAssignCouponInput(e.target.value.toUpperCase())}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 px-4 text-xs font-bold text-dark font-mono uppercase focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedUserForCoupon(null)}
+                  className="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-bold text-xs cursor-pointer hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-primary hover:bg-[#0b327b] text-white font-bold text-xs uppercase tracking-wider shadow cursor-pointer"
+                >
+                  Issue Coupon
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>,
+        document.body
+      )}
+
+      {/* CREATE / EDIT COUPON MODAL */}
+      {showAddCouponModal && createPortal(
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-3xl p-6 max-w-lg w-full border border-gray-100 shadow-2xl space-y-4 text-left"
+          >
+            <div className="flex justify-between items-center border-b border-gray-100 pb-3">
+              <h3 className="font-heading font-extrabold text-dark text-base">
+                {editingCoupon ? "Edit Database Coupon" : "Create New Database Coupon"}
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddCouponModal(false);
+                  resetCouponForm();
+                }}
+                className="text-gray-400 hover:text-dark text-xs font-bold uppercase transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveCoupon} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                {/* Coupon Code */}
+                <div className="space-y-1.5 md:col-span-2">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase">Coupon Code (e.g. CLEAN15)</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. SUPER2026"
+                    value={couponFormCode}
+                    onChange={(e) => setCouponFormCode(e.target.value.toUpperCase())}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 px-4 text-xs font-bold text-dark font-mono uppercase focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+
+                {/* Discount Type */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase">Discount Type</label>
+                  <select
+                    value={couponFormType}
+                    onChange={(e) => setCouponFormType(e.target.value as any)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 px-4 text-xs font-bold text-dark focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
+                  >
+                    <option value="percentage">Percentage Discount (% OFF)</option>
+                    <option value="flat">Flat Cash Discount (₹ OFF)</option>
+                  </select>
+                </div>
+
+                {/* Discount Value */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase">
+                    Discount Value ({couponFormType === "percentage" ? "%" : "₹"})
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    value={couponFormValue}
+                    onChange={(e) => setCouponFormValue(Number(e.target.value))}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 px-4 text-xs font-bold text-dark focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+
+                {/* Description */}
+                <div className="space-y-1.5 md:col-span-2">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase">Description / Offer Label</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. 15% OFF on doorstep car detailing"
+                    value={couponFormDesc}
+                    onChange={(e) => setCouponFormDesc(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 px-4 text-xs font-semibold text-dark focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+
+                {/* Target Audience */}
+                <div className="space-y-1.5 md:col-span-2">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase">Target Client Segment</label>
+                  <select
+                    value={couponFormTargetUser}
+                    onChange={(e) => setCouponFormTargetUser(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 px-4 text-xs font-bold text-dark focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
+                  >
+                    <option value="all">All Users (Global Promotional Code)</option>
+                    {users.map((u) => (
+                      <option key={u.uid} value={u.uid}>
+                        Single Client: {u.name} ({u.email})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Minimum Spend */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase">Minimum Spend Amount (Optional)</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 500"
+                    value={couponFormMinSpend}
+                    onChange={(e) => setCouponFormMinSpend(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 px-4 text-xs font-bold text-dark focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+
+                {/* Status */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase">Coupon Status</label>
+                  <select
+                    value={couponFormStatus}
+                    onChange={(e) => setCouponFormStatus(e.target.value as any)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 px-4 text-xs font-bold text-dark focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
+                  >
+                    <option value="active">Active (Available for booking)</option>
+                    <option value="inactive">Inactive (Disabled)</option>
+                  </select>
+                </div>
+
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddCouponModal(false);
+                    resetCouponForm();
+                  }}
+                  className="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-bold text-xs cursor-pointer hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-primary hover:bg-[#0b327b] text-white font-bold text-xs uppercase tracking-wider shadow cursor-pointer"
+                >
+                  {editingCoupon ? "Update Coupon" : "Create Coupon"}
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>,
+        document.body
       )}
 
     </div>

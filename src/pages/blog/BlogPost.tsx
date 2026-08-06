@@ -54,7 +54,7 @@ export default function BlogPost() {
         canonicalUrl={`https://vacarcleaningservice.com/blog/${post.slug}`}
         type="article"
         image={post.coverImage}
-        schema={articleSchema}
+        schemas={[articleSchema]}
       />
 
       {/* Hero Header */}

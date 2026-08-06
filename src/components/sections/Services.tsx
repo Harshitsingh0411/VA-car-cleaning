@@ -6,6 +6,7 @@ import { Button } from "../ui/Button";
 import { getAllServices, dbService, subscribeToDataChanges } from "../../services/dbService";
 import ScrollReveal from "../ui/ScrollReveal";
 import { usePerformanceMode } from "../../hooks/usePerformanceMode";
+import GlassImage from "../ui/GlassImage";
 
 export default function Services() {
   const [services, setServices] = useState<dbService[]>([]);
@@ -99,10 +100,11 @@ export default function Services() {
                     {/* Image with icon overlay */}
                     <Link to={`/services/${service.id}`} className="relative h-44 overflow-hidden shrink-0 block bg-gradient-to-br from-slate-800 to-slate-900">
                       {service.image ? (
-                        <img 
+                        <GlassImage 
                           src={service.image} 
                           alt={service.name} 
                           className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-700 ease-out transform-gpu"
+                          containerClassName="w-full h-full"
                         />
                       ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center text-gray-400">

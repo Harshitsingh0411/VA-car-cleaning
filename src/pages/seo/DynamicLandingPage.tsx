@@ -189,8 +189,7 @@ export default function DynamicLandingPage({ type }: DynamicLandingProps) {
         description={pageDescription}
         keywords={`${location.name} car wash, car cleaning ${location.name}, doorstep detailing ${location.name}`}
         canonicalUrl={`https://vacarcleaningservice.com/${type === 'service' ? 'services/' + service.slug : type === 'location' ? 'kanpur/' + location.slug : 'services/' + service.slug + '/kanpur/' + location.slug}`}
-        schema={schema}
-        location={location.name}
+        schemas={[schema]}
       />
 
       {/* Hero Section */}

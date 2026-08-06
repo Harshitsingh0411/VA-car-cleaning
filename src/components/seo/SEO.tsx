@@ -1,102 +1,92 @@
 import React from 'react';
 import { Helmet } from 'react-helmet-async';
+import { BASE_URL, BRAND_NAME } from '../../utils/seoSchemas';
 
-interface SEOProps {
+export interface SEOProps {
   title?: string;
   description?: string;
   keywords?: string;
   canonicalUrl?: string;
-  type?: string;
+  type?: 'website' | 'article' | 'product' | 'profile';
   image?: string;
-  schema?: Record<string, any>;
-  location?: string;
+  schemas?: Record<string, any>[];
+  noindex?: boolean;
+  author?: string;
+  publishedTime?: string;
 }
 
 export default function SEO({
-  title = 'Best Doorstep Car & Bike Cleaning & Detailing in Kanpur | In Budget',
-  description = 'Budget-friendly doorstep car & bike cleaning, snow foam wash, superbike detailing, and monthly subscription care in Kanpur. 100% Pay on delivery!',
-  keywords = 'doorstep car cleaning, bike wash kanpur, motorcycle detailing, budget bike wash, doorstep bike cleaning, car detailing kanpur, foam wash',
-  canonicalUrl = 'https://vacarcleaningservice.com',
-  type = 'website',
-  image = 'https://vacarcleaningservice.com/assets/og-image.jpg',
-  schema,
-  location = 'Kanpur, Uttar Pradesh',
+  title = "VA Car & Bike Care | Premium Doorstep Car Cleaning & Detailing",
+  description = "Budget-friendly doorstep car & bike cleaning, snow foam wash, interior vacuuming, dashboard polish & monthly subscriptions in Kanpur. Pay on Delivery!",
+  keywords = "car wash, doorstep car cleaning, bike wash kanpur, interior detailing, foam wash, monthly car subscription, car care kanpur",
+  canonicalUrl,
+  type = "website",
+  image = `${BASE_URL}/favicon.png`,
+  schemas = [],
+  noindex = false,
+  author = "VA Car Care Team",
+  publishedTime
 }: SEOProps) {
-  
-  // Base LocalBusiness schema for VaCar
-  const defaultSchema = {
-    '@context': 'https://schema.org',
-    '@type': 'AutoWash',
-    name: 'VaCar Cleaning Service',
-    image: image,
-    '@id': 'https://vacarcleaningservice.com',
-    url: 'https://vacarcleaningservice.com',
-    telephone: '+91 8090757262', // Generic phone based on previously seen info
-    address: {
-      '@type': 'PostalAddress',
-      streetAddress: 'Kanpur',
-      addressLocality: location,
-      addressRegion: 'UP',
-      postalCode: '208001',
-      addressCountry: 'IN',
-    },
-    geo: {
-      '@type': 'GeoCoordinates',
-      latitude: 26.4499,
-      longitude: 80.3319,
-    },
-    openingHoursSpecification: {
-      '@type': 'OpeningHoursSpecification',
-      dayOfWeek: [
-        'Monday',
-        'Tuesday',
-        'Wednesday',
-        'Thursday',
-        'Friday',
-        'Saturday',
-        'Sunday',
-      ],
-      opens: '08:00',
-      closes: '20:00',
-    },
-    priceRange: '₹₹',
-  };
 
-  const finalSchema = schema || defaultSchema;
+  const fullTitle = title.includes(BRAND_NAME) ? title : `${title} | ${BRAND_NAME}`;
+  const truncatedDesc = description.length > 155 ? `${description.slice(0, 152)}...` : description;
+  const currentCanonical = canonicalUrl || (typeof window !== "undefined" ? window.location.href.split("?")[0] : BASE_URL);
 
   return (
     <Helmet>
       {/* Primary Meta Tags */}
-      <title>{title} | VaCar</title>
-      <meta name="title" content={`${title} | VaCar Cleaning Service`} />
-      <meta name="description" content={description} />
+      <html lang="en" />
+      <title>{fullTitle}</title>
+      <meta name="title" content={fullTitle} />
+      <meta name="description" content={truncatedDesc} />
       <meta name="keywords" content={keywords} />
-      <meta name="theme-color" content="#F4B400" />
+      <meta name="author" content={author} />
+      <meta name="theme-color" content="#0D3B8E" />
 
-      {/* Canonical URL */}
-      <link rel="canonical" href={canonicalUrl} />
+      {/* Robots Directive */}
+      <meta
+        name="robots"
+        content={noindex ? "noindex, nofollow" : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"}
+      />
+      <meta
+        name="googlebot"
+        content={noindex ? "noindex, nofollow" : "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1"}
+      />
+
+      {/* Canonical Link */}
+      <link rel="canonical" href={currentCanonical} />
+
+      {/* Mobile & PWA App Meta */}
+      <meta name="mobile-web-app-capable" content="yes" />
+      <meta name="apple-mobile-web-app-capable" content="yes" />
+      <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+      <meta name="apple-mobile-web-app-title" content="VA Car Care" />
 
       {/* Open Graph / Facebook */}
       <meta property="og:type" content={type} />
-      <meta property="og:url" content={canonicalUrl} />
-      <meta property="og:title" content={`${title} | VaCar Cleaning Service`} />
-      <meta property="og:description" content={description} />
+      <meta property="og:url" content={currentCanonical} />
+      <meta property="og:title" content={fullTitle} />
+      <meta property="og:description" content={truncatedDesc} />
       <meta property="og:image" content={image} />
-      <meta property="og:site_name" content="VaCar Cleaning Service" />
+      <meta property="og:site_name" content={BRAND_NAME} />
+      <meta property="og:locale" content="en_IN" />
+      {publishedTime && <meta property="article:published_time" content={publishedTime} />}
 
-      {/* Twitter */}
-      <meta property="twitter:card" content="summary_large_image" />
-      <meta property="twitter:url" content={canonicalUrl} />
-      <meta property="twitter:title" content={`${title} | VaCar Cleaning Service`} />
-      <meta property="twitter:description" content={description} />
-      <meta property="twitter:image" content={image} />
+      {/* Twitter Cards */}
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:url" content={currentCanonical} />
+      <meta name="twitter:title" content={fullTitle} />
+      <meta name="twitter:description" content={truncatedDesc} />
+      <meta name="twitter:image" content={image} />
+      <meta name="twitter:site" content="@vacarcare" />
+      <meta name="twitter:creator" content="@vacarcare" />
 
-      {/* Structured Data JSON-LD */}
-      {finalSchema && (
-        <script type="application/ld+json">
-          {JSON.stringify(finalSchema)}
+      {/* JSON-LD Schemas */}
+      {schemas.map((schemaObj, index) => (
+        <script key={index} type="application/ld+json">
+          {JSON.stringify(schemaObj)}
         </script>
-      )}
+      ))}
     </Helmet>
   );
 }

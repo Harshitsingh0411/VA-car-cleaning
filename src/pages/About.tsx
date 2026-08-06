@@ -3,6 +3,8 @@ import { motion } from "motion/react";
 import { Target, Award, Shield, Heart, Users, Sparkles, Droplets } from "lucide-react";
 import { getAboutSettings, dbAboutSettings, DEFAULT_ABOUT_SETTINGS, getRealtimeCompanyStats, RealtimeCompanyStats } from "../services/dbService";
 import SEO from "../components/seo/SEO";
+import Breadcrumbs from "../components/common/Breadcrumbs";
+import { getBreadcrumbSchema, getLocalBusinessSchema } from "../utils/seoSchemas";
 
 export default function AboutPage() {
   const [settings, setSettings] = useState<dbAboutSettings>(DEFAULT_ABOUT_SETTINGS);
@@ -48,16 +50,24 @@ export default function AboutPage() {
     }
   ];
 
+  const breadcrumbs = [{ name: "About Us", path: "/about" }];
+
   return (
     <div className="min-h-screen bg-light">
       <SEO 
-        title="About Us | VaCar Cleaning Service"
-        description="Learn about VaCar Cleaning Service, Kanpur's leading eco-friendly doorstep car detailing company. Discover our mission, values, and expert team."
+        title="About Us | VA Car & Bike Care"
+        description="Learn about VA Car & Bike Care, Kanpur's leading eco-friendly doorstep car detailing company. Discover our mission, values, and expert team."
+        keywords="About VA Car Care, car detailing kanpur company, doorstep vehicle wash history, eco friendly wash"
+        schemas={[
+          getBreadcrumbSchema(breadcrumbs),
+          getLocalBusinessSchema()
+        ]}
       />
       {/* Banner */}
       <div className="bg-[#070C16] text-white pt-24 pb-12 md:pt-28 md:pb-14 relative overflow-hidden">
         <div className="absolute inset-0 bg-primary/10" />
         <div className="container mx-auto px-4 md:px-6 relative z-10 text-center">
+          <Breadcrumbs items={breadcrumbs} className="mb-4 max-w-xs mx-auto text-center justify-center bg-white/10 text-white border-white/10" />
           <motion.span
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
@@ -97,6 +107,7 @@ export default function AboutPage() {
               src={settings.storyImageUrl || "https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&q=80&w=1200"}
               alt="Deep luxury detailing"
               className="w-full h-full object-cover"
+              loading="lazy"
             />
             <div className="absolute inset-0 bg-primary/20" />
           </motion.div>
@@ -105,10 +116,10 @@ export default function AboutPage() {
             initial={{ opacity: 0, x: 30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
-            className="w-full lg:w-1/2 space-y-4"
+            className="w-full lg:w-1/2 space-y-4 text-left"
           >
             <span className="text-primary font-bold text-xs tracking-widest uppercase block">
-              Our Journey & Mission
+              Our Journey &amp; Mission
             </span>
             <h2 className="text-3xl md:text-4xl font-heading font-extrabold text-dark leading-tight">
               {settings.storyHeading}
@@ -138,7 +149,7 @@ export default function AboutPage() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="bg-primary/5 p-8 md:p-10 rounded-[32px] border border-primary/10 space-y-3"
+            className="bg-primary/5 p-8 md:p-10 rounded-[32px] border border-primary/10 space-y-3 text-left"
           >
             <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-white">
               <Target size={24} />
@@ -156,7 +167,7 @@ export default function AboutPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.1 }}
-            className="bg-secondary/5 p-8 md:p-10 rounded-[32px] border border-secondary/10 space-y-3"
+            className="bg-secondary/5 p-8 md:p-10 rounded-[32px] border border-secondary/10 space-y-3 text-left"
           >
             <div className="w-12 h-12 bg-secondary rounded-2xl flex items-center justify-center text-dark">
               <Award size={24} />
@@ -174,7 +185,7 @@ export default function AboutPage() {
         <div className="mb-16">
           <div className="text-center max-w-2xl mx-auto mb-12">
             <span className="text-primary font-bold uppercase tracking-wider text-xs block mb-1">
-              Beliefs & Standard
+              Beliefs &amp; Standard
             </span>
             <h2 className="text-3xl md:text-4xl font-heading font-extrabold text-dark">
               Our Core Values

@@ -2,11 +2,41 @@ import React from "react";
 
 /**
  * Generates a cartoon profile picture URL.
- * Uses DiceBear's cartoon avataaars/adventurer avatar API based on user's name/email/uid seed.
+ * Uses DiceBear's cartoon avataaars avatar API based on user's name/email/uid seed.
  */
 export function getCartoonAvatar(seed?: string | null): string {
   const identifier = seed && seed.trim() ? seed.trim() : `cartoon-user-${Math.floor(Math.random() * 10000)}`;
   return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(identifier)}`;
+}
+
+/**
+ * Smart Avatar helper:
+ * 1. Uses user's Google Gmail photo (photoURL/photo) if available.
+ * 2. Otherwise detects gender from name/email and returns tailored cartoon avatar.
+ */
+export function getUserAvatar(user?: { photoURL?: string; photo?: string; name?: string; email?: string } | null, fallbackSeed?: string): string {
+  if (user?.photoURL && user.photoURL.trim()) return user.photoURL;
+  if (user?.photo && user.photo.trim()) return user.photo;
+
+  const nameOrEmail = ((user?.name || "") + " " + (user?.email || "") + " " + (fallbackSeed || "")).toLowerCase();
+
+  const femaleKeywords = [
+    "priya", "pooja", "neha", "bandana", "shreya", "ananya", "divya", "simran",
+    "sneha", "sakshi", "kavita", "sunita", "aarti", "priyanka", "swati", "megha",
+    "ritu", "sharda", "sheetal", "renu", "sonam", "radhika", "kavya", "nisha",
+    "anjali", "chhavi", "reena", "pinky", "tanya", "tanvi", "monika", "archana",
+    "bhavna", "drishti", "ishita", "jyoti", "khushi", "laxmi", "manju", "naina",
+    "payal", "rachel", "sarita", "twinkle", "uma", "vaishnavi", "yashika", "zoya",
+    "female", "girl", "woman", "mrs", "miss", "lady"
+  ];
+
+  const isFemale = femaleKeywords.some((kw) => nameOrEmail.includes(kw));
+  const seed = (user?.name || user?.email || fallbackSeed || "user").trim();
+
+  if (isFemale) {
+    return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(seed)}&top=longHair,straight01,straight02,curly,dreads,frizzle,wavy&hairColor=black,brown,blonde`;
+  }
+  return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(seed)}&top=shortHair,shortRound,shortWaved,shortFlat,sides,theCaesar&hairColor=black,brown`;
 }
 
 /**

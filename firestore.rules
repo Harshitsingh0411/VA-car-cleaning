@@ -175,5 +175,22 @@ service cloud.firestore {
       allow read: if isAdmin();
       allow update, delete: if false; // Audit logs are immutable
     }
+
+    // Vehicle Detection & Image Management Master Collections
+    match /vehicleBrands/{brandId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /vehicleModels/{modelId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /vehicleVariants/{variantId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /vehicleImages/{imageId} {
+      allow read, write: if true;
+    }
   }
 }

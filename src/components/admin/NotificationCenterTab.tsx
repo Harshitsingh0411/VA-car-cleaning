@@ -76,11 +76,11 @@ const defaultTemplates: NotificationTemplate[] = [
     id: "tpl-4",
     name: "🎉 15% Detailing Offer",
     title: "Special Detailing Discount!",
-    subtitle: "Flat 15% OFF",
-    description: "Book any Premium Detailing or Interior Vacuum session today and enjoy flat 15% discount using code CLEAN15!",
+    subtitle: "Flat 15% OFF (Code: CLEAN15)",
+    description: "Book any Premium Detailing or Interior Vacuum session today and enjoy flat 15% discount using coupon code CLEAN15!",
     category: "Offers",
     priority: "normal",
-    deepLink: "/book",
+    deepLink: "/book?coupon=CLEAN15",
     isBuiltIn: true
   },
   {
@@ -92,6 +92,17 @@ const defaultTemplates: NotificationTemplate[] = [
     category: "System",
     priority: "normal",
     deepLink: "/account",
+    isBuiltIn: true
+  },
+  {
+    id: "tpl-6",
+    name: "🎁 25% Festive Coupon",
+    title: "Exclusive Festive Coupon!",
+    subtitle: "Flat 25% OFF (Code: FESTIVE25)",
+    description: "Special festive reward! Use coupon code FESTIVE25 on your next car detailing booking for 25% instant savings.",
+    category: "Offers",
+    priority: "high",
+    deepLink: "/book?coupon=FESTIVE25",
     isBuiltIn: true
   }
 ];

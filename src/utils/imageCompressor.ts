@@ -1,7 +1,14 @@
 /**
  * Image Compressor Utility using HTML5 Canvas.
- * Resizes large user uploaded photos to a specified max dimension and compresses
- * the file size (e.g. from 10MB down to ~200KB) before uploading to Cloudinary / DB.
+ *
+ * Resizes large user-uploaded photos to a specified max dimension and reduces
+ * file size before uploading to Cloudinary.
+ *
+ * ─── IMAGE STORAGE POLICY ────────────────────────────────────────────────────
+ * The `dataUrl` field in CompressionResult is for LOCAL UI PREVIEW ONLY.
+ * It MUST NEVER be saved to Firestore, localStorage, or any database.
+ * Only Cloudinary secure_url values (https://res.cloudinary.com/...) may be saved.
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 
 export interface CompressionOptions {
@@ -13,6 +20,11 @@ export interface CompressionOptions {
 
 export interface CompressionResult {
   compressedFile: File;
+  /**
+   * ⚠️ FOR LOCAL PREVIEW ONLY — NEVER save this to Firestore or any database.
+   * Use it only to display a local thumbnail before the file is uploaded to Cloudinary.
+   * After upload, use the Cloudinary secure_url instead.
+   */
   dataUrl: string;
   originalSize: number;
   compressedSize: number;
@@ -24,31 +36,30 @@ export async function compressImage(
   options: CompressionOptions = {}
 ): Promise<CompressionResult> {
   const {
-    maxWidth = 1200,
-    maxHeight = 1200,
-    quality = 0.75,
+    maxWidth = 1920,
+    maxHeight = 1920,
+    quality = 0.80,
     mimeType = "image/jpeg"
   } = options;
 
   return new Promise((resolve, reject) => {
+    // ── Non-image files: return as-is (no compression) ───────────────────────
+    // We do NOT use FileReader.readAsDataURL here — it would produce a data: URL
+    // which must never be saved to Firestore.
     if (!file.type.startsWith("image/")) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const dataUrl = e.target?.result as string;
-        resolve({
-          compressedFile: file,
-          dataUrl,
-          originalSize: file.size,
-          compressedSize: file.size,
-          reductionPercentage: 0
-        });
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
+      resolve({
+        compressedFile: file,
+        dataUrl: "",  // Empty — caller should use URL.createObjectURL() for preview
+        originalSize: file.size,
+        compressedSize: file.size,
+        reductionPercentage: 0
+      });
       return;
     }
 
+    // ── Image files: use Canvas API (no FileReader.readAsDataURL) ─────────────
     const img = new Image();
+    // URL.createObjectURL is safe for local preview; we revoke it after use
     const url = URL.createObjectURL(file);
 
     img.onload = () => {
@@ -76,11 +87,11 @@ export async function compressImage(
         return;
       }
 
-      // Smooth rendering setup
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
       ctx.drawImage(img, 0, 0, width, height);
 
+      // toDataURL result is for LOCAL PREVIEW ONLY — NEVER save to Firestore
       const dataUrl = canvas.toDataURL(mimeType, quality);
 
       canvas.toBlob(
@@ -90,20 +101,25 @@ export async function compressImage(
             return;
           }
 
-          const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), {
-            type: mimeType,
-            lastModified: Date.now()
-          });
+          const compressedFile = new File(
+            [blob],
+            file.name.replace(/\.[^/.]+$/, ".jpg"),
+            { type: mimeType, lastModified: Date.now() }
+          );
 
-          const reductionPercentage = Math.max(0, Math.round((1 - blob.size / file.size) * 100));
+          const reductionPercentage = Math.max(
+            0,
+            Math.round((1 - blob.size / file.size) * 100)
+          );
 
           console.log(
-            `🚀 Canvas Image Compressor: ${(file.size / 1024).toFixed(1)} KB → ${(blob.size / 1024).toFixed(1)} KB (${reductionPercentage}% reduced)`
+            `🗜️ Canvas Compressor: ${(file.size / 1024).toFixed(1)} KB → ` +
+            `${(blob.size / 1024).toFixed(1)} KB (${reductionPercentage}% reduced)`
           );
 
           resolve({
             compressedFile,
-            dataUrl,
+            dataUrl,  // ⚠️ LOCAL PREVIEW ONLY — NEVER save to Firestore
             originalSize: file.size,
             compressedSize: blob.size,
             reductionPercentage

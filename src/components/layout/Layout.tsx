@@ -90,58 +90,60 @@ export default function Layout() {
         </main>
         <Footer />
 
-        {/* Floating Action Buttons */}
-        <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 items-center">
-          <motion.a
-            whileHover={{ scale: 1.12, y: -2 }}
-            whileTap={{ scale: 0.95 }}
-            href={`https://wa.me/${whatsappNum}?text=${whatsappMsg}`}
-            target="_blank"
-            rel="noreferrer"
-            title="Chat on WhatsApp"
-            className="w-12 h-12 bg-[#25D366] hover:bg-[#20ba5a] rounded-full flex items-center justify-center text-white shadow-xl border-2 border-white cursor-pointer transform-gpu transition-all"
-          >
-            <MessageCircle size={22} />
-          </motion.a>
-
-          <motion.a
-            whileHover={{ scale: 1.12, y: -2 }}
-            whileTap={{ scale: 0.95 }}
-            href={`tel:${phoneNum}`}
-            title="Call Helpline"
-            className="w-12 h-12 bg-[#0F172A] hover:bg-black rounded-full flex items-center justify-center text-white shadow-xl border-2 border-white/20 cursor-pointer transform-gpu transition-all"
-          >
-            <Phone size={20} />
-          </motion.a>
-
-          <motion.div whileHover={{ scale: 1.12 }} whileTap={{ scale: 0.95 }}>
-            <Link
-              to="/book"
-              title="Book Now"
-              className="w-12 h-12 bg-[#0D3B8E] hover:bg-blue-800 rounded-full flex items-center justify-center text-white shadow-xl border-2 border-white cursor-pointer md:hidden flex transform-gpu transition-all"
+        {/* Floating Action Buttons (Hidden on Admin & Account pages) */}
+        {!(location.pathname.startsWith("/admin") || location.pathname.startsWith("/account")) && (
+          <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 items-center">
+            <motion.a
+              whileHover={{ scale: 1.12, y: -2 }}
+              whileTap={{ scale: 0.95 }}
+              href={`https://wa.me/${whatsappNum}?text=${whatsappMsg}`}
+              target="_blank"
+              rel="noreferrer"
+              title="Chat on WhatsApp"
+              className="w-12 h-12 bg-[#25D366] hover:bg-[#20ba5a] rounded-full flex items-center justify-center text-white shadow-xl border-2 border-white cursor-pointer transform-gpu transition-all"
             >
-              <CalendarClock size={20} />
-            </Link>
-          </motion.div>
+              <MessageCircle size={22} />
+            </motion.a>
 
-          <AnimatePresence>
-            {showTopBtn && (
-              <motion.button
-                initial={{ opacity: 0, scale: 0.6, y: 10 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.6, y: 10 }}
-                whileHover={{ scale: 1.15, y: -3 }}
-                whileTap={{ scale: 0.9 }}
-                transition={{ duration: 0.25, ease: "easeOut" }}
-                onClick={scrollToTop}
-                title="Scroll to Top of Page"
-                className="w-12 h-12 bg-[#0F172A] hover:bg-black rounded-full flex items-center justify-center text-white shadow-xl border-2 border-white/20 cursor-pointer transform-gpu"
+            <motion.a
+              whileHover={{ scale: 1.12, y: -2 }}
+              whileTap={{ scale: 0.95 }}
+              href={`tel:${phoneNum}`}
+              title="Call Helpline"
+              className="w-12 h-12 bg-[#0F172A] hover:bg-black rounded-full flex items-center justify-center text-white shadow-xl border-2 border-white/20 cursor-pointer transform-gpu transition-all"
+            >
+              <Phone size={20} />
+            </motion.a>
+
+            <motion.div whileHover={{ scale: 1.12 }} whileTap={{ scale: 0.95 }}>
+              <Link
+                to="/book"
+                title="Book Now"
+                className="w-12 h-12 bg-[#0D3B8E] hover:bg-blue-800 rounded-full flex items-center justify-center text-white shadow-xl border-2 border-white cursor-pointer md:hidden flex transform-gpu transition-all"
               >
-                <ArrowUp size={20} />
-              </motion.button>
-            )}
-          </AnimatePresence>
-        </div>
+                <CalendarClock size={20} />
+              </Link>
+            </motion.div>
+
+            <AnimatePresence>
+              {showTopBtn && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.6, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.6, y: 10 }}
+                  whileHover={{ scale: 1.15, y: -3 }}
+                  whileTap={{ scale: 0.9 }}
+                  transition={{ duration: 0.25, ease: "easeOut" }}
+                  onClick={scrollToTop}
+                  title="Scroll to Top of Page"
+                  className="w-12 h-12 bg-[#0F172A] hover:bg-black rounded-full flex items-center justify-center text-white shadow-xl border-2 border-white/20 cursor-pointer transform-gpu"
+                >
+                  <ArrowUp size={20} />
+                </motion.button>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
       </div>
     </SmoothScroll>
   );

@@ -3,6 +3,7 @@ import { Sparkles, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { getBeforeAfterItems, dbBeforeAfterItem } from "../../services/dbService";
 import ScrollReveal from "../ui/ScrollReveal";
+import GlassImage from "../ui/GlassImage";
 
 export default function BeforeAfter() {
   const [items, setItems] = useState<dbBeforeAfterItem[]>([]);
@@ -74,10 +75,11 @@ export default function BeforeAfter() {
                     className="relative h-72 md:h-80 rounded-3xl overflow-hidden shadow-lg border border-gray-200 group bg-gray-900 transform-gpu"
                   >
                     {item.beforeImage ? (
-                      <img
+                      <GlassImage
                         src={item.beforeImage}
                         alt={`${item.title} Before`}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                        containerClassName="w-full h-full"
                       />
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900 text-gray-400 p-6 text-center">
@@ -101,10 +103,11 @@ export default function BeforeAfter() {
                     className="relative h-72 md:h-80 rounded-3xl overflow-hidden shadow-xl border border-[#F4B400]/40 group bg-gray-900 transform-gpu"
                   >
                     {item.afterImage ? (
-                      <img
+                      <GlassImage
                         src={item.afterImage}
                         alt={`${item.title} After`}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                        containerClassName="w-full h-full"
                       />
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-blue-950 to-dark text-amber-400 p-6 text-center">

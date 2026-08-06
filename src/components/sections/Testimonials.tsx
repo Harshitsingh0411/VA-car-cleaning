@@ -7,6 +7,7 @@ import { isLocalBlobUrl } from "../../utils/mediaUtils";
 import { getCartoonAvatar, handleAvatarError } from "../../utils/avatar";
 import ScrollReveal from "../ui/ScrollReveal";
 import { usePerformanceMode } from "../../hooks/usePerformanceMode";
+import GlassImage from "../ui/GlassImage";
 
 interface DisplayTestimonial {
   id: string;
@@ -21,29 +22,29 @@ interface DisplayTestimonial {
 
 const defaultTestimonials: DisplayTestimonial[] = [
   {
-    id: "t1",
-    text: "Amazing service! My car looks brand new. The team was punctual, extremely professional, and left absolutely no water mess in my driveway.",
-    name: "Rahul Sharma",
-    role: "Verified Car Owner",
-    avatar: getCartoonAvatar("Rahul Sharma"),
-    stars: 5
+    id: "default-1",
+    text: "VA Car Cleaning transformed my vehicle! The interior detailing brought back that brand-new showroom smell and shine. Highly recommended!",
+    name: "Alex Rivera",
+    role: "Verified Customer (Full Interior Detailing)",
+    avatar: getCartoonAvatar("Alex Rivera"),
+    stars: 5,
   },
   {
-    id: "t2",
-    text: "Loved the doorstep chain cleaning and polishing for my premium superbike. Highly recommended for any bike enthusiast who wants showroom care at home.",
-    name: "Arjun Mehta",
-    role: "Verified Bike Owner",
-    avatar: getCartoonAvatar("Arjun Mehta"),
-    stars: 5
+    id: "default-2",
+    text: "Exceptional service and extreme attention to detail. The ceramic coating and exterior polish made my paint look completely mirror-finish.",
+    name: "Sarah Jenkins",
+    role: "Verified Customer (Paint Correction & Ceramic)",
+    avatar: getCartoonAvatar("Sarah Jenkins"),
+    stars: 5,
   },
   {
-    id: "t3",
-    text: "The double-bucket system they use is fantastic. Zero swirl marks on my black luxury SUV, and the interior dashboard conditioning smells incredibly fresh.",
-    name: "Pooja Malhotra",
-    role: "Verified SUV Owner",
-    avatar: getCartoonAvatar("Pooja Malhotra"),
-    stars: 5
-  }
+    id: "default-3",
+    text: "Super easy booking process and punctual professional detailers. They removed stubborn stains and pet hair effortlessly.",
+    name: "Michael Chen",
+    role: "Verified Customer (Express Wash & Vacuum)",
+    avatar: getCartoonAvatar("Michael Chen"),
+    stars: 5,
+  },
 ];
 
 export default function Testimonials() {
@@ -77,14 +78,20 @@ export default function Testimonials() {
   }, []);
 
   const handleNext = () => {
+    if (!testimonials.length) return;
     setIndex((prev) => (prev + 1) % testimonials.length);
   };
 
   const handlePrev = () => {
+    if (!testimonials.length) return;
     setIndex((prev) => (prev - 1 + testimonials.length) % testimonials.length);
   };
 
   const current = testimonials[index] || testimonials[0];
+
+  if (!current) {
+    return null;
+  }
 
   return (
     <section className="py-24 bg-[#070C16] text-white relative border-t border-white/5" id="testimonials">
@@ -124,7 +131,7 @@ export default function Testimonials() {
                 >
                   {/* Rating Stars */}
                   <div className="flex gap-1 text-[#F4B400]">
-                    {Array.from({ length: current.stars || 5 }).map((_, s) => (
+                    {Array.from({ length: current?.stars || 5 }).map((_, s) => (
                       <Star key={s} size={18} className="fill-[#F4B400]" />
                     ))}
                   </div>
@@ -146,7 +153,7 @@ export default function Testimonials() {
                           onClick={() => openLightbox({ url: imgUrl, type: "image", title: `Review Photo by ${current.name}` })}
                           className="shrink-0 cursor-pointer group relative overflow-hidden rounded-xl border border-white/15 transform-gpu"
                         >
-                          <img src={imgUrl} alt={`Photo by ${current.name}`} className="w-16 h-16 object-cover group-hover:scale-110 transition-transform duration-300" />
+                          <GlassImage src={imgUrl} alt={`Photo by ${current.name}`} className="w-16 h-16 object-cover group-hover:scale-110 transition-transform duration-300" containerClassName="w-16 h-16" />
                           <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-bold">
                             View
                           </div>
@@ -181,11 +188,12 @@ export default function Testimonials() {
                   {/* Reviewer Details */}
                   <div className="flex items-center gap-4 pt-4 border-t border-white/5">
                     <div className="w-12 h-12 rounded-full overflow-hidden border border-white/15 shrink-0 bg-white/5">
-                      <img
+                      <GlassImage
                         src={current.avatar}
                         onError={(e) => handleAvatarError(e, current.name)}
                         alt={current.name}
                         className="w-full h-full object-cover"
+                        containerClassName="w-full h-full"
                       />
                     </div>
                     <div>
