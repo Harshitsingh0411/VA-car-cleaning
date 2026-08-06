@@ -45,7 +45,7 @@ export default function Services() {
   };
 
   return (
-    <section className="py-24 bg-[#070C16] text-white relative border-t border-white/5" id="services">
+    <section className="py-8 sm:py-16 md:py-24 bg-[#070C16] text-white relative border-t border-white/5" id="services">
       <div className="container mx-auto px-4 md:px-6">
         
         {/* Header Block */}

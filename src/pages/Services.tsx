@@ -59,43 +59,7 @@ export default function ServicesPage() {
         schemas={schemas}
       />
 
-      {/* 1. Header & Breadcrumbs Panel */}
-      <div className="container mx-auto px-4 md:px-6 mb-6">
-        <Breadcrumbs items={breadcrumbs} className="mb-4" />
-        <div className="bg-white border border-gray-100 rounded-[32px] p-6 md:p-8 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <span className="text-primary font-bold uppercase tracking-wider text-[10px] block mb-1">Our Offerings</span>
-            <h1 className="text-2xl md:text-3xl font-heading font-extrabold text-dark">Professional Detailing Services</h1>
-            <p className="text-gray-400 text-xs mt-1">Explore all our premium car &amp; bike care offerings, doorstep cleaning plans, and custom subscription packages.</p>
-          </div>
-          <Link to="/book" className="w-full md:w-auto">
-            <button className="w-full bg-primary hover:bg-[#0b327b] text-white font-bold py-3 px-6 rounded-xl text-xs uppercase tracking-wider shadow cursor-pointer transition-all flex items-center justify-center gap-1.5 shrink-0">
-              <Sparkles size={14} />
-              Book Custom Wash
-            </button>
-          </Link>
-        </div>
-      </div>
 
-      {/* 2. KPI Stats Cards Row */}
-      <div className="container mx-auto px-4 md:px-6 mb-8">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { label: "Total Services", value: services.length || "12", icon: "📋", bg: "bg-blue-50/50 border-blue-100", color: "text-blue-600" },
-            { label: "Active Packages", value: services.filter(s => !s.name.toLowerCase().includes("hidden")).length || "9", icon: "✅", bg: "bg-emerald-50/50 border-emerald-100", color: "text-emerald-600" },
-            { label: "Happy Clients", value: "2,500+", icon: "❤️", bg: "bg-purple-50/50 border-purple-100", color: "text-purple-600" },
-            { label: "Average Rating", value: "4.8 ★ (128)", icon: "⭐", bg: "bg-amber-50/50 border-amber-100", color: "text-amber-600" }
-          ].map((kpi, i) => (
-            <div key={i} className={`bg-white border ${kpi.bg} rounded-2xl p-4 flex items-center gap-4 shadow-xs`}>
-              <div className="text-2xl shrink-0">{kpi.icon}</div>
-              <div>
-                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">{kpi.label}</p>
-                <p className={`text-sm md:text-base font-black ${kpi.color}`}>{kpi.value}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
 
       {/* 3. Catalog Section Grid */}
       <div className="container mx-auto px-4 md:px-6 mb-12">

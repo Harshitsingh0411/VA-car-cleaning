@@ -23,6 +23,7 @@ import Admin from "./pages/Admin";
 import ProtectedRoute from "./components/ProtectedRoute";
 import EmployeeDashboard from "./pages/crew/EmployeeDashboard";
 import NotificationCenter from "./pages/NotificationCenter";
+import BookingDetailsPage from "./pages/BookingDetailsPage";
 
 
 import PartTimeJob from "./pages/jobs/PartTimeJob";
@@ -98,6 +99,31 @@ function AnimatedRoutes() {
             element={
               <ProtectedRoute allowedRoles={["admin", "staff", "customer"]}>
                 <Account />
+              </ProtectedRoute>
+            } 
+          />
+
+          <Route 
+            path="account/booking/:bookingId" 
+            element={
+              <ProtectedRoute allowedRoles={["admin", "staff", "customer"]}>
+                <BookingDetailsPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="account/booking-details/:bookingId" 
+            element={
+              <ProtectedRoute allowedRoles={["admin", "staff", "customer"]}>
+                <BookingDetailsPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="booking/:bookingId" 
+            element={
+              <ProtectedRoute allowedRoles={["admin", "staff", "customer"]}>
+                <BookingDetailsPage />
               </ProtectedRoute>
             } 
           />

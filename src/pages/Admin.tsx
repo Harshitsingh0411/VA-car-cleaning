@@ -477,6 +477,34 @@ export default function Admin() {
   const [planPopular, setPlanPopular] = useState(false);
   const [planCta, setPlanCta] = useState("Book Now");
 
+  // System Overview Date Range Filter State
+  const [statsStartDate, setStatsStartDate] = useState<string>("");
+  const [statsEndDate, setStatsEndDate] = useState<string>("");
+  const [statsPreset, setStatsPreset] = useState<"all" | "7days" | "30days" | "month" | "custom">("all");
+
+  const applyStatsPreset = (preset: "all" | "7days" | "30days" | "month") => {
+    setStatsPreset(preset);
+    const today = new Date();
+    if (preset === "all") {
+      setStatsStartDate("");
+      setStatsEndDate("");
+    } else if (preset === "7days") {
+      const d = new Date(today);
+      d.setDate(today.getDate() - 6);
+      setStatsStartDate(d.toISOString().slice(0, 10));
+      setStatsEndDate(today.toISOString().slice(0, 10));
+    } else if (preset === "30days") {
+      const d = new Date(today);
+      d.setDate(today.getDate() - 29);
+      setStatsStartDate(d.toISOString().slice(0, 10));
+      setStatsEndDate(today.toISOString().slice(0, 10));
+    } else if (preset === "month") {
+      const d = new Date(today.getFullYear(), today.getMonth(), 1);
+      setStatsStartDate(d.toISOString().slice(0, 10));
+      setStatsEndDate(today.toISOString().slice(0, 10));
+    }
+  };
+
   // Bookings Sorting, Searching & Filtering State
   const [bookingStatusFilter, setBookingStatusFilter] = useState<string>("all");
   const [bookingSortOption, setBookingSortOption] = useState<string>("date_desc");
@@ -1969,40 +1997,63 @@ export default function Admin() {
 
           {/* SYSTEM OVERVIEW PANEL */}
           {activeTab === "stats" && (() => {
-            const completedBookings = appointments.filter(a => a.status === "Completed" || a.status === "finish" || a.status === "done" || a.status === "completed");
-            const inProgressBookings = appointments.filter(a => a.status === "In Progress" || a.status === "in_progress");
-            const scheduledBookings = appointments.filter(a => a.status === "Scheduled" || a.status === "Pending" || a.status === "pending" || a.status === "scheduled");
-            const cancelledBookings = appointments.filter(a => a.status === "Cancelled" || a.status === "cancelled");
+            // Filter appointments by selected Date Range (statsStartDate to statsEndDate)
+            const statsAppointments = appointments.filter(a => {
+              if (!statsStartDate && !statsEndDate) return true;
+              const dateStr = a.date || a.createdAt;
+              if (!dateStr) return true;
+              const bookingDate = new Date(dateStr);
+              if (isNaN(bookingDate.getTime())) return true;
+
+              if (statsStartDate) {
+                const start = new Date(statsStartDate);
+                start.setHours(0, 0, 0, 0);
+                if (bookingDate < start) return false;
+              }
+              if (statsEndDate) {
+                const end = new Date(statsEndDate);
+                end.setHours(23, 59, 59, 999);
+                if (bookingDate > end) return false;
+              }
+              return true;
+            });
+
+            const completedBookings = statsAppointments.filter(a => a.status === "Completed" || a.status === "finish" || a.status === "done" || a.status === "completed");
+            const inProgressBookings = statsAppointments.filter(a => a.status === "In Progress" || a.status === "in_progress");
+            const scheduledBookings = statsAppointments.filter(a => a.status === "Scheduled" || a.status === "Pending" || a.status === "pending" || a.status === "scheduled");
+            const cancelledBookings = statsAppointments.filter(a => a.status === "Cancelled" || a.status === "cancelled");
             const totalRevLocal = completedBookings.reduce((sum, a) => sum + Number(a.price.replace(/[^\d]/g, "")), 0);
             const pendingPayments = scheduledBookings.reduce((sum, a) => sum + Number(a.price.replace(/[^\d]/g, "")), 0);
 
-            // Date range
+            // Calculate daily chart bins for the date range
             const today = new Date();
-            const sevenDaysAgo = new Date(today); sevenDaysAgo.setDate(today.getDate() - 6);
-            const formatDate = (d: Date) => d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
-
-            // Weekly daily data for chart
             const dailyLabels: string[] = [];
             const dailyTotals: number[] = [];
             const dailyCompleted: number[] = [];
-            for (let i = 6; i >= 0; i--) {
-              const d = new Date(today); d.setDate(today.getDate() - i);
+
+            const startRange = statsStartDate ? new Date(statsStartDate) : new Date(today.getTime() - 6 * 86400000);
+            const endRange = statsEndDate ? new Date(statsEndDate) : today;
+            const diffDays = Math.max(1, Math.min(31, Math.round((endRange.getTime() - startRange.getTime()) / 86400000) + 1));
+
+            for (let i = 0; i < diffDays; i++) {
+              const d = new Date(startRange);
+              d.setDate(startRange.getDate() + i);
               const label = d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
               dailyLabels.push(label);
               const dayStr = d.toISOString().slice(0, 10);
-              const dayBookings = appointments.filter(a => (a.date || "").slice(0, 10) === dayStr);
+              const dayBookings = statsAppointments.filter(a => (a.date || a.createdAt || "").slice(0, 10) === dayStr);
               dailyTotals.push(dayBookings.length);
-              dailyCompleted.push(dayBookings.filter(a => a.status === "Completed" || a.status === "finish" || a.status === "done").length);
+              dailyCompleted.push(dayBookings.filter(a => a.status === "Completed" || a.status === "finish" || a.status === "done" || a.status === "completed").length);
             }
             const maxVal = Math.max(...dailyTotals, 1);
 
             // Top Services
             const serviceCountMap: Record<string, number> = {};
-            appointments.forEach(a => { if (a.service) { serviceCountMap[a.service] = (serviceCountMap[a.service] || 0) + 1; } });
+            statsAppointments.forEach(a => { if (a.service) { serviceCountMap[a.service] = (serviceCountMap[a.service] || 0) + 1; } });
             const topServices = Object.entries(serviceCountMap).sort((a, b) => b[1] - a[1]).slice(0, 5);
 
             // Donut chart percentages
-            const total = appointments.length || 1;
+            const total = statsAppointments.length || 1;
             const compPct = Math.round((completedBookings.length / total) * 100);
             const inPrgPct = Math.round((inProgressBookings.length / total) * 100);
             const schPct = Math.round((scheduledBookings.length / total) * 100);
@@ -2023,33 +2074,84 @@ export default function Admin() {
               return el;
             });
 
-            // Today's stats
+            // Today's & Weekly stats
+            const sevenDaysAgo = new Date(today); sevenDaysAgo.setDate(today.getDate() - 6);
             const todayStr = today.toISOString().slice(0, 10);
-            const todayBookings = appointments.filter(a => (a.date || "").slice(0, 10) === todayStr);
+            const todayBookings = statsAppointments.filter(a => (a.date || "").slice(0, 10) === todayStr);
             const todayRevenue = todayBookings.filter(a => a.status === "Completed" || a.status === "finish").reduce((s, a) => s + Number(a.price.replace(/[^\d]/g, "")), 0);
             const reviewsThisWeek = reviews.filter(r => { if (!r.createdAt) return false; const d = new Date(r.createdAt); return d >= sevenDaysAgo; }).length;
             const newClientsThisWeek = users.filter(u => { if (!u.createdAt) return false; const d = new Date(u.createdAt); return d >= sevenDaysAgo; }).length;
 
             return (
               <div className="space-y-6">
-                {/* PAGE HEADER */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                {/* PAGE HEADER & DATE RANGE SELECTOR BAR */}
+                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-white border border-gray-100 p-5 rounded-3xl shadow-xs">
                   <div>
-                    <h2 className="text-2xl font-heading font-extrabold text-white">System Overview</h2>
-                    <p className="text-sm text-gray-500 mt-0.5 font-medium">Complete overview of your car &amp; bike care business</p>
+                    <h2 className="text-xl md:text-2xl font-heading font-extrabold text-dark">System Overview</h2>
+                    <p className="text-xs text-gray-500 mt-0.5 font-medium">Real-time business performance and custom date range analytics</p>
                   </div>
-                  <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 text-xs text-gray-500 font-semibold">
-                    <Calendar size={13} className="text-primary" />
-                    <span className="text-dark font-bold">{formatDate(sevenDaysAgo)}</span>
-                    <span className="text-gray-400">–</span>
-                    <span className="text-dark font-bold">{formatDate(today)}</span>
+
+                  {/* Interactive Date Range Filter Toolbar */}
+                  <div className="flex flex-wrap items-center gap-2 bg-gray-50 p-2 rounded-2xl border border-gray-200/80 text-xs">
+                    {/* Presets */}
+                    <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-gray-200 shadow-2xs">
+                      {(["all", "7days", "30days", "month"] as const).map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => applyStatsPreset(p)}
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase transition-all cursor-pointer ${statsPreset === p ? "bg-primary text-white shadow-2xs" : "text-gray-500 hover:text-dark"
+                            }`}
+                        >
+                          {p === "all" ? "All Time" : p === "7days" ? "7 Days" : p === "30days" ? "30 Days" : "This Month"}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Date Pickers: Start Date to End Date */}
+                    <div className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-xl px-3 py-1.5 shadow-2xs">
+                      <Calendar size={13} className="text-primary shrink-0" />
+                      <span className="text-[10px] text-gray-400 font-bold uppercase">Start</span>
+                      <input
+                        type="date"
+                        value={statsStartDate}
+                        onChange={(e) => {
+                          setStatsStartDate(e.target.value);
+                          setStatsPreset("custom");
+                        }}
+                        className="bg-transparent text-xs font-bold text-dark focus:outline-none cursor-pointer"
+                      />
+                      <span className="text-gray-400 font-bold px-0.5">–</span>
+                      <span className="text-[10px] text-gray-400 font-bold uppercase">End</span>
+                      <input
+                        type="date"
+                        value={statsEndDate}
+                        onChange={(e) => {
+                          setStatsEndDate(e.target.value);
+                          setStatsPreset("custom");
+                        }}
+                        className="bg-transparent text-xs font-bold text-dark focus:outline-none cursor-pointer"
+                      />
+                    </div>
+
+                    {(statsStartDate || statsEndDate) && (
+                      <button
+                        type="button"
+                        onClick={() => applyStatsPreset("all")}
+                        className="px-2.5 py-1.5 text-gray-500 hover:text-rose-600 font-bold text-[10px] flex items-center gap-1 cursor-pointer transition-colors"
+                        title="Clear Date Filter"
+                      >
+                        <X size={13} />
+                        Clear
+                      </button>
+                    )}
                   </div>
                 </div>
 
                 {/* TOP KPI CARDS ROW */}
                 <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                   {[
-                    { label: "Total Bookings", value: appointments.length, icon: "📋", color: "text-blue-600", bg: "bg-blue-50 border-blue-100", trend: "+18.6%" },
+                    { label: "Total Bookings", value: statsAppointments.length, icon: "📋", color: "text-blue-600", bg: "bg-blue-50 border-blue-100", trend: "+18.6%" },
                     { label: "Completed Bookings", value: completedBookings.length, icon: "✅", color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-100", trend: "+16.3%" },
                     { label: "Total Revenue", value: `₹${totalRevLocal.toLocaleString("en-IN")}`, icon: "💰", color: "text-amber-600", bg: "bg-amber-50 border-amber-100", trend: "+22.4%" },
                     { label: "Active Clients", value: users.length, icon: "👥", color: "text-purple-600", bg: "bg-purple-50 border-purple-100", trend: "+14.2%" },
@@ -2074,11 +2176,16 @@ export default function Admin() {
                   {(() => {
                     const chartW = 420;
                     const chartH = 120;
+                    const n = dailyTotals.length;
+                    const divisor = n > 1 ? n - 1 : 1;
+                    const chartLabel = diffDays <= 1 ? "Today" : diffDays === 7 ? "Last 7 Days" : `Last ${diffDays} Days`;
+                    // For large ranges, only show every Nth x-axis label
+                    const labelStep = n > 20 ? 5 : n > 10 ? 3 : 1;
                     return (
                       <div className="lg:col-span-2 bg-white border border-gray-100 rounded-2xl p-5 space-y-4 shadow-sm">
                         <div className="flex items-center justify-between">
                           <h3 className="font-heading font-extrabold text-dark text-sm">Bookings Overview</h3>
-                          <span className="text-[10px] bg-primary/10 text-primary border border-primary/20 font-bold px-3 py-1 rounded-lg">Last 7 Days</span>
+                          <span className="text-[10px] bg-primary/10 text-primary border border-primary/20 font-bold px-3 py-1 rounded-lg">{chartLabel}</span>
                         </div>
                         {/* Legend */}
                         <div className="flex gap-4 text-[10px] font-bold text-gray-500">
@@ -2109,7 +2216,7 @@ export default function Admin() {
                             {/* Area fill for total */}
                             <polygon
                               points={[
-                                ...dailyTotals.map((v, i) => `${(i / 6) * chartW},${chartH - (v / maxVal) * 100}`),
+                                ...dailyTotals.map((v, i) => `${(i / divisor) * chartW},${chartH - (v / maxVal) * 100}`),
                                 `${chartW},${chartH}`, `0,${chartH}`
                               ].join(" ")}
                               fill="url(#ovTotalGrad)"
@@ -2117,27 +2224,27 @@ export default function Admin() {
                             {/* Area fill for completed */}
                             <polygon
                               points={[
-                                ...dailyCompleted.map((v, i) => `${(i / 6) * chartW},${chartH - (v / maxVal) * 100}`),
+                                ...dailyCompleted.map((v, i) => `${(i / divisor) * chartW},${chartH - (v / maxVal) * 100}`),
                                 `${chartW},${chartH}`, `0,${chartH}`
                               ].join(" ")}
                               fill="url(#ovCompGrad)"
                             />
                             {/* Total Bookings line */}
                             <polyline
-                              points={dailyTotals.map((v, i) => `${(i / 6) * chartW},${chartH - (v / maxVal) * 100}`).join(" ")}
+                              points={dailyTotals.map((v, i) => `${(i / divisor) * chartW},${chartH - (v / maxVal) * 100}`).join(" ")}
                               fill="none" stroke="#1B5EFF" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"
                             />
                             {/* Completed Bookings line */}
                             <polyline
-                              points={dailyCompleted.map((v, i) => `${(i / 6) * chartW},${chartH - (v / maxVal) * 100}`).join(" ")}
+                              points={dailyCompleted.map((v, i) => `${(i / divisor) * chartW},${chartH - (v / maxVal) * 100}`).join(" ")}
                               fill="none" stroke="#34A853" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"
                             />
                             {/* Hover vertical line */}
                             {hoveredChartIdx !== null && (
                               <line
-                                x1={(hoveredChartIdx / 6) * chartW}
+                                x1={(hoveredChartIdx / divisor) * chartW}
                                 y1="0"
-                                x2={(hoveredChartIdx / 6) * chartW}
+                                x2={(hoveredChartIdx / divisor) * chartW}
                                 y2={chartH}
                                 stroke="#6B7280"
                                 strokeWidth="1"
@@ -2148,7 +2255,7 @@ export default function Admin() {
                             {dailyTotals.map((v, i) => (
                               <g key={i}>
                                 <circle
-                                  cx={(i / 6) * chartW}
+                                  cx={(i / divisor) * chartW}
                                   cy={chartH - (v / maxVal) * 100}
                                   r="16"
                                   fill="transparent"
@@ -2157,7 +2264,7 @@ export default function Admin() {
                                   onMouseLeave={() => setHoveredChartIdx(null)}
                                 />
                                 <circle
-                                  cx={(i / 6) * chartW}
+                                  cx={(i / divisor) * chartW}
                                   cy={chartH - (v / maxVal) * 100}
                                   r={hoveredChartIdx === i ? 6 : 4}
                                   fill="#1B5EFF"
@@ -2173,7 +2280,7 @@ export default function Admin() {
                             {dailyCompleted.map((v, i) => (
                               <circle
                                 key={i}
-                                cx={(i / 6) * chartW}
+                                cx={(i / divisor) * chartW}
                                 cy={chartH - (v / maxVal) * 100}
                                 r={hoveredChartIdx === i ? 5 : 3}
                                 fill="#34A853"
@@ -2186,8 +2293,8 @@ export default function Admin() {
 
                           {/* Hover Tooltip */}
                           {hoveredChartIdx !== null && (() => {
-                            const pctX = (hoveredChartIdx / 6) * 100;
-                            const alignRight = hoveredChartIdx >= 4;
+                            const pctX = (hoveredChartIdx / divisor) * 100;
+                            const alignRight = hoveredChartIdx >= Math.floor(n * 0.6);
                             return (
                               <div
                                 className="absolute top-0 pointer-events-none z-20"
@@ -2209,12 +2316,15 @@ export default function Admin() {
                           {/* X-axis Labels */}
                           <div className="absolute -bottom-5 left-0 right-0 flex justify-between text-[9px] text-gray-400 font-bold">
                             {dailyLabels.map((l, i) => (
-                              <span
-                                key={i}
-                                className={`cursor-pointer transition-colors ${hoveredChartIdx === i ? "text-primary font-black" : ""}`}
-                                onMouseEnter={() => setHoveredChartIdx(i)}
-                                onMouseLeave={() => setHoveredChartIdx(null)}
-                              >{l}</span>
+                              i % labelStep === 0 || i === n - 1 ? (
+                                <span
+                                  key={i}
+                                  className={`cursor-pointer transition-colors ${hoveredChartIdx === i ? "text-primary font-black" : ""}`}
+                                  style={{ position: "absolute", left: `${(i / divisor) * 100}%`, transform: i === 0 ? "none" : i === n - 1 ? "translateX(-100%)" : "translateX(-50%)" }}
+                                  onMouseEnter={() => setHoveredChartIdx(i)}
+                                  onMouseLeave={() => setHoveredChartIdx(null)}
+                                >{l}</span>
+                              ) : null
                             ))}
                           </div>
                         </div>
@@ -2249,7 +2359,7 @@ export default function Admin() {
                             opacity={seg.dash > 0 ? 1 : 0}
                           />
                         ))}
-                        <text x="60" y="58" textAnchor="middle" fill="#0F172A" fontSize="14" fontWeight="900" fontFamily="sans-serif">{appointments.length}</text>
+                        <text x="60" y="58" textAnchor="middle" fill="#0F172A" fontSize="14" fontWeight="900" fontFamily="sans-serif">{statsAppointments.length}</text>
                         <text x="60" y="70" textAnchor="middle" fill="#9CA3AF" fontSize="6" fontFamily="sans-serif">Total</text>
                       </svg>
                     </div>
@@ -2302,7 +2412,7 @@ export default function Admin() {
                       <button onClick={() => setActiveTab("appointments")} className="text-[10px] text-primary font-bold hover:underline cursor-pointer">View All</button>
                     </div>
                     <div className="space-y-3">
-                      {appointments.slice(0, 4).map((a, i) => {
+                      {statsAppointments.slice(0, 4).map((a, i) => {
                         const statusConfig: Record<string, { label: string; cls: string }> = {
                           "Completed": { label: "Completed", cls: "bg-emerald-100 text-emerald-700 border-emerald-200" },
                           "finish": { label: "Completed", cls: "bg-emerald-100 text-emerald-700 border-emerald-200" },
@@ -2326,7 +2436,7 @@ export default function Admin() {
                           </div>
                         );
                       })}
-                      {appointments.length === 0 && (
+                      {statsAppointments.length === 0 && (
                         <div className="py-6 text-center text-gray-400 text-xs">No bookings yet.</div>
                       )}
                     </div>
@@ -2339,7 +2449,6 @@ export default function Admin() {
                       {([
                         { label: "Manage Crew", Icon: UserCheck, tab: "staff", color: "border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700" },
                         { label: "Manage Services", Icon: Wrench, tab: "services", color: "border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-700" },
-                        { label: "View Reports", Icon: BarChart3, tab: "logs", color: "border-cyan-200 bg-cyan-50 hover:bg-cyan-100 text-cyan-700" },
                         { label: "System Settings", Icon: Settings, tab: "notifications", color: "border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-600" }
                       ] as const).map((action, i) => (
                         <button

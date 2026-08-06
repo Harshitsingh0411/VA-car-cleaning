@@ -16,51 +16,7 @@ interface GalleryItem {
 }
 
 const defaultShowcaseItems: GalleryItem[] = [
-  {
-    id: "s1",
-    url: "https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&q=80&w=1200",
-    type: "image",
-    category: "exterior",
-    title: "Eco Foam Exterior Wash Gloss",
-    rating: 5,
-    serviceName: "Exterior Wash"
-  },
-  {
-    id: "s2",
-    url: "https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&q=80&w=1200",
-    type: "image",
-    category: "shine",
-    title: "Mirror Paint Hydrophobic Wax",
-    rating: 5,
-    serviceName: "Wax Polish"
-  },
-  {
-    id: "s3",
-    url: "https://images.unsplash.com/photo-1507136566006-cfc505b114fe?auto=format&fit=crop&q=80&w=1200",
-    type: "image",
-    category: "interior",
-    title: "Deep Cabin Disinfection & Polish",
-    rating: 5,
-    serviceName: "Interior Cleaning"
-  },
-  {
-    id: "s4",
-    url: "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?auto=format&fit=crop&q=80&w=1200",
-    type: "image",
-    category: "shine",
-    title: "Windshield Rain-Repellent Coating",
-    rating: 5,
-    serviceName: "Glass Polish"
-  },
-  {
-    id: "s5",
-    url: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&q=80&w=1200",
-    type: "image",
-    category: "exterior",
-    title: "Rim Brake-Dust Blast & Tyre Dressing",
-    rating: 5,
-    serviceName: "Tyre Dressing"
-  }
+
 ];
 
 export default function GalleryPage() {
@@ -167,22 +123,20 @@ export default function GalleryPage() {
         <div className="flex flex-wrap items-center justify-center gap-2.5 mb-10">
           <button
             onClick={() => setActiveFilter("all")}
-            className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
-              activeFilter === "all"
+            className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${activeFilter === "all"
                 ? "bg-primary text-white shadow-md"
                 : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-100"
-            }`}
+              }`}
           >
             All Works ({items.length})
           </button>
 
           <button
             onClick={() => setActiveFilter("customer")}
-            className={`px-5 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-              activeFilter === "customer"
+            className={`px-5 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${activeFilter === "customer"
                 ? "bg-amber-500 text-white shadow-md"
                 : "bg-white text-amber-600 hover:bg-amber-50 border border-amber-100"
-            }`}
+              }`}
           >
             <Camera size={13} />
             Verified Customer Uploads ({customerItemCount})
@@ -190,33 +144,30 @@ export default function GalleryPage() {
 
           <button
             onClick={() => setActiveFilter("exterior")}
-            className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
-              activeFilter === "exterior"
+            className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${activeFilter === "exterior"
                 ? "bg-primary text-white shadow-md"
                 : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-100"
-            }`}
+              }`}
           >
             Exterior Wash
           </button>
 
           <button
             onClick={() => setActiveFilter("interior")}
-            className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
-              activeFilter === "interior"
+            className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${activeFilter === "interior"
                 ? "bg-primary text-white shadow-md"
                 : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-100"
-            }`}
+              }`}
           >
             Interior Cleaning
           </button>
 
           <button
             onClick={() => setActiveFilter("shine")}
-            className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
-              activeFilter === "shine"
+            className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${activeFilter === "shine"
                 ? "bg-primary text-white shadow-md"
                 : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-100"
-            }`}
+              }`}
           >
             Wax & Gloss Polish
           </button>

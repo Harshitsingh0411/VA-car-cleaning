@@ -252,7 +252,7 @@ export default function Account() {
           const lng = position.coords.longitude;
           const mockAddrLine = `GPS Clean Spot, Near Latitude ${lat.toFixed(4)}, Longitude ${lng.toFixed(4)}`;
           const mockCityZip = "Gurgaon, Haryana 122002";
-          
+
           setAddressForm({
             name: "GPS Location Spot",
             addressLine: mockAddrLine,
@@ -361,8 +361,7 @@ export default function Account() {
   const [vehNum, setVehNum] = useState("");
   const [vehType, setVehType] = useState("SUV");
   const [vehYear, setVehYear] = useState("2023");
-  const [vehFuel, setVehFuel] = useState("Petrol");
-  const [vehMileage, setVehMileage] = useState("10,000 km");
+  const [editingVehId, setEditingVehId] = useState<string | null>(null);
   const [isAddingVeh, setIsAddingVeh] = useState(false);
   const [showAddVehicle, setShowAddVehicle] = useState(false);
   const [showAddCard, setShowAddCard] = useState(false);
@@ -383,35 +382,61 @@ export default function Account() {
       console.warn("Could not fetch image from Unsplash napi:", err);
     }
     const isBike = name.toLowerCase().includes("bike") || name.toLowerCase().includes("motorcycle") || name.toLowerCase().includes("bullet") || name.toLowerCase().includes("scooter") || name.toLowerCase().includes("r15") || name.toLowerCase().includes("royal enfield") || name.toLowerCase().includes("yamaha") || name.toLowerCase().includes("pulsar") || name.toLowerCase().includes("tvs") || name.toLowerCase().includes("hero") || name.toLowerCase().includes("honda bike") || name.toLowerCase().includes("splendor");
-    return isBike 
-      ? "https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&q=80&w=800" 
+    return isBike
+      ? "https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&q=80&w=800"
       : "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=800";
   };
 
-  const handleAddVehicle = async (e: React.FormEvent) => {
+  const handleEditVehicleClick = (v: any) => {
+    setEditingVehId(v.id || v.name);
+    setVehName(v.name || "");
+    setVehNum(v.number || "");
+    setVehType(v.type || "SUV");
+    setVehYear(v.year || "2023");
+    setShowAddVehicle(true);
+  };
+
+  const handleSaveVehicle = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!vehName || !vehNum) return;
     setIsAddingVeh(true);
     try {
-      const fetchedImage = await searchVehicleImage(vehName);
-      await addVehicle(vehName, vehNum, {
-        image: fetchedImage,
-        type: vehType,
-        year: vehYear,
-        fuelType: vehFuel,
-        mileage: vehMileage.includes("km") ? vehMileage : `${vehMileage} km`,
-        status: "ACTIVE"
-      });
+      if (editingVehId) {
+        const existing = myVehicles.find((v) => (v.id || v.name) === editingVehId);
+        const imageToUse = existing?.image || (await searchVehicleImage(vehName));
+        const updatedVehicles = myVehicles.map((v) => {
+          if ((v.id || v.name) === editingVehId) {
+            return {
+              ...v,
+              name: vehName,
+              number: vehNum,
+              type: vehType,
+              year: vehYear,
+              image: imageToUse
+            };
+          }
+          return v;
+        });
+        await updateProfileDetails({ vehicles: updatedVehicles });
+        logAuditAction(`Updated vehicle details: ${vehName}`);
+      } else {
+        const fetchedImage = await searchVehicleImage(vehName);
+        await addVehicle(vehName, vehNum, {
+          image: fetchedImage,
+          type: vehType,
+          year: vehYear,
+          status: "ACTIVE"
+        });
+        logAuditAction(`Added vehicle: ${vehName} with image search`);
+      }
       setVehName("");
       setVehNum("");
       setVehType("SUV");
       setVehYear("2023");
-      setVehFuel("Petrol");
-      setVehMileage("10,000 km");
+      setEditingVehId(null);
       setShowAddVehicle(false);
-      logAuditAction(`Added vehicle: ${vehName} with image search`);
     } catch (err: any) {
-      alert("Failed to add vehicle: " + (err.message || "Error"));
+      alert("Failed to save vehicle: " + (err.message || "Error"));
     } finally {
       setIsAddingVeh(false);
     }
@@ -778,7 +803,7 @@ export default function Account() {
               {allBookings.map((appt) => (
                 <div
                   key={appt.id}
-                  onClick={() => setViewingBookingDetails(appt)}
+                  onClick={() => navigate(`/account/booking/${appt.id}`)}
                   className="p-5 border border-gray-100 rounded-2xl hover:border-primary/30 hover:shadow-md transition-all space-y-3 bg-white cursor-pointer group"
                 >
                   <div className="flex flex-wrap justify-between items-start gap-3">
@@ -821,7 +846,19 @@ export default function Account() {
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setViewingBookingDetails(appt);
+                            setSelectedBookingForReview(appt);
+                          }}
+                          className="bg-[#F4B400] hover:bg-amber-400 text-dark font-extrabold px-3 py-1 rounded-lg text-xs flex items-center gap-1 shadow-xs transition-all cursor-pointer"
+                        >
+                          <Star size={12} className="fill-dark text-dark" />
+                          <span>Rate & Review</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/account/booking/${appt.id}`);
                           }}
                           className="text-[#0B3890] hover:underline font-extrabold cursor-pointer"
                         >
@@ -865,7 +902,14 @@ export default function Account() {
                 <p className="text-xs text-gray-500 font-medium">Save vehicle details for fast 1-click bookings.</p>
               </div>
               <button
-                onClick={() => setShowAddVehicle(!showAddVehicle)}
+                onClick={() => {
+                  setEditingVehId(null);
+                  setVehName("");
+                  setVehNum("");
+                  setVehType("SUV");
+                  setVehYear("2023");
+                  setShowAddVehicle(!showAddVehicle);
+                }}
                 className="bg-primary hover:bg-[#0b327b] text-white font-extrabold text-xs px-4 py-2.5 rounded-xl uppercase tracking-wider shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
               >
                 <Plus size={14} />
@@ -874,9 +918,11 @@ export default function Account() {
             </div>
 
             {showAddVehicle && (
-              <form onSubmit={handleAddVehicle} className="p-5 border border-primary/20 bg-primary/5 rounded-2xl space-y-4">
-                <h4 className="font-heading font-bold text-dark text-sm">Register New Vehicle</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <form onSubmit={handleSaveVehicle} className="p-5 border border-primary/20 bg-primary/5 rounded-2xl space-y-4">
+                <h4 className="font-heading font-bold text-dark text-sm">
+                  {editingVehId ? "Edit Vehicle Details" : "Register New Vehicle"}
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   <div>
                     <label className="text-[10px] font-bold text-gray-500 uppercase">Vehicle Name / Model</label>
                     <input
@@ -904,7 +950,7 @@ export default function Account() {
                     <select
                       value={vehType}
                       onChange={(e) => setVehType(e.target.value)}
-                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-dark focus:outline-none focus:border-primary"
+                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-dark focus:outline-none focus:border-primary cursor-pointer"
                     >
                       <option value="SUV">SUV</option>
                       <option value="Sedan">Sedan</option>
@@ -920,53 +966,31 @@ export default function Account() {
                     <select
                       value={vehYear}
                       onChange={(e) => setVehYear(e.target.value)}
-                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-dark focus:outline-none focus:border-primary"
+                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-dark focus:outline-none focus:border-primary cursor-pointer"
                     >
-                      {Array.from({ length: 12 }, (_, i) => String(2026 - i)).map(y => (
+                      {Array.from({ length: 15 }, (_, i) => String(2026 - i)).map(y => (
                         <option key={y} value={y}>{y}</option>
                       ))}
                     </select>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase">Fuel Type</label>
-                    <select
-                      value={vehFuel}
-                      onChange={(e) => setVehFuel(e.target.value)}
-                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-dark focus:outline-none focus:border-primary"
-                    >
-                      <option value="Petrol">Petrol</option>
-                      <option value="Diesel">Diesel</option>
-                      <option value="Electric">Electric</option>
-                      <option value="CNG">CNG</option>
-                      <option value="Hybrid">Hybrid</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase">Current Mileage</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. 15,420 km"
-                      value={vehMileage}
-                      onChange={(e) => setVehMileage(e.target.value)}
-                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-dark focus:outline-none focus:border-primary"
-                    />
                   </div>
                 </div>
                 <div className="flex justify-end gap-2">
                   <button
                     type="button"
-                    onClick={() => setShowAddVehicle(false)}
-                    className="px-4 py-2 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-200/50"
+                    onClick={() => {
+                      setShowAddVehicle(false);
+                      setEditingVehId(null);
+                    }}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-200/50 cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isAddingVeh}
-                    className="bg-primary text-white font-bold text-xs px-5 py-2 rounded-xl shadow-sm hover:bg-[#0b327b] disabled:opacity-50 flex items-center gap-1.5"
+                    className="bg-primary text-white font-bold text-xs px-5 py-2 rounded-xl shadow-sm hover:bg-[#0b327b] disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
                   >
-                    {isAddingVeh ? "Searching Model Image..." : "Save Vehicle"}
+                    {isAddingVeh ? "Saving..." : editingVehId ? "Update Vehicle" : "Save Vehicle"}
                   </button>
                 </div>
               </form>
@@ -1003,24 +1027,24 @@ export default function Account() {
                     <div className="flex flex-col sm:flex-row items-center gap-4 flex-grow w-full lg:w-auto">
                       {/* Image frame */}
                       <div className="relative w-full sm:w-44 h-28 rounded-2xl overflow-hidden shrink-0 bg-gray-100 shadow-xs border border-gray-200/40">
-                        <img 
+                        <img
                           src={v.image || (v.type?.toLowerCase().includes("bike") || v.name.toLowerCase().includes("bike") || v.name.toLowerCase().includes("bullet") || v.name.toLowerCase().includes("pulsar") || v.name.toLowerCase().includes("r15")
                             ? "https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&q=80&w=800"
                             : "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=800"
-                          )} 
-                          alt={v.name} 
-                          className="w-full h-full object-cover" 
+                          )}
+                          alt={v.name}
+                          className="w-full h-full object-cover"
                         />
                       </div>
-                      
+
                       {/* Specs */}
                       <div className="flex-grow space-y-2.5 text-left w-full sm:w-auto">
                         <div className="flex flex-wrap items-center gap-2">
                           <h4 className="font-heading font-extrabold text-dark text-sm leading-snug">{v.name}</h4>
                           <span className="bg-gray-100 border border-gray-200 text-gray-500 font-mono text-[9px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">{v.number}</span>
                         </div>
-                        
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-[10px] text-gray-500 font-semibold">
+
+                        <div className="grid grid-cols-2 gap-4 text-[10px] text-gray-500 font-semibold max-w-xs">
                           <div>
                             <span className="text-gray-400 block text-[8px] uppercase tracking-wider">Vehicle Type</span>
                             <span className="text-dark font-extrabold">{v.type || "SUV"}</span>
@@ -1029,33 +1053,33 @@ export default function Account() {
                             <span className="text-gray-400 block text-[8px] uppercase tracking-wider">Model Year</span>
                             <span className="text-dark font-extrabold">{v.year || "2023"}</span>
                           </div>
-                          <div>
-                            <span className="text-gray-400 block text-[8px] uppercase tracking-wider">Fuel Type</span>
-                            <span className="text-dark font-extrabold">{v.fuelType || "Petrol"}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-400 block text-[8px] uppercase tracking-wider">Mileage</span>
-                            <span className="text-dark font-extrabold">{v.mileage || "10,000 km"}</span>
-                          </div>
                         </div>
                       </div>
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-3 shrink-0 w-full lg:w-auto justify-end border-t lg:border-t-0 pt-4 lg:pt-0 border-gray-100">
+                    <div className="flex items-center gap-2 shrink-0 w-full lg:w-auto justify-end border-t lg:border-t-0 pt-4 lg:pt-0 border-gray-100">
                       <span className={`text-[9px] font-black uppercase tracking-wider py-0.5 px-2 rounded-full border ${v.status !== "INACTIVE"
                         ? "bg-emerald-50 text-emerald-600 border-emerald-100"
                         : "bg-gray-50 text-gray-400 border-gray-200"
-                      }`}>
+                        }`}>
                         {v.status || "ACTIVE"}
                       </span>
-                      
+
                       <Link to={`/book?vehicle=${v.id}`} className="shrink-0">
-                        <button className="bg-primary hover:bg-[#0b327b] text-white font-bold text-xs px-4 py-2 rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-1">
+                        <button className="bg-primary hover:bg-[#0b327b] text-white font-bold text-xs px-3.5 py-1.5 rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-1">
                           Book Service
                         </button>
                       </Link>
-                      
+
+                      <button
+                        onClick={() => handleEditVehicleClick(v)}
+                        className="p-2 text-gray-500 hover:text-primary rounded-lg hover:bg-primary/5 transition-colors cursor-pointer"
+                        title="Edit Vehicle Details"
+                      >
+                        <Pencil size={16} />
+                      </button>
+
                       <button
                         onClick={() => {
                           if (window.confirm(`Are you sure you want to remove ${v.name} from your garage?`)) {
@@ -1111,7 +1135,7 @@ export default function Account() {
               <h2 className="text-xl font-heading font-extrabold text-[#0F172A]">Doorstep Cleaning Addresses</h2>
               <p className="text-xs text-gray-500 font-medium mt-0.5">Pinpoint location for quick doorstep cleaning visits.</p>
             </div>
-            <button 
+            <button
               onClick={() => {
                 setEditingAddress(null);
                 setAddressForm({ name: "", addressLine: "", cityStateZip: "", phone: profile?.contactNumber || "", tag: "Home", isDefault: false });
@@ -1126,10 +1150,10 @@ export default function Account() {
 
           {/* Grid Layout: Left Column (span 2) & Right Column (span 1) */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-            
+
             {/* LEFT COLUMN: Map GPS card + Saved Addresses list */}
             <div className="lg:col-span-2 space-y-6">
-              
+
               {/* GPS Card */}
               <div className="border border-gray-100 bg-[#F8FAFC] rounded-2xl p-5 flex items-center justify-between gap-4 relative overflow-hidden">
                 {/* Subtle map pattern using inline SVG */}
@@ -1144,7 +1168,7 @@ export default function Account() {
                     <circle cx="60" cy="50" r="10" />
                   </svg>
                 </div>
-                
+
                 <div className="flex gap-4 items-start relative z-10">
                   <div className="w-10 h-10 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-primary shrink-0">
                     <MapPin size={20} />
@@ -1161,8 +1185,8 @@ export default function Account() {
                     </span>
                   </div>
                 </div>
-                
-                <button 
+
+                <button
                   onClick={handleUseCurrentLocation}
                   className="bg-primary hover:bg-[#0b327b] text-white font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer relative z-10 shrink-0 transition-all"
                 >
@@ -1174,7 +1198,7 @@ export default function Account() {
               {/* SAVED ADDRESSES BOX */}
               <div className="space-y-4">
                 <h3 className="text-sm font-heading font-extrabold text-[#0F172A] uppercase tracking-wider">Saved Addresses</h3>
-                
+
                 <div className="space-y-3">
                   {myAddresses.length === 0 ? (
                     <div className="p-8 text-center border border-gray-100 rounded-3xl bg-white text-xs text-gray-400 font-semibold">
@@ -1228,7 +1252,7 @@ export default function Account() {
                           </div>
 
                           <div className="flex items-center gap-2">
-                            <button 
+                            <button
                               onClick={() => {
                                 setEditingAddress(idx);
                                 setAddressForm(isObj ? addr : { name: addressName, addressLine: addressText, cityStateZip: cityZipText, phone: phoneText, tag: tagLabel, isDefault });
@@ -1238,7 +1262,7 @@ export default function Account() {
                             >
                               <Pencil size={14} />
                             </button>
-                            <button 
+                            <button
                               onClick={() => handleRemoveAddress(idx)}
                               className="p-2 text-gray-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-100 rounded-xl cursor-pointer transition-colors"
                             >
@@ -1257,7 +1281,7 @@ export default function Account() {
 
             {/* RIGHT COLUMN: Quick Tips & Privacy */}
             <div className="space-y-4">
-              
+
               {/* Quick Tips */}
               <div className="bg-[#EEF5FE]/60 border border-blue-50/50 rounded-3xl p-6 text-left space-y-4 shadow-2xs">
                 <div className="flex gap-2 items-center text-primary">
@@ -1303,7 +1327,7 @@ export default function Account() {
                   <h3 className="font-heading font-extrabold text-dark text-lg">
                     {editingAddress !== null ? "Edit Address" : "Add New Address"}
                   </h3>
-                  <button 
+                  <button
                     onClick={() => {
                       setShowAddressModal(false);
                       setEditingAddress(null);
@@ -1450,8 +1474,8 @@ export default function Account() {
                     <div
                       key={c.id || c.code}
                       className={`p-4 border border-dashed rounded-2xl flex items-center justify-between transition-all ${isPersonal
-                          ? "border-amber-300 bg-amber-50/50 hover:bg-amber-50"
-                          : "border-purple-300 bg-purple-50/50 hover:bg-purple-50"
+                        ? "border-amber-300 bg-amber-50/50 hover:bg-amber-50"
+                        : "border-purple-300 bg-purple-50/50 hover:bg-purple-50"
                         }`}
                     >
                       <div className="space-y-1 pr-2 text-left">
@@ -1854,108 +1878,61 @@ export default function Account() {
                     </div>
                   </div>
 
-                  {/* Desktop Bottom Grid (Recent Bookings + Membership Details) */}
-                  <div className="grid grid-cols-3 gap-6">
-                    <div className="col-span-2 bg-white rounded-3xl p-6 shadow-xs border border-gray-200/80 space-y-4">
-                      <div className="flex justify-between items-center">
-                        <h3 className="text-base font-heading font-extrabold text-[#0F172A]">Recent Bookings</h3>
-                        <button onClick={() => setActiveSection("bookings")} className="text-xs font-extrabold text-primary hover:underline cursor-pointer">View All</button>
-                      </div>
+                  {/* Desktop Bottom Grid (Recent Bookings) */}
+                  <div className="bg-white rounded-3xl p-6 shadow-xs border border-gray-200/80 space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-base font-heading font-extrabold text-[#0F172A]">Recent Bookings</h3>
+                      <button onClick={() => setActiveSection("bookings")} className="text-xs font-extrabold text-primary hover:underline cursor-pointer">View All</button>
+                    </div>
 
-                      <div className="space-y-3">
-                        {allBookings.length > 0 ? (
-                          allBookings.slice(0, 3).map((b, idx) => {
-                            const statusObj = getStatusDetails(b.bookingStatus || (b as any).status);
-                            return (
-                              <div
-                                key={b.id || idx}
-                                onClick={() => setViewingBookingDetails(b)}
-                                className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-2xl gap-4 hover:border-primary/30 shadow-2xs hover:shadow-md cursor-pointer transition-all group"
-                              >
-                                <div className="flex items-center gap-3.5">
-                                  <VehicleMediaThumbnail serviceName={b.serviceName} vehicleDetails={b.vehicleDetails} />
-                                  <div className="space-y-1">
-                                    <h4 className="font-heading font-extrabold text-[#0F172A] text-sm leading-tight">{b.serviceName}</h4>
-                                    <p className="text-[11px] text-gray-500 font-semibold">{b.vehicleDetails || "Tata Tarzan (UP-78-BL5252)"}</p>
-                                    <div className="text-[10px] text-gray-400 flex items-center gap-1">
-                                      <Calendar size={11} className="text-gray-400" />
-                                      <span>{b.scheduledDate || "05 Aug 2026"} • {b.timeSlot || "8:00 AM - 12:00 PM"}</span>
-                                    </div>
+                    <div className="space-y-3">
+                      {allBookings.length > 0 ? (
+                        allBookings.slice(0, 3).map((b, idx) => {
+                          const statusObj = getStatusDetails(b.bookingStatus || (b as any).status);
+                          return (
+                            <div
+                              key={b.id || idx}
+                              onClick={() => navigate(`/account/booking/${b.id}`)}
+                              className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-2xl gap-4 hover:border-primary/30 shadow-2xs hover:shadow-md cursor-pointer transition-all group"
+                            >
+                              <div className="flex items-center gap-3.5">
+                                <VehicleMediaThumbnail serviceName={b.serviceName} vehicleDetails={b.vehicleDetails} />
+                                <div className="space-y-1">
+                                  <h4 className="font-heading font-extrabold text-[#0F172A] text-sm leading-tight">{b.serviceName}</h4>
+                                  <p className="text-[11px] text-gray-500 font-semibold">{b.vehicleDetails || "Tata Tarzan (UP-78-BL5252)"}</p>
+                                  <div className="text-[10px] text-gray-400 flex items-center gap-1">
+                                    <Calendar size={11} className="text-gray-400" />
+                                    <span>{b.scheduledDate || "05 Aug 2026"} • {b.timeSlot || "8:00 AM - 12:00 PM"}</span>
                                   </div>
                                 </div>
-                                <div className="flex flex-col items-end gap-2">
-                                  <span className="font-heading font-extrabold text-[#0F172A] text-sm">₹{b.price}</span>
+                              </div>
+                              <div className="flex flex-col items-end gap-1.5">
+                                <span className="font-heading font-extrabold text-[#0F172A] text-sm">₹{b.price}</span>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedBookingForReview(b);
+                                    }}
+                                    className="bg-[#F4B400] hover:bg-amber-400 text-dark font-extrabold px-2.5 py-0.5 rounded-lg text-[10px] flex items-center gap-1 shadow-xs transition-all cursor-pointer"
+                                  >
+                                    <Star size={10} className="fill-dark text-dark" />
+                                    <span>Review</span>
+                                  </button>
                                   <span className={`text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border ${statusObj.className}`}>
                                     {statusObj.label}
                                   </span>
                                 </div>
                               </div>
-                            );
-                          })
-                        ) : (
-                          <div className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-2xl gap-4 hover:border-gray-200 shadow-2xs transition-all">
-                            <div className="flex items-center gap-3.5">
-                              <VehicleMediaThumbnail serviceName="Bike Full Wash" vehicleDetails="Yamaha R15 (UP-78-BL5252)" vehicleType="bike" />
-                              <div className="space-y-1">
-                                <h4 className="font-heading font-extrabold text-[#0F172A] text-sm leading-tight">Bike Full Wash</h4>
-                                <p className="text-[11px] text-gray-500 font-semibold">Yamaha R15 (UP-78-BL5252)</p>
-                                <div className="text-[10px] text-gray-400 flex items-center gap-1">
-                                  <Calendar size={11} className="text-gray-400" />
-                                  <span>05 Aug 2026 • 8:00 AM - 12:00 PM</span>
-                                </div>
-                              </div>
                             </div>
-                            <div className="flex flex-col items-end gap-2">
-                              <span className="font-heading font-extrabold text-[#0F172A] text-sm">₹100</span>
-                              <span className="bg-emerald-100 text-emerald-700 text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border border-emerald-200">
-                                COMPLETED
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Desktop Subscription Details Card */}
-                    <div className="bg-white rounded-3xl p-6 shadow-xs border border-gray-200/80 space-y-4 flex flex-col justify-between">
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                          <h3 className="text-base font-heading font-extrabold text-[#0F172A]">Subscription Details</h3>
-                          <span className={`text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full border ${activeSub ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-amber-100 text-amber-800 border-amber-200"}`}>
-                            {activeSub ? "ACTIVE PLAN" : "NO ACTIVE PLAN"}
-                          </span>
+                          );
+                        })
+                      ) : (
+                        <div className="py-8 text-center text-gray-400 text-xs font-semibold bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+                          No recent bookings found. Click "Book Service" to schedule a detailing session!
                         </div>
-
-                        {activeSub ? (
-                          <div className="bg-[#ECFDF5] rounded-2xl p-4 border border-emerald-200/80 flex items-start gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-600 flex items-center justify-center shrink-0">
-                              <Crown size={22} className="fill-emerald-500 text-emerald-600" />
-                            </div>
-                            <div className="space-y-1 text-left">
-                              <h4 className="font-heading font-extrabold text-[#0F172A] text-sm leading-tight">{activeSub.serviceName || "Car Detailing Subscription"}</h4>
-                              <p className="text-[11px] text-gray-500 font-semibold">{activeSub.vehicleDetails || "Registered Vehicle"}</p>
-                              <div className="text-[10px] text-emerald-700 font-bold flex items-center gap-1.5 pt-1">
-                                <Clock size={12} />
-                                <span>{activeSub.daysRemaining > 0 ? `${activeSub.daysRemaining} Days Remaining` : "Expires Soon"} (Valid till {activeSub.expiryDate || "30 Days"})</span>
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="bg-[#FEF8E7] rounded-2xl p-4 border border-amber-200/80 flex items-start gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-amber-400/20 text-amber-600 flex items-center justify-center shrink-0">
-                              <Crown size={22} className="fill-amber-500 text-amber-500" />
-                            </div>
-                            <div className="text-left">
-                              <h4 className="font-heading font-extrabold text-[#0F172A] text-sm">No Active Subscription</h4>
-                              <p className="text-[11px] text-gray-500 leading-snug mt-0.5">Subscribe to regular car/bike wash packages for maximum savings & priority care.</p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      <button onClick={() => navigate('/services')} className="w-full bg-[#F4B400] hover:bg-amber-500 text-dark font-extrabold py-3 px-4 rounded-2xl text-xs uppercase tracking-wider shadow-sm transition-all cursor-pointer">
-                        {activeSub ? "RENEW / VIEW SUBSCRIPTIONS" : "EXPLORE SUBSCRIPTION PLANS"}
-                      </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -2018,10 +1995,9 @@ export default function Account() {
                     </div>
                   </div>
 
-                  {/* STATS ROW INSIDE CARD (2 Equal Columns: Reward Points & Member Discount) */}
-                  <div className="border border-gray-100 bg-gray-50/50 rounded-2xl p-4 grid grid-cols-2 divide-x divide-gray-200/80 text-center">
-                    {/* Reward Points */}
-                    <div className="flex items-center justify-center gap-3 pr-2">
+                  {/* STATS ROW INSIDE CARD (Reward Points) */}
+                  <div className="border border-gray-100 bg-gray-50/50 rounded-2xl p-4 flex items-center justify-center text-center">
+                    <div className="flex items-center justify-center gap-3">
                       <div className="w-10 h-10 rounded-2xl bg-amber-100/80 text-amber-600 flex items-center justify-center shrink-0">
                         <Award size={20} className="fill-amber-500 text-amber-600" />
                       </div>
@@ -2031,21 +2007,6 @@ export default function Account() {
                         </span>
                         <span className="text-[11px] text-gray-500 font-semibold block mt-0.5">
                           Reward Points
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Member Discount */}
-                    <div className="flex items-center justify-center gap-3 pl-2">
-                      <div className="w-10 h-10 rounded-2xl bg-purple-100/80 text-purple-600 flex items-center justify-center shrink-0">
-                        <Percent size={20} className="text-purple-600 font-extrabold" />
-                      </div>
-                      <div className="text-left">
-                        <span className="text-xl font-heading font-extrabold text-[#0F172A] leading-none block">
-                          10%
-                        </span>
-                        <span className="text-[11px] text-gray-500 font-semibold block mt-0.5">
-                          Member Discount
                         </span>
                       </div>
                     </div>
@@ -2110,7 +2071,7 @@ export default function Account() {
                         return (
                           <div
                             key={b.id || idx}
-                            onClick={() => setViewingBookingDetails(b)}
+                            onClick={() => navigate(`/account/booking/${b.id}`)}
                             className="flex items-center justify-between p-3.5 bg-white border border-gray-100 rounded-2xl gap-3 hover:border-primary/30 shadow-2xs hover:shadow-md cursor-pointer transition-all group"
                           >
                             <div className="flex items-center gap-3">
@@ -2134,94 +2095,14 @@ export default function Account() {
                         );
                       })
                     ) : (
-                      <>
-                        <div className="flex items-center justify-between p-3.5 bg-white border border-gray-100 rounded-2xl gap-3 hover:border-gray-200 shadow-2xs transition-all">
-                          <div className="flex items-center gap-3">
-                            <VehicleMediaThumbnail serviceName="Bike Full Wash" vehicleDetails="Yamaha R15 (UP-78-BL5252)" vehicleType="bike" />
-                            <div className="space-y-0.5">
-                              <h4 className="font-heading font-extrabold text-[#0F172A] text-xs leading-tight">Bike Full Wash</h4>
-                              <p className="text-[10px] text-gray-500 font-semibold">Tata Tarzan (UP-78-BL5252)</p>
-                              <div className="text-[9px] text-gray-400 flex items-center gap-1">
-                                <Calendar size={10} className="text-gray-400" />
-                                <span>05 Aug 2026 • 8:00 AM - 12:00 PM</span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex flex-col items-end gap-1 shrink-0">
-                            <span className="font-heading font-extrabold text-[#0F172A] text-xs">₹100</span>
-                            <span className="bg-amber-100 text-amber-800 text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border border-amber-200">
-                              PENDING
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between p-3.5 bg-white border border-gray-100 rounded-2xl gap-3 hover:border-gray-200 shadow-2xs transition-all">
-                          <div className="flex items-center gap-3">
-                            <VehicleMediaThumbnail serviceName="Interior Cleaning" vehicleDetails="Tata Tarzan (UP-78-BL5252)" vehicleType="car" />
-                            <div className="space-y-0.5">
-                              <h4 className="font-heading font-extrabold text-[#0F172A] text-xs leading-tight">Interior Cleaning</h4>
-                              <p className="text-[10px] text-gray-500 font-semibold">Tata Tarzan (UP-78-BL5252)</p>
-                              <div className="text-[9px] text-gray-400 flex items-center gap-1">
-                                <Calendar size={10} className="text-gray-400" />
-                                <span>03 Aug 2026 • 10:00 AM - 12:00 PM</span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex flex-col items-end gap-1 shrink-0">
-                            <span className="font-heading font-extrabold text-[#0F172A] text-xs">₹250</span>
-                            <span className="bg-purple-100 text-purple-700 text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border border-purple-200">
-                              IN PROGRESS
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between p-3.5 bg-white border border-gray-100 rounded-2xl gap-3 hover:border-gray-200 shadow-2xs transition-all">
-                          <div className="flex items-center gap-3">
-                            <VehicleMediaThumbnail serviceName="Exterior Wash" vehicleDetails="Tata Tarzan (UP-78-BL5252)" vehicleType="car" />
-                            <div className="space-y-0.5">
-                              <h4 className="font-heading font-extrabold text-[#0F172A] text-xs leading-tight">Exterior Wash</h4>
-                              <p className="text-[10px] text-gray-500 font-semibold">Tata Tarzan (UP-78-BL5252)</p>
-                              <div className="text-[9px] text-gray-400 flex items-center gap-1">
-                                <Calendar size={10} className="text-gray-400" />
-                                <span>01 Aug 2026 • 9:00 AM - 10:00 AM</span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex flex-col items-end gap-1 shrink-0">
-                            <span className="font-heading font-extrabold text-[#0F172A] text-xs">₹150</span>
-                            <span className="bg-emerald-100 text-emerald-700 text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border border-emerald-200">
-                              COMPLETED
-                            </span>
-                          </div>
-                        </div>
-                      </>
+                      <div className="py-6 text-center text-gray-400 text-xs font-semibold bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+                        No recent bookings found. Click "Book Service" to schedule a detailing session!
+                      </div>
                     )}
                   </div>
                 </div>
 
-                {/* 4. SUBSCRIPTION DETAILS & BENEFITS BANNER */}
-                <div className="bg-[#0B1220] rounded-2xl p-4 text-white flex items-center justify-between gap-3 shadow-lg border border-white/10 relative overflow-hidden">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-[#F4B400]/20 border border-[#F4B400]/40 text-[#F4B400] flex items-center justify-center shrink-0">
-                      <Crown size={20} className="fill-[#F4B400] text-[#F4B400]" />
-                    </div>
-                    <div className="text-left">
-                      <h4 className="font-heading font-extrabold text-[#F4B400] text-xs leading-tight">
-                        {activeSub ? `Active Plan: ${activeSub.serviceName}` : "Car & Bike Subscription Plans"}
-                      </h4>
-                      <p className="text-gray-300 text-[10px] mt-0.5">
-                        {activeSub ? `${activeSub.daysRemaining > 0 ? activeSub.daysRemaining + ' Days Remaining' : 'Valid till ' + activeSub.expiryDate}` : "Subscribe for regular doorstep cleaning & priority slots."}
-                      </p>
-                    </div>
-                  </div>
 
-                  <button
-                    onClick={() => navigate('/services')}
-                    className="bg-[#F4B400] hover:bg-amber-500 text-dark font-extrabold py-2 px-3 rounded-xl text-[10px] uppercase tracking-wider shadow-md shrink-0 cursor-pointer transition-all"
-                  >
-                    {activeSub ? "RENEW" : "EXPLORE"}
-                  </button>
-                </div>
 
                 {/* 5. NEED HELP FOOTER BAR */}
                 <div
@@ -2259,7 +2140,7 @@ export default function Account() {
       </div>
 
       {viewingBookingDetails && (
-        <div 
+        <div
           className="fixed inset-0 z-50 bg-dark/60 backdrop-blur-sm flex items-center justify-center p-4 cursor-pointer"
           onClick={() => setViewingBookingDetails(null)}
         >
@@ -2547,7 +2428,7 @@ export default function Account() {
       )}
 
       {showContactModal && (
-        <div 
+        <div
           className="fixed inset-0 z-[100] bg-dark/60 backdrop-blur-sm flex items-center justify-center p-4 cursor-pointer"
           onClick={() => setShowContactModal(false)}
         >
@@ -2560,21 +2441,21 @@ export default function Account() {
             <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center mx-auto border border-amber-100 shadow-2xs">
               <Headphones size={24} />
             </div>
-            
+
             <div className="space-y-2">
               <h3 className="font-heading font-extrabold text-dark text-lg">Contact Support Team</h3>
               <p className="text-gray-400 text-xs">Our customer support team is available 24/7. Select your preferred contact channel below.</p>
             </div>
-            
+
             <div className="flex flex-col gap-3">
-              <a 
-                href="mailto:info@vadetailing.com" 
+              <a
+                href="mailto:vacarcleanservice3@gmail.com"
                 className="w-full flex items-center justify-center gap-2.5 bg-gray-50 hover:bg-gray-100 text-gray-700 font-bold py-3 px-4 rounded-xl text-xs border border-gray-200 transition-colors"
               >
                 <Mail size={15} className="text-amber-500" />
-                <span>Email Support (info@vadetailing.com)</span>
+                <span>Email :vacarcleanservice3@gmail.com</span>
               </a>
-              <a 
+              <a
                 href="tel:+919569949626"
                 className="w-full flex items-center justify-center gap-2.5 bg-primary hover:bg-[#0b327b] text-white font-bold py-3 px-4 rounded-xl text-xs transition-colors shadow-sm"
               >

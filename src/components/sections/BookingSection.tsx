@@ -97,7 +97,7 @@ export default function BookingSection() {
   };
 
   return (
-    <section className="py-24 bg-[#070C16] text-white relative border-t border-white/5" id="booking-section">
+    <section className="py-8 sm:py-16 md:py-24 bg-[#070C16] text-white relative border-t border-white/5" id="booking-section">
       <div className="container mx-auto px-4 md:px-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center max-w-6xl mx-auto">
           

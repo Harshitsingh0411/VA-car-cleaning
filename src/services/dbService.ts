@@ -606,6 +606,19 @@ export const crewRejectBooking = async (bookingId: string, crewUid: string): Pro
   }
 };
 
+export const getBookingById = async (bookingId: string): Promise<dbBooking | null> => {
+  try {
+    const snap = await db.collection("bookings").doc(bookingId).get();
+    if (snap.exists) {
+      return { id: snap.id, ...snap.data() } as dbBooking;
+    }
+    return null;
+  } catch (err) {
+    console.error("Error fetching booking by ID:", err);
+    return null;
+  }
+};
+
 export const getAllBookings = async (): Promise<dbBooking[]> => {
   const snap = await db.collection("bookings").get();
   const list: dbBooking[] = [];
