@@ -11,6 +11,8 @@ import Home from "./pages/Home";
 import Loader from "./components/ui/Loader";
 import Services from "./pages/Services";
 import About from "./pages/About";
+import Founders from "./pages/Founders";
+import Developers from "./pages/Developers";
 import Jobs from "./pages/Jobs";
 import Book from "./pages/Book";
 import Contact from "./pages/Contact";
@@ -53,6 +55,13 @@ function AnimatedRoutes() {
           <Route path="reviews" element={<Gallery />} />
           <Route path="about" element={<About />} />
           <Route path="about-us" element={<About />} />
+          <Route path="founders" element={<Founders />} />
+          <Route path="founders-details" element={<Founders />} />
+          <Route path="about/founders" element={<Founders />} />
+          <Route path="developers" element={<Developers />} />
+          <Route path="software-developers" element={<Developers />} />
+          <Route path="credits" element={<Developers />} />
+          <Route path="about/developers" element={<Developers />} />
           <Route path="jobs" element={<Jobs />} />
           <Route 
             path="book" 

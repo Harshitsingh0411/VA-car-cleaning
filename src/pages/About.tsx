@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { motion } from "motion/react";
-import { Target, Award, Shield, Heart, Users, Sparkles, Droplets } from "lucide-react";
+import { Target, Award, Shield, Heart, Users, Sparkles, Droplets, ArrowRight } from "lucide-react";
 import { getAboutSettings, dbAboutSettings, DEFAULT_ABOUT_SETTINGS, getRealtimeCompanyStats, RealtimeCompanyStats } from "../services/dbService";
 import SEO from "../components/seo/SEO";
 import Breadcrumbs from "../components/common/Breadcrumbs";
@@ -67,7 +68,9 @@ export default function AboutPage() {
       <div className="bg-[#070C16] text-white pt-24 pb-12 md:pt-28 md:pb-14 relative overflow-hidden">
         <div className="absolute inset-0 bg-primary/10" />
         <div className="container mx-auto px-4 md:px-6 relative z-10 text-center">
-          <Breadcrumbs items={breadcrumbs} className="mb-4 max-w-xs mx-auto text-center justify-center bg-white/10 text-white border-white/10" />
+          <div className="flex justify-center mb-4">
+            <Breadcrumbs items={breadcrumbs} />
+          </div>
           <motion.span
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
@@ -211,6 +214,52 @@ export default function AboutPage() {
             ))}
           </div>
         </div>
+
+        {/* Founders & Leadership Section Link */}
+        <motion.div 
+          initial={{ opacity: 0, y: 25 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="bg-[#0B1220] rounded-[32px] p-8 md:p-12 text-white relative overflow-hidden shadow-2xl mb-12 border border-white/10"
+        >
+          <div className="absolute top-0 right-0 w-72 h-72 bg-secondary/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
+            <div className="space-y-3 text-center md:text-left max-w-xl">
+              <span className="text-secondary font-bold uppercase tracking-widest text-xs inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary/10 border border-secondary/20">
+                <Users size={14} /> Leadership &amp; Founders
+              </span>
+              <h3 className="text-2xl md:text-4xl font-heading font-extrabold leading-tight text-white">
+                Meet Our Founders
+              </h3>
+              <p className="text-gray-300 text-sm md:text-base leading-relaxed">
+                Discover the story, vision, and dedication of the leadership behind VA Car &amp; Bike Care — driving eco-friendly mobile car detailing innovation across Kanpur.
+              </p>
+            </div>
+
+            {/* Founder Avatars Preview + CTA Button */}
+            <div className="flex flex-col items-center md:items-end gap-4 shrink-0">
+              <div className="flex items-center -space-x-3">
+                <div className="w-12 h-12 rounded-full border-2 border-[#F4B400] overflow-hidden bg-gray-800 shadow-lg" title="Veeru - Founder & CEO">
+                  <img src="/founders/founder1.png" alt="Veeru" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=200"; }} />
+                </div>
+                <div className="w-12 h-12 rounded-full border-2 border-[#F4B400] overflow-hidden bg-gray-800 shadow-lg" title="Akhlesh - Co-Founder & Head of Field Operations">
+                  <img src="/founders/founder2.png" alt="Akhlesh" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200"; }} />
+                </div>
+                <div className="w-12 h-12 rounded-full border-2 border-[#F4B400] overflow-hidden bg-gray-800 shadow-lg" title="Sanket - Co-Founder & Head of Operations">
+                  <img src="/founders/founder3.png" alt="Sanket" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200"; }} />
+                </div>
+              </div>
+
+              <Link
+                to="/founders"
+                className="inline-flex items-center gap-2 bg-[#F4B400] hover:bg-yellow-300 text-dark font-extrabold text-xs md:text-sm px-6 py-3.5 rounded-xl transition-all shadow-lg hover:shadow-yellow-400/20 uppercase tracking-wider group cursor-pointer"
+              >
+                <span>View Founders Details</span>
+                <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </div>
+          </div>
+        </motion.div>
       </div>
     </div>
   );

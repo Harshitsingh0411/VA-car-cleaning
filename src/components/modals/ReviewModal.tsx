@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Star, Upload, X, CheckCircle2, Image as ImageIcon, Video as VideoIcon, Sparkles, AlertCircle, Loader2, Play } from "lucide-react";
+import { Star, Upload, X, CheckCircle2, Image as ImageIcon, Sparkles, AlertCircle, Loader2 } from "lucide-react";
 import { dbBooking, submitReview } from "../../services/dbService";
 import { uploadMediaToCloudinary } from "../../services/cloudinaryService";
 import { compressImage } from "../../utils/imageCompressor";
@@ -16,7 +16,6 @@ interface MediaItem {
   id: string;
   file: File;
   previewUrl: string;
-  type: "image" | "video";
   originalSize: number;
   compressedSize: number;
   reductionPercentage: number;
@@ -36,7 +35,7 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
   const [reviewText, setReviewText] = useState("");
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [isCompressing, setIsCompressing] = useState(false);
-  const [compressionStatus, setCompressionStatus] = useState("Compressing media...");
+  const [compressionStatus, setCompressionStatus] = useState("Compressing photo...");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -57,55 +56,38 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const isImage = file.type.startsWith("image/");
-      const isVideo = file.type.startsWith("video/");
 
-      if (!isImage && !isVideo) {
-        setErrorMsg("Please upload valid Image (PNG, JPG, WebP) or Video (MP4, WebM, MOV) files.");
+      if (!isImage) {
+        setErrorMsg("Please upload valid image files only (PNG, JPG, WebP).");
         continue;
       }
 
-      if (isVideo) {
-        setCompressionStatus(`Processing video ${i + 1}/${files.length}...`);
-        const previewUrl = URL.createObjectURL(file);
+      setCompressionStatus(`Compressing photo ${i + 1}/${files.length}...`);
+      try {
+        const compResult = await compressImage(file, {
+          maxWidth: 1200,
+          maxHeight: 1200,
+          quality: 0.75
+        });
+
+        newMediaItems.push({
+          id: Math.random().toString(36).substring(2, 9),
+          file: compResult.compressedFile,
+          previewUrl: compResult.dataUrl,
+          originalSize: compResult.originalSize,
+          compressedSize: compResult.compressedSize,
+          reductionPercentage: compResult.reductionPercentage
+        });
+      } catch (err) {
+        console.error("Compression error, fallback to raw photo:", err);
         newMediaItems.push({
           id: Math.random().toString(36).substring(2, 9),
           file,
-          previewUrl,
-          type: "video",
+          previewUrl: URL.createObjectURL(file),
           originalSize: file.size,
           compressedSize: file.size,
           reductionPercentage: 0
         });
-      } else {
-        setCompressionStatus(`Compressing photo ${i + 1}/${files.length}...`);
-        try {
-          const compResult = await compressImage(file, {
-            maxWidth: 1200,
-            maxHeight: 1200,
-            quality: 0.75
-          });
-
-          newMediaItems.push({
-            id: Math.random().toString(36).substring(2, 9),
-            file: compResult.compressedFile,
-            previewUrl: compResult.dataUrl,
-            type: "image",
-            originalSize: compResult.originalSize,
-            compressedSize: compResult.compressedSize,
-            reductionPercentage: compResult.reductionPercentage
-          });
-        } catch (err) {
-          console.error("Compression error, fallback to raw photo:", err);
-          newMediaItems.push({
-            id: Math.random().toString(36).substring(2, 9),
-            file,
-            previewUrl: URL.createObjectURL(file),
-            type: "image",
-            originalSize: file.size,
-            compressedSize: file.size,
-            reductionPercentage: 0
-          });
-        }
       }
     }
 
@@ -130,17 +112,12 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
 
     try {
       const imageUrls: string[] = [];
-      const videoUrls: string[] = [];
 
       for (const item of mediaItems) {
         const uploadRes = await uploadMediaToCloudinary(item.file);
         const validUrl = uploadRes.url;
         if (validUrl && !validUrl.startsWith("blob:")) {
-          if (item.type === "video" || uploadRes.resourceType === "video") {
-            videoUrls.push(validUrl);
-          } else {
-            imageUrls.push(validUrl);
-          }
+          imageUrls.push(validUrl);
         }
       }
 
@@ -151,7 +128,7 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
         stars,
         review: reviewText,
         images: imageUrls,
-        videos: videoUrls,
+        videos: [],
         serviceName: booking.serviceName || "Car Cleaning Service",
         serviceDate: booking.scheduledDate || new Date().toISOString().split("T")[0]
       });
@@ -208,7 +185,7 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
               Thank You for Your Feedback!
             </h4>
             <p className="text-gray-500 text-sm max-w-xs mx-auto">
-              Your verified review and media have been successfully submitted and saved.
+              Your verified review and photos have been successfully submitted and saved.
             </p>
           </div>
         ) : (
@@ -269,10 +246,10 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
               <div className="flex justify-between items-center">
                 <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                   <ImageIcon size={14} className="text-primary" />
-                  Add Photos & Videos (Cloudinary Upload)
+                  Add Photos (Cloudinary Upload)
                 </label>
                 <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 py-0.5 px-2 rounded-full flex items-center gap-1">
-                  <Sparkles size={11} /> Cloudinary Media Enabled
+                  <Sparkles size={11} /> Cloudinary Enabled
                 </span>
               </div>
 
@@ -280,7 +257,7 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
                 <input
                   type="file"
                   multiple
-                  accept="image/*,video/*"
+                  accept="image/*"
                   onChange={handleFileSelect}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                 />
@@ -288,8 +265,8 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
                   <div className="w-10 h-10 bg-primary/10 text-primary rounded-full flex items-center justify-center">
                     <Upload size={20} />
                   </div>
-                  <p className="text-xs font-bold text-dark">Click or Drag to upload Photos & Videos</p>
-                  <p className="text-[10px] text-gray-400">Upload photos (JPG, PNG, WebP) or video clips (MP4, WebM)</p>
+                  <p className="text-xs font-bold text-dark">Click or Drag to upload Photos</p>
+                  <p className="text-[10px] text-gray-400">JPG, PNG, WebP supported</p>
                 </div>
               </div>
 
@@ -304,32 +281,18 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
                 <div className="grid grid-cols-3 gap-3 pt-2">
                   {mediaItems.map((item) => (
                     <div key={item.id} className="relative group rounded-xl overflow-hidden border border-gray-200 aspect-square bg-black">
-                      {item.type === "video" ? (
-                        <>
-                          <video src={item.previewUrl} className="w-full h-full object-cover opacity-80" />
-                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <span className="w-7 h-7 rounded-full bg-amber-500 text-dark flex items-center justify-center font-bold text-xs shadow-md">
-                              <Play size={12} className="fill-dark ml-0.5" />
-                            </span>
-                          </div>
-                          <span className="absolute top-1 left-1 bg-amber-500 text-dark text-[8px] font-black px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                            <VideoIcon size={8} /> Video
-                          </span>
-                        </>
-                      ) : (
-                        <img src={item.previewUrl} alt="Review upload" className="w-full h-full object-cover" />
-                      )}
+                      <img src={item.previewUrl} alt="Review upload" className="w-full h-full object-cover" />
 
                       <button
                         type="button"
                         onClick={() => handleRemoveMedia(item.id)}
                         className="absolute top-1 right-1 bg-rose-500 text-white rounded-full p-1 opacity-90 hover:opacity-100 transition-opacity cursor-pointer z-20"
-                        title="Remove file"
+                        title="Remove photo"
                       >
                         <X size={12} />
                       </button>
 
-                      {item.reductionPercentage > 0 && item.type === "image" && (
+                      {item.reductionPercentage > 0 && (
                         <span className="absolute bottom-1 left-1 bg-emerald-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded">
                           -{item.reductionPercentage}% KB
                         </span>
@@ -348,7 +311,7 @@ export default function ReviewModal({ isOpen, onClose, booking, onReviewSubmitte
               {isSubmitting ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  <span>Uploading Media to Cloudinary...</span>
+                  <span>Uploading Photos to Cloudinary...</span>
                 </>
               ) : (
                 <>

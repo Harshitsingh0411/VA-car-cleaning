@@ -119,7 +119,9 @@ export default function ContactPage() {
       <div className="bg-[#070C16] text-white pt-24 pb-12 md:pt-28 md:pb-14 relative overflow-hidden mb-10 text-center">
         <div className="absolute inset-0 bg-primary/10" />
         <div className="container mx-auto px-4 md:px-6 relative z-10">
-          <Breadcrumbs items={breadcrumbs} className="mb-4 max-w-xs mx-auto text-center justify-center bg-white/10 text-white border-white/10" />
+          <div className="flex justify-center mb-4">
+            <Breadcrumbs items={breadcrumbs} />
+          </div>
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}

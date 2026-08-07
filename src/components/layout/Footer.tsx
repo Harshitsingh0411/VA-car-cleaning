@@ -87,10 +87,10 @@ export default function Footer() {
             <ul className="flex flex-col gap-2.5 text-xs">
               <li><Link to="/" className="hover:text-[#F4B400] transition-colors">Home</Link></li>
               <li><Link to="/services" className="hover:text-[#F4B400] transition-colors">Services</Link></li>
-              <li><Link to="/pricing" className="hover:text-[#F4B400] transition-colors">Pricing</Link></li>
-              <li><Link to="/subscription-plans" className="hover:text-[#F4B400] transition-colors">Subscription Plans</Link></li>
-              <li><Link to="/book-now" className="hover:text-[#F4B400] transition-colors font-bold text-[#F4B400]">Book Now</Link></li>
+              <li><Link to="/book" className="hover:text-[#F4B400] transition-colors font-bold text-[#F4B400]">Book Now</Link></li>
               <li><Link to="/about" className="hover:text-[#F4B400] transition-colors">About Us</Link></li>
+              <li><Link to="/founders" className="hover:text-[#F4B400] transition-colors">Founders Details</Link></li>
+              <li><Link to="/developers" className="hover:text-[#F4B400] transition-colors font-semibold text-[#F4B400]">Software Developers</Link></li>
               <li><Link to="/contact" className="hover:text-[#F4B400] transition-colors">Contact Us</Link></li>
             </ul>
           </div>
@@ -106,7 +106,6 @@ export default function Footer() {
                   </Link>
                 </li>
               ))}
-              <li><Link to="/services" className="text-[#F4B400] hover:underline font-semibold">View All Services →</Link></li>
             </ul>
           </div>
 
@@ -130,11 +129,8 @@ export default function Footer() {
             <ul className="flex flex-col gap-2.5 text-xs">
               <li><Link to="/help-center" className="hover:text-[#F4B400] transition-colors">FAQ &amp; Help Center</Link></li>
               <li><Link to="/reviews" className="hover:text-[#F4B400] transition-colors">Customer Reviews</Link></li>
-              <li><Link to="/login" className="hover:text-[#F4B400] transition-colors">Login / Register</Link></li>
-              <li><Link to="/account" className="hover:text-[#F4B400] transition-colors">My Account</Link></li>
               <li><Link to="/privacy-policy" className="hover:text-[#F4B400] transition-colors">Privacy Policy</Link></li>
               <li><Link to="/terms-and-conditions" className="hover:text-[#F4B400] transition-colors">Terms &amp; Conditions</Link></li>
-              <li><Link to="/refund-policy" className="hover:text-[#F4B400] transition-colors">Refund Policy</Link></li>
             </ul>
           </div>
 
@@ -162,7 +158,27 @@ export default function Footer() {
 
         {/* Bottom Bar */}
         <div className="border-t border-white/5 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500">
-          <p>&copy; {new Date().getFullYear()} VA Car &amp; Bike Care Services. All Rights Reserved.</p>
+          <div className="flex flex-col sm:flex-row items-center gap-2 text-center sm:text-left">
+            <p>&copy; {new Date().getFullYear()} VA Car &amp; Bike Care Services. All Rights Reserved.</p>
+            <span className="hidden sm:inline text-gray-700">•</span>
+            <p className="flex items-center gap-1.5 flex-wrap">
+              <span>Website Created with</span>
+              <a
+                href="https://www.ours2026.in/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#F4B400] font-extrabold hover:underline inline-flex items-center gap-1.5 bg-white/5 px-2 py-0.5 rounded-md border border-white/10"
+              >
+                <img src="/ours-logo.png" alt="OURS Logo" className="w-4 h-4 object-contain rounded-full" />
+                <span>OURS Team</span>
+              </a>
+              {" "}(Software by{" "}
+              <Link to="/developers" className="text-gray-300 font-semibold hover:underline">
+                Harshit &amp; Divyanshu
+              </Link>
+              )
+            </p>
+          </div>
           <div className="flex items-center gap-6">
             <Link to="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link>
             <Link to="/terms-and-conditions" className="hover:text-white transition-colors">Terms &amp; Conditions</Link>

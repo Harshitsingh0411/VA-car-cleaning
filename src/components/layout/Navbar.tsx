@@ -66,7 +66,15 @@ export default function Navbar() {
       path: "#",
       dropdown: seoLocations.slice(0, 8).map(l => ({ name: l.name, path: `/kanpur/${l.slug}` }))
     },
-    { name: "About Us", path: "/about" },
+    { 
+      name: "About Us", 
+      path: "/about",
+      dropdown: [
+        { name: "About Company", path: "/about" },
+        { name: "Founders Details", path: "/founders" },
+        { name: "Software Developers", path: "/developers" }
+      ]
+    },
   ];
 
   const isInnerPage = location.pathname !== "/";

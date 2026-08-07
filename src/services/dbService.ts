@@ -396,7 +396,7 @@ export const createBooking = async (data: Omit<dbBooking, "id" | "bookingStatus"
   };
 
   const res = await db.collection("bookings").add(docData);
-  logAuditAction(`Create booking for customer ${data.customerId}`, null, docData).catch(() => {});
+  logAuditAction(`Create booking for customer ${data.customerId}`, null, docData).catch(() => { });
 
   // --- Background Crew Notification Dispatch (Non-blocking for fast user response) ---
   (async () => {
@@ -1413,6 +1413,161 @@ export const getAboutSettings = async (): Promise<dbAboutSettings> => {
 export const updateAboutSettings = async (settings: dbAboutSettings): Promise<void> => {
   await db.collection("settings").doc("about_page").set(settings);
   await logAuditAction("Update About Us page content settings", null, settings);
+};
+
+// 13b-2. Founders Page Settings & Leadership Data
+export interface dbFounder {
+  id: string;
+  name: string;
+  role: string;
+  image: string;
+  bio: string;
+  quote?: string;
+  educationOrBackground?: string;
+  badges?: string[];
+  linkedin?: string;
+  twitter?: string;
+  email?: string;
+  instagram?: string;
+}
+
+export interface dbFoundersSettings {
+  badge: string;
+  title: string;
+  subtitle: string;
+  originHeading: string;
+  originStory1: string;
+  originStory2: string;
+  founders: dbFounder[];
+}
+
+export const DEFAULT_FOUNDERS_SETTINGS: dbFoundersSettings = {
+
+  title: "Meet the Minds Behind VA Car & Bike Care",
+  subtitle: "Driven by a shared passion for automotive perfection, eco-friendly detailing, and empowering local talent across Kanpur.",
+  originHeading: "The Story of How We Started",
+  originStory1: "VA Car & Bike Care was born out of a simple realization: vehicle owners in Kanpur had to waste hours waiting at dirty wash centers only to get scratched paint and sub-par results. Our founders envisioned a premium, tech-enabled doorstep detailing service that brings showroom shine directly to your doorstep.",
+  originStory2: "Today, under visionary leadership, we have grown into Kanpur's leading eco-conscious mobile car care network — conserving thousands of liters of water while creating flexible, dignified earning opportunities for young detailers.",
+  founders: [
+    {
+      id: "veeru",
+      name: "Veeru",
+      role: "Founder & CEO",
+      image: "/founders/founder1.png",
+      bio: "With a vision to redefine premium car care, Veeru leads the company's strategic direction and business growth. He oversees financial planning, operational management, and long-term development while fostering a culture of excellence, innovation, and customer-first service. His leadership ensures the company continues to deliver exceptional quality and build lasting customer trust.",
+      educationOrBackground: "Founder & Chief Executive Officer",
+      badges: ["Founder & CEO", "Strategic Growth", "Visionary Leader"],
+      email: "veerugiri8953161077@gmail.com",
+      instagram: "https://instagram.com"
+    },
+    {
+      id: "akhilesh",
+      name: "Akhilesh",
+      role: "Co-Founder & Head of Field Operations",
+      image: "/founders/founder2.jpeg",
+      bio: "Akhilesh is the driving force behind day-to-day field operations, ensuring every service is executed with precision and professionalism. He manages service teams, optimizes workflows, and maintains strict quality standards, making sure every vehicle receives outstanding care and every customer experiences reliable, top-tier service.",
+      educationOrBackground: "Co-Founder & Head of Field Operations",
+      badges: ["Co-Founder", "Field Operations Head", "Quality Control"],
+      email: "akhileshkumar60594@gmail.com",
+      instagram: "https://instagram.com/prince_king_.143/"
+    },
+    {
+      id: "sanket",
+      name: "Sanket",
+      role: "Co-Founder & Head of Operations",
+      image: "/founders/founder3.png",
+      bio: "Sanket oversees operational execution and team coordination, ensuring every project is completed efficiently and to the highest standards. His expertise in crew management, service quality, and process optimization helps deliver a seamless customer experience while maintaining consistency, reliability, and excellence across all operations.",
+      educationOrBackground: "Co-Founder & Head of Operations",
+      badges: ["Co-Founder", "Head of Operations", "Process Optimization"],
+      email: "sanketsahu9569@gmail.com",
+      instagram: "https://instagram.com/ sanket__sahu27"
+    }
+  ]
+};
+
+export const getFoundersSettings = async (): Promise<dbFoundersSettings> => {
+  try {
+    const doc = await db.collection("settings").doc("founders_page").get();
+    if (doc.exists()) {
+      return { ...DEFAULT_FOUNDERS_SETTINGS, ...(doc.data() as dbFoundersSettings) };
+    }
+  } catch (err) {
+    console.error("Error fetching founders_page settings:", err);
+  }
+  return DEFAULT_FOUNDERS_SETTINGS;
+};
+
+export const updateFoundersSettings = async (settings: dbFoundersSettings): Promise<void> => {
+  await db.collection("settings").doc("founders_page").set(settings);
+  await logAuditAction("Update Founders page content settings", null, settings);
+};
+
+// 13b-3. Software Developers Settings & Data
+export interface dbDeveloper {
+  id: string;
+  name: string;
+  role: string;
+  image: string;
+  bio: string;
+  linkedin: string;
+  github?: string;
+  email?: string;
+  skills: string[];
+}
+
+export interface dbDevelopersSettings {
+  badge: string;
+  title: string;
+  subtitle: string;
+  techStackHeading: string;
+  developers: dbDeveloper[];
+}
+
+export const DEFAULT_DEVELOPERS_SETTINGS: dbDevelopersSettings = {
+  title: "Software Developed By Harshit Singh & Divyanshu Kashyap",
+  subtitle: "Designed and engineered with cutting-edge web performance, real-time booking engines, seamless UI/UX, and robust cloud infrastructure.",
+  techStackHeading: "Built With Modern Tech Stack",
+  developers: [
+    {
+      id: "divyanshu-kashyap",
+      name: "Divyanshu Kashyap",
+      role: "Lead Software Developer & Full Stack Developer",
+      image: "/developers/divyanshu.png",
+      bio: "Divyanshu engineered core platform features, custom UI workflows, real-time database integrations, and high-performance frontend interfaces for VA Car & Bike Care.co-developed the platform's state management, mobile responsive suite, user authentication dashboard, and automated scheduling systems.",
+      linkedin: "https://www.linkedin.com/in/divyanshu-kashyap-a5ab99311/",
+      github: "https://github.com/divyanshukashyap0",
+      email: "divyanshu00884466@gmail.com",
+      skills: ["React & Vite", "TypeScript", "Framer Motion", "REST APIs", "UI/UX Design", "Database Management"]
+    },
+    {
+      id: "harshit-singh",
+      name: "Harshit Singh",
+      role: "Lead Software Engineer & Full-Stack Developer",
+      image: "/developers/harshit.png",
+      bio: "Harshit co-developed the platform's state management, mobile responsive suite, user authentication dashboard, and automated scheduling systems.",
+      linkedin: "https://www.linkedin.com/in/harshit-singh-9028ba324/",
+      github: "https://github.com/Harshitsingh0411",
+      email: "harshitsingh2431086@gmail.com",
+      skills: ["React 19", "TypeScript", "Tailwind CSS", "Firebase", "Node.js", "System Architecture"]
+    }
+  ]
+};
+
+export const getDevelopersSettings = async (): Promise<dbDevelopersSettings> => {
+  try {
+    const doc = await db.collection("settings").doc("developers_page").get();
+    if (doc.exists()) {
+      return { ...DEFAULT_DEVELOPERS_SETTINGS, ...(doc.data() as dbDevelopersSettings) };
+    }
+  } catch (err) {
+    console.error("Error fetching developers_page settings:", err);
+  }
+  return DEFAULT_DEVELOPERS_SETTINGS;
+};
+
+export const updateDevelopersSettings = async (settings: dbDevelopersSettings): Promise<void> => {
+  await db.collection("settings").doc("developers_page").set(settings);
+  await logAuditAction("Update Software Developers page content settings", null, settings);
 };
 
 // 13c. Contact Us Page Settings
