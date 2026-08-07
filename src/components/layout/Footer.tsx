@@ -158,21 +158,25 @@ export default function Footer() {
 
         {/* Bottom Bar */}
         <div className="border-t border-white/5 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500">
-          <div className="flex flex-col sm:flex-row items-center gap-2 text-center sm:text-left">
-            <p>&copy; {new Date().getFullYear()} VA Car &amp; Bike Care Services. All Rights Reserved.</p>
-            <span className="hidden sm:inline text-gray-700">•</span>
-            <p className="flex items-center gap-1.5 flex-wrap">
-              <span>Website Created with</span>
-              <a
-                href="https://www.ours2026.in/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[#F4B400] font-extrabold hover:underline inline-flex items-center gap-1.5 bg-white/5 px-2 py-0.5 rounded-md border border-white/10"
-              >
-                <img src="/ours-logo.png" alt="OURS Logo" className="w-4 h-4 object-contain rounded-full" />
-                <span>OURS Team</span>
-              </a>
-              {" "}(Software by{" "}
+          <div className="flex flex-col items-center sm:items-start gap-1.5 text-center sm:text-left">
+            <div className="flex flex-col sm:flex-row items-center gap-2">
+              <p>&copy; {new Date().getFullYear()} VA Car &amp; Bike Care Services. All Rights Reserved.</p>
+              <span className="hidden sm:inline text-gray-700">•</span>
+              <div className="flex items-center gap-1.5">
+                <span>Website Created with</span>
+                <a
+                  href="https://www.ours2026.in/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#F4B400] font-extrabold hover:underline inline-flex items-center gap-1.5 bg-white/5 px-2 py-0.5 rounded-md border border-white/10"
+                >
+                  <img src="/ours-logo.png" alt="OURS Logo" className="w-4 h-4 object-contain rounded-full" />
+                  <span>OURS Team</span>
+                </a>
+              </div>
+            </div>
+            <p className="text-gray-400">
+              (Software by{" "}
               <Link to="/developers" className="text-gray-300 font-semibold hover:underline">
                 Harshit &amp; Divyanshu
               </Link>
