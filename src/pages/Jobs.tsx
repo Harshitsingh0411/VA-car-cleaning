@@ -79,7 +79,7 @@ export default function JobsPage() {
 
       <div className="container mx-auto px-4 md:px-6 py-10 md:py-14">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
-          
+
           {/* Job details side (Left 5-columns) */}
           <div className="lg:col-span-5 space-y-8">
             <div>
@@ -177,9 +177,8 @@ export default function JobsPage() {
                           type="text"
                           placeholder="Aditya Kumar"
                           {...register("name", { required: "Name is required" })}
-                          className={`w-full px-5 py-3.5 bg-light text-dark font-medium rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all ${
-                            errors.name ? "border-red-500" : ""
-                          }`}
+                          className={`w-full px-5 py-3.5 bg-light text-dark font-medium rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all ${errors.name ? "border-red-500" : ""
+                            }`}
                         />
                         {errors.name && (
                           <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1">
@@ -194,14 +193,14 @@ export default function JobsPage() {
                         </label>
                         <input
                           type="tel"
-                          placeholder="+91 98765 43210"
+                          placeholder="+91 95699 49626
++91 92501 64163"
                           {...register("phone", {
                             required: "Phone is required",
                             pattern: { value: /^[0-9+ ]{10,15}$/, message: "Invalid Phone Number" }
                           })}
-                          className={`w-full px-5 py-3.5 bg-light text-dark font-medium rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all ${
-                            errors.phone ? "border-red-500" : ""
-                          }`}
+                          className={`w-full px-5 py-3.5 bg-light text-dark font-medium rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all ${errors.phone ? "border-red-500" : ""
+                            }`}
                         />
                         {errors.phone && (
                           <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1">
@@ -224,9 +223,8 @@ export default function JobsPage() {
                             required: "Email is required",
                             pattern: { value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i, message: "Invalid Email Address" }
                           })}
-                          className={`w-full px-5 py-3.5 bg-light text-dark font-medium rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all ${
-                            errors.email ? "border-red-500" : ""
-                          }`}
+                          className={`w-full px-5 py-3.5 bg-light text-dark font-medium rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all ${errors.email ? "border-red-500" : ""
+                            }`}
                         />
                         {errors.email && (
                           <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1">
@@ -243,9 +241,8 @@ export default function JobsPage() {
                           type="number"
                           placeholder="21"
                           {...register("age", { required: "Age is required", min: { value: 18, message: "Must be 18 or older" } })}
-                          className={`w-full px-5 py-3.5 bg-light text-dark font-medium rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all ${
-                            errors.age ? "border-red-500" : ""
-                          }`}
+                          className={`w-full px-5 py-3.5 bg-light text-dark font-medium rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all ${errors.age ? "border-red-500" : ""
+                            }`}
                         />
                         {errors.age && (
                           <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1">
@@ -265,9 +262,8 @@ export default function JobsPage() {
                           type="text"
                           placeholder="New Delhi"
                           {...register("city", { required: "City is required" })}
-                          className={`w-full px-5 py-3.5 bg-light text-dark font-medium rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all ${
-                            errors.city ? "border-red-500" : ""
-                          }`}
+                          className={`w-full px-5 py-3.5 bg-light text-dark font-medium rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all ${errors.city ? "border-red-500" : ""
+                            }`}
                         />
                         {errors.city && (
                           <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1">
@@ -284,9 +280,8 @@ export default function JobsPage() {
                           type="text"
                           placeholder="B.Tech Student (Final Year)"
                           {...register("education", { required: "Education details are required" })}
-                          className={`w-full px-5 py-3.5 bg-light text-dark font-medium rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all ${
-                            errors.education ? "border-red-500" : ""
-                          }`}
+                          className={`w-full px-5 py-3.5 bg-light text-dark font-medium rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all ${errors.education ? "border-red-500" : ""
+                            }`}
                         />
                         {errors.education && (
                           <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1">

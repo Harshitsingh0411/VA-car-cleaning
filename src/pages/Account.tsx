@@ -45,7 +45,8 @@ import {
   Tag,
   Navigation,
   Lightbulb,
-  ShieldCheck
+  ShieldCheck,
+  FileText
 } from "lucide-react";
 import {
   logAuditAction,
@@ -68,6 +69,8 @@ import EmployeeDashboard from "./crew/EmployeeDashboard";
 import { GoogleMapEmbed, CustomerLocationPicker } from "../components/location/LocationPickerMap";
 import CloudinaryUploader from "../components/common/CloudinaryUploader";
 import VehicleMediaThumbnail from "../components/ui/VehicleMediaThumbnail";
+import { downloadInvoice } from "../utils/invoiceGenerator";
+import { getBookingWhatsAppSupportUrl } from "../utils/whatsappUtils";
 
 export default function Account() {
   const {
@@ -846,6 +849,19 @@ export default function Account() {
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
+                            downloadInvoice(appt);
+                          }}
+                          className="bg-primary/10 hover:bg-primary text-primary hover:text-white font-extrabold px-3 py-1 rounded-lg text-xs flex items-center gap-1 transition-all cursor-pointer border border-primary/20"
+                          title="Download Invoice PDF"
+                        >
+                          <FileText size={12} />
+                          <span>Invoice</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setSelectedBookingForReview(appt);
                           }}
                           className="bg-[#F4B400] hover:bg-amber-400 text-dark font-extrabold px-3 py-1 rounded-lg text-xs flex items-center gap-1 shadow-xs transition-all cursor-pointer"
@@ -1381,7 +1397,8 @@ export default function Account() {
                       <input
                         type="text"
                         required
-                        placeholder="e.g. +91 98765 43210"
+                        placeholder="e.g. +91 95699 49626
++91 92501 64163"
                         value={addressForm.phone}
                         onChange={(e) => setAddressForm({ ...addressForm, phone: e.target.value })}
                         className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-semibold text-dark focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white"
@@ -2449,11 +2466,20 @@ export default function Account() {
 
             <div className="flex flex-col gap-3">
               <a
+                href={getBookingWhatsAppSupportUrl(bookings.length > 0 ? bookings[0] : null)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full flex items-center justify-center gap-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3 px-4 rounded-xl text-xs transition-all shadow-sm"
+              >
+                <MessageSquare size={15} />
+                <span>Chat on WhatsApp (Booking Details)</span>
+              </a>
+              <a
                 href="mailto:vacarcleanservice3@gmail.com"
                 className="w-full flex items-center justify-center gap-2.5 bg-gray-50 hover:bg-gray-100 text-gray-700 font-bold py-3 px-4 rounded-xl text-xs border border-gray-200 transition-colors"
               >
                 <Mail size={15} className="text-amber-500" />
-                <span>Email :vacarcleanservice3@gmail.com</span>
+                <span>Email: vacarcleanservice3@gmail.com</span>
               </a>
               <a
                 href="tel:+919569949626"

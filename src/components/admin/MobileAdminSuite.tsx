@@ -88,6 +88,7 @@ import {
   getCompanyStatsSync,
   logAuditAction
 } from "../../services/dbService";
+import { downloadInvoice } from "../../utils/invoiceGenerator";
 import NotificationCenterTab from "./NotificationCenterTab";
 import { useAuth } from "../../context/AuthContext";
 
@@ -200,7 +201,8 @@ export default function MobileAdminSuite({ onLogout }: MobileAdminSuiteProps) {
       await createBooking({
         customerId: "admin-created-" + Date.now(),
         customerName: newBookingCustomer || "Walk-in Customer",
-        customerPhone: newBookingPhone || "+91 98765 43210",
+        customerPhone: newBookingPhone || "+91 95699 49626
+          + 91 92501 64163",
         vehicleDetails: newBookingVehicle,
         serviceName: selectedSvc ? selectedSvc.name : "Car Wash",
         scheduledDate: newBookingDate,
@@ -522,7 +524,7 @@ export default function MobileAdminSuite({ onLogout }: MobileAdminSuiteProps) {
 
                     <div className="text-right space-y-1">
                       <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border inline-block ${b.bookingStatus === "Completed" ? "bg-emerald-50 text-emerald-600 border-emerald-200" :
-                          b.bookingStatus === "Pending" ? "bg-amber-50 text-amber-600 border-amber-200" : "bg-blue-50 text-blue-600 border-blue-200"
+                        b.bookingStatus === "Pending" ? "bg-amber-50 text-amber-600 border-amber-200" : "bg-blue-50 text-blue-600 border-blue-200"
                         }`}>
                         {b.bookingStatus}
                       </span>
@@ -584,8 +586,8 @@ export default function MobileAdminSuite({ onLogout }: MobileAdminSuiteProps) {
                     </div>
 
                     <span className={`text-[9px] font-bold px-2.5 py-1 rounded-full border ${b.bookingStatus === "Completed" ? "bg-emerald-50 text-emerald-600 border-emerald-200" :
-                        b.bookingStatus === "Pending" ? "bg-amber-50 text-amber-600 border-amber-200" :
-                          b.bookingStatus === "Cancelled" ? "bg-rose-50 text-rose-600 border-rose-200" : "bg-blue-50 text-blue-600 border-blue-200"
+                      b.bookingStatus === "Pending" ? "bg-amber-50 text-amber-600 border-amber-200" :
+                        b.bookingStatus === "Cancelled" ? "bg-rose-50 text-rose-600 border-rose-200" : "bg-blue-50 text-blue-600 border-blue-200"
                       }`}>
                       {b.bookingStatus}
                     </span>
@@ -659,7 +661,8 @@ export default function MobileAdminSuite({ onLogout }: MobileAdminSuiteProps) {
               <div className="flex justify-between items-center">
                 <div>
                   <h4 className="font-bold text-sm text-dark">{selectedBookingDetails.customerName}</h4>
-                  <span className="text-xs text-gray-500 font-mono block">{selectedBookingDetails.customerPhone || "+91 98765 43210"}</span>
+                  <span className="text-xs text-gray-500 font-mono block">{selectedBookingDetails.customerPhone || "+91 95699 49626
+                    + 91 92501 64163"}</span>
                 </div>
                 <a
                   href={`tel:${selectedBookingDetails.customerPhone || "9876543210"}`}
@@ -711,7 +714,7 @@ export default function MobileAdminSuite({ onLogout }: MobileAdminSuiteProps) {
             </div>
 
             <button
-              onClick={() => alert("Invoice Download Triggered")}
+              onClick={() => downloadInvoice(selectedBookingDetails)}
               className="w-full py-3.5 bg-primary text-white font-bold rounded-xl text-xs uppercase tracking-wider shadow-lg cursor-pointer flex items-center justify-center gap-2"
             >
               <Download size={16} />
@@ -747,7 +750,8 @@ export default function MobileAdminSuite({ onLogout }: MobileAdminSuiteProps) {
                 <label className="text-gray-700 block mb-1">Customer Phone</label>
                 <input
                   type="text"
-                  placeholder="+91 98765 43210"
+                  placeholder="+91 95699 49626
++91 92501 64163"
                   value={newBookingPhone}
                   onChange={(e) => setNewBookingPhone(e.target.value)}
                   required
@@ -987,7 +991,7 @@ export default function MobileAdminSuite({ onLogout }: MobileAdminSuiteProps) {
                   </div>
 
                   <span className={`text-[9px] font-bold px-2.5 py-1 rounded-full border ${m.status === "Available" ? "bg-emerald-50 text-emerald-600 border-emerald-200" :
-                      m.status === "Busy" ? "bg-amber-50 text-amber-600 border-amber-200" : "bg-gray-100 text-gray-500 border-gray-200"
+                    m.status === "Busy" ? "bg-amber-50 text-amber-600 border-amber-200" : "bg-gray-100 text-gray-500 border-gray-200"
                     }`}>
                     {m.status || "Available"}
                   </span>
@@ -1090,7 +1094,8 @@ export default function MobileAdminSuite({ onLogout }: MobileAdminSuiteProps) {
                     </div>
                     <div>
                       <h4 className="font-bold text-xs text-dark">{t.name}</h4>
-                      <span className="text-[10px] text-gray-400 font-mono block">{t.phone || "+91 98765 43210"}</span>
+                      <span className="text-[10px] text-gray-400 font-mono block">{t.phone || "+91 95699 49626
+                        + 91 92501 64163"}</span>
                     </div>
                   </div>
                   <span className="text-[9px] font-bold px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-200 uppercase">
@@ -1118,7 +1123,7 @@ export default function MobileAdminSuite({ onLogout }: MobileAdminSuiteProps) {
                       <span className="text-xs text-amber-500 font-semibold block">{j.skill || j.role || "Detailer"}</span>
                     </div>
                     <span className={`text-[9px] font-bold px-2.5 py-1 rounded-full border ${j.status === "Accepted" ? "bg-emerald-50 text-emerald-600 border-emerald-200" :
-                        j.status === "Rejected" ? "bg-rose-50 text-rose-600 border-rose-200" : "bg-amber-50 text-amber-600 border-amber-200"
+                      j.status === "Rejected" ? "bg-rose-50 text-rose-600 border-rose-200" : "bg-amber-50 text-amber-600 border-amber-200"
                       }`}>
                       {j.status || "Pending"}
                     </span>

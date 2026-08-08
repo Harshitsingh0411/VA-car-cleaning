@@ -1480,7 +1480,7 @@ export const DEFAULT_FOUNDERS_SETTINGS: dbFoundersSettings = {
       educationOrBackground: "Co-Founder & Head of Operations",
       badges: ["Co-Founder", "Head of Operations", "Process Optimization"],
       email: "sanketsahu9569@gmail.com",
-      instagram: "https://instagram.com/ sanket__sahu27"
+      instagram: "https://instagram.com/sanket__sahu27"
     }
   ]
 };
@@ -1511,6 +1511,7 @@ export interface dbDeveloper {
   bio: string;
   linkedin: string;
   github?: string;
+  instagram?: string;
   email?: string;
   skills: string[];
 }
@@ -1536,6 +1537,7 @@ export const DEFAULT_DEVELOPERS_SETTINGS: dbDevelopersSettings = {
       bio: "Divyanshu engineered core platform features, custom UI workflows, real-time database integrations, and high-performance frontend interfaces for VA Car & Bike Care.co-developed the platform's state management, mobile responsive suite, user authentication dashboard, and automated scheduling systems.",
       linkedin: "https://www.linkedin.com/in/divyanshu-kashyap-a5ab99311/",
       github: "https://github.com/divyanshukashyap0",
+      instagram: "https://www.instagram.com/divyanshukashyap817/",
       email: "divyanshu00884466@gmail.com",
       skills: ["React & Vite", "TypeScript", "Framer Motion", "REST APIs", "UI/UX Design", "Database Management"]
     },
@@ -1547,6 +1549,7 @@ export const DEFAULT_DEVELOPERS_SETTINGS: dbDevelopersSettings = {
       bio: "Harshit co-developed the platform's state management, mobile responsive suite, user authentication dashboard, and automated scheduling systems.",
       linkedin: "https://www.linkedin.com/in/harshit-singh-9028ba324/",
       github: "https://github.com/Harshitsingh0411",
+      instagram: "https://www.instagram.com/harshitsingh8313/",
       email: "harshitsingh2431086@gmail.com",
       skills: ["React 19", "TypeScript", "Tailwind CSS", "Firebase", "Node.js", "System Architecture"]
     }

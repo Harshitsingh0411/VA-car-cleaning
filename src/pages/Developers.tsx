@@ -5,6 +5,7 @@ import {
   Code2,
   Linkedin,
   Github,
+  Instagram,
   Mail,
   Terminal,
   Cpu,
@@ -244,6 +245,17 @@ export default function DevelopersPage() {
                       title="GitHub Profile"
                     >
                       <Github size={16} />
+                    </a>
+                  )}
+                  {dev.instagram && (
+                    <a
+                      href={dev.instagram}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-9 h-9 rounded-xl bg-pink-50 border border-pink-200/80 hover:bg-gradient-to-tr hover:from-amber-500 hover:via-rose-500 hover:to-purple-600 hover:text-white flex items-center justify-center text-pink-600 transition-all shadow-2xs"
+                      title="Instagram Profile"
+                    >
+                      <Instagram size={16} />
                     </a>
                   )}
                   {dev.email && (

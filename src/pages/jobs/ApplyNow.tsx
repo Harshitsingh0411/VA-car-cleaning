@@ -12,7 +12,7 @@ export default function ApplyNow() {
   const [vehicleSkill, setVehicleSkill] = useState("");
   const [experience, setExperience] = useState("");
   const [message, setMessage] = useState("");
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">("idle");
 
@@ -127,7 +127,8 @@ export default function ApplyNow() {
                     type="tel"
                     name="phone"
                     required
-                    placeholder="+91 98765 43210"
+                    placeholder="+91 95699 49626
++91 92501 64163"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3.5 px-4 font-semibold text-dark text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition-all"

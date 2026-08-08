@@ -63,6 +63,7 @@ import MobileAdminSuite from "../components/admin/MobileAdminSuite";
 import CloudinaryUploader from "../components/common/CloudinaryUploader";
 import AdminVehicleManager from "../components/admin/AdminVehicleManager";
 import { getCartoonAvatar, getUserAvatar, handleAvatarError } from "../utils/avatar";
+import { downloadInvoice } from "../utils/invoiceGenerator";
 import {
   ShieldAlert,
   Users,
@@ -2703,6 +2704,13 @@ export default function Admin() {
                                 Mark Complete
                               </button>
                             )}
+                            <button
+                              onClick={() => downloadInvoice(a)}
+                              className="bg-primary/10 hover:bg-primary text-primary hover:text-white py-1 px-2.5 rounded-lg font-bold text-[10px] cursor-pointer border border-primary/20 transition-all flex items-center gap-1"
+                              title="Download Invoice"
+                            >
+                              <span>📄 Invoice</span>
+                            </button>
                             {(a.status === "Completed" || a.status === "Cancelled") && (
                               <button
                                 onClick={() => setViewingBookingDetails(a)}
