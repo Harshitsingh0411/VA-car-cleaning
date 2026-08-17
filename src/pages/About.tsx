@@ -55,7 +55,7 @@ export default function AboutPage() {
 
   return (
     <div className="min-h-screen bg-light">
-      <SEO 
+      <SEO
         title="About Us | VA Car & Bike Care"
         description="Learn about VA Car & Bike Care, Kanpur's leading eco-friendly doorstep car detailing company. Discover our mission, values, and expert team."
         keywords="About VA Car Care, car detailing kanpur company, doorstep vehicle wash history, eco friendly wash"
@@ -216,7 +216,7 @@ export default function AboutPage() {
         </div>
 
         {/* Founders & Leadership Section Link */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 25 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -243,7 +243,7 @@ export default function AboutPage() {
                   <img src="/founders/founder1.png" alt="Veeru" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=200"; }} />
                 </div>
                 <div className="w-12 h-12 rounded-full border-2 border-[#F4B400] overflow-hidden bg-gray-800 shadow-lg" title="Akhlesh - Co-Founder & Head of Field Operations">
-                  <img src="/founders/founder2.png" alt="Akhlesh" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200"; }} />
+                  <img src="/founders/founder2.png" alt="Akhlesh" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = "https://vacarcleaningservice.com/founders/founder2.jpeg"; }} />
                 </div>
                 <div className="w-12 h-12 rounded-full border-2 border-[#F4B400] overflow-hidden bg-gray-800 shadow-lg" title="Sanket - Co-Founder & Head of Operations">
                   <img src="/founders/founder3.png" alt="Sanket" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200"; }} />
