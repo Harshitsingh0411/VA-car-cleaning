@@ -18,10 +18,10 @@ export default function InteriorCleaning() {
   };
 
   const steps = [
-    { title: "Deep Cabin Vacuuming", desc: "High-power extractors capture crumbs, grit, and dust from seats and carpets." },
-    { title: "Dashboard & Console Scrub", desc: "Detailed wiping of plastic, switches, and steering wheel contact spots." },
-    { title: "Upholstery Spot Polish", desc: "Micro-scrubbing removes minor coffee, mud, and leather stains." },
-    { title: "Odor Sanitization", desc: "Eco-friendly botanical sprays leave the cabin sanitized and smelling fresh." }
+    { title: "Deep Cabin Cleaning", desc: "High-power extractors capture crumbs, grit, and dust from seats and carpets." },
+    { title: "Dashboard & Trim Disinfection", desc: "Non-greasy UV protective wipe-down for consoles, steering wheel & trim." },
+    { title: "Upholstery Stain Extract", desc: "Fabric shampoo extraction and leather condition treatment." },
+    { title: "Odor Neutralization", desc: "Thermal fogger antibacterial treatment leaves a fresh neutral scent." }
   ];
 
   return (
@@ -34,7 +34,7 @@ export default function InteriorCleaning() {
             <span className="mx-2">/</span>
             <Link to="/services" className="hover:text-white transition-colors">Services</Link>
             <span className="mx-2">/</span>
-            <span className="text-[#F4B400]">Interior Cleaning</span>
+            <span className="text-[#F4B400]">Interior Care</span>
           </div>
         </div>
       </div>
@@ -47,10 +47,10 @@ export default function InteriorCleaning() {
           {/* LEFT: Copy & Steps */}
           <div className="lg:col-span-7 space-y-8">
             <div className="space-y-4">
-              <span className="text-primary font-bold text-[11px] uppercase tracking-widest block">— DEEP SANITIZATION SERVICES —</span>
-              <h1 className="text-3xl md:text-4xl font-heading font-extrabold text-dark tracking-tight leading-[1.1]">Interior Cleaning</h1>
+              <span className="text-primary font-bold text-[11px] uppercase tracking-widest block">— HYGIENIC CABIN SANITIZATION —</span>
+              <h1 className="text-3xl md:text-4xl font-heading font-extrabold text-dark tracking-tight leading-[1.1]">Interior Care</h1>
               <p className="text-gray-600 text-sm leading-relaxed max-w-xl">
-                Restore the luxury feel of your car's interior. We perform deep cabin vacuuming, contact disinfection, console restoration, and odor removal to keep your driving space healthy.
+                Restore the luxury feel of your car's interior. We perform deep cabin cleaning, contact disinfection, console restoration, and odor removal to keep your driving space healthy.
               </p>
               <div className="inline-flex items-center gap-3 bg-primary/5 py-2 px-4 rounded-xl border border-primary/10">
                 <span className="text-2xl font-black text-primary">{servicePrices.interiorCleaning.formatted}</span>
@@ -102,7 +102,7 @@ export default function InteriorCleaning() {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-dark/70 via-transparent to-transparent" />
               <div className="absolute left-4 bottom-4 bg-[#F4B400] text-dark font-heading font-bold text-[10px] uppercase tracking-wider py-1 px-3 rounded-full shadow">
-                ✨ Deep Vacuumed & Disinfected Interior Cabin
+                ✨ Deep Cleaned & Disinfected Interior Cabin
               </div>
             </div>
 

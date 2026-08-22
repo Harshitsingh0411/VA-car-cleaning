@@ -152,7 +152,7 @@ export default function ApplyNow() {
 
                 {/* Vehicle skill preference */}
                 <div className="space-y-1.5">
-                  <label htmlFor="job-skill" className="text-xs font-bold text-gray-500 uppercase">Vehicle Detailing Preference</label>
+                  <label htmlFor="job-skill" className="text-xs font-bold text-gray-500 uppercase">Vehicle Skill Preference</label>
                   <select
                     id="job-skill"
                     name="vehicle-skill"
@@ -162,9 +162,9 @@ export default function ApplyNow() {
                     className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3.5 px-4 font-semibold text-dark text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition-all appearance-none cursor-pointer"
                   >
                     <option value="" disabled>Select vehicle category</option>
-                    <option value="cars">Car Detailing (Exterior/Interior/Foam)</option>
-                    <option value="bikes">Bike Detailing (Chains/Polishing)</option>
-                    <option value="both">Both Cars & Bikes Detailing</option>
+                    <option value="cars">Car Care (Exterior/Interior)</option>
+                    <option value="bikes">Bike Care (Chains/Shine)</option>
+                    <option value="both">Both Cars & Bikes Care</option>
                   </select>
                 </div>
 

@@ -25,8 +25,8 @@ export default function BlogIndex() {
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       <SEO 
-        title="Car Cleaning & Detailing Blog | VaCar Kanpur"
-        description="Read our latest articles and tips on car maintenance, ceramic coating, deep interior cleaning, and seasonal car care."
+        title="Car Care & Maintenance Blog | VaCar Kanpur"
+        description="Read our latest articles and tips on car maintenance, ceramic coating, and seasonal car care."
       />
       
       {/* Header */}

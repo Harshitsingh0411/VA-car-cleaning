@@ -53,9 +53,9 @@ export default function ServicesPage() {
   return (
     <div className="min-h-screen bg-gray-50/50 pt-24 pb-16">
       <SEO 
-        title="Car & Bike Detailing Services | Doorstep Cleaning In Budget"
-        description="Explore budget-friendly car and bike doorstep cleaning services in Kanpur including bike snow foam wash at ₹149, monthly bike subscriptions at ₹399, and superbike chain detailing."
-        keywords="car wash pricing, bike cleaning kanpur, doorstep car detailing, foam wash cost, interior vacuuming, ceramic coating"
+        title="Car & Bike Care Services | Doorstep Care In Budget"
+        description="Explore budget-friendly car and bike doorstep care services in Kanpur including monthly bike subscriptions at ₹399, and superbike chain care."
+        keywords="car wash pricing, bike cleaning kanpur, doorstep car care, ceramic coating"
         schemas={schemas}
       />
 
@@ -82,8 +82,8 @@ export default function ServicesPage() {
         ) : (
           <div className="bg-white border border-gray-100 rounded-[32px] p-6 md:p-8 shadow-xs space-y-6">
             <div>
-              <h2 className="text-lg font-heading font-extrabold text-dark">Wash &amp; Detailing Packages</h2>
-              <p className="text-gray-400 text-xs mt-0.5">Choose from our selected service catalog below and order doorstep detailing instantly.</p>
+              <h2 className="text-lg font-heading font-extrabold text-dark">Care Packages</h2>
+              <p className="text-gray-400 text-xs mt-0.5">Choose from our selected service catalog below and order doorstep care instantly.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -154,25 +154,25 @@ export default function ServicesPage() {
       <BookingSection />
 
       <SeoTextSection 
-        heading="Comprehensive Car Detailing Services in Kanpur"
+        heading="Comprehensive Car Care Services in Kanpur"
         contentBlocks={[
           {
             title: "Why Choose Our Professional Car Cleaning Services?",
-            body: <p>Our doorstep car detailing services are designed to restore your vehicle to its showroom condition. From basic exterior foam washes that strip away road grime to intensive interior dry cleaning that eliminates bacteria and odors, our certified detailers handle it all. We use state-of-the-art equipment, including high-pressure washers, steam cleaners, and industrial extractors.</p>
+            body: <p>Our doorstep car care services are designed to restore your vehicle to its showroom condition. From basic exterior treatments that strip away road grime to intensive interior care that eliminates bacteria and odors, our certified technicians handle it all. We use state-of-the-art equipment, including high-pressure washers, steam cleaners, and industrial extractors.</p>
           },
           {
             title: "Advanced 9H Ceramic Coating",
-            body: <p>Protect your car's paint from UV rays, acid rain, and minor scratches with our premium 9H Ceramic Coating service. This liquid polymer chemically bonds with your vehicle's factory paint, creating a protective layer that lasts for years. The hydrophobic properties ensure water beads up and rolls off, keeping your car cleaner for longer and making future washes a breeze.</p>
+            body: <p>Protect your car's paint from UV rays, acid rain, and minor scratches with our premium 9H Ceramic Coating service. This liquid polymer chemically bonds with your vehicle's factory paint, creating a protective layer that lasts for years. The hydrophobic properties ensure water beads up and rolls off, keeping your car cleaner for longer and making future care a breeze.</p>
           }
         ]}
         faqs={[
           {
             q: "Do you offer subscription-based monthly car cleaning?",
-            a: "Yes! We offer discounted monthly packages that include weekly exterior washes and a bi-weekly interior vacuum to keep your car looking pristine year-round."
+            a: "Yes! We offer discounted monthly packages that include regular scheduled care to keep your car looking pristine year-round."
           },
           {
-            q: "What is the difference between a normal wash and a foam wash?",
-            a: "A normal wash usually involves applying soap with a sponge, which can trap dirt and scratch the paint. Our foam wash uses a snow foam cannon that encapsulates dirt and lifts it off the surface safely before we even touch the paint."
+            q: "What is included in doorstep vehicle care?",
+            a: "Our doorstep vehicle care cleans dirt safely using specialized solutions."
           }
         ]}
       />

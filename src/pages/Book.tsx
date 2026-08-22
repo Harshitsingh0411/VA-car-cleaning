@@ -267,7 +267,7 @@ export default function BookPage() {
 
     return (
       <div className="p-5 border border-primary/10 bg-primary/5 rounded-2xl space-y-4 text-left">
-        <h4 className="text-xs font-extrabold text-primary uppercase tracking-wider">Configure Vehicle Detailing Target</h4>
+        <h4 className="text-xs font-extrabold text-primary uppercase tracking-wider">Configure Vehicle Target</h4>
 
         {/* Car / Bike Selector Toggle */}
         <div className="space-y-1.5">

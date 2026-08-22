@@ -626,7 +626,7 @@ export default function Admin() {
 
   const [baFormId, setBaFormId] = useState("");
   const [baFormTitle, setBaFormTitle] = useState("");
-  const [baFormCategory, setBaFormCategory] = useState("Exterior Wash");
+  const [baFormCategory, setBaFormCategory] = useState("Exterior Care");
   const [baFormBeforeImage, setBaFormBeforeImage] = useState("");
   const [baFormAfterImage, setBaFormAfterImage] = useState("");
   const [baFormDesc, setBaFormDesc] = useState("");
@@ -639,7 +639,7 @@ export default function Admin() {
   const resetBaForm = () => {
     setBaFormId("");
     setBaFormTitle("");
-    setBaFormCategory("Exterior Wash");
+    setBaFormCategory("Exterior Care");
     setBaFormBeforeImage("");
     setBaFormAfterImage("");
     setBaFormDesc("");
@@ -655,7 +655,7 @@ export default function Admin() {
     setEditingBaItem(item);
     setBaFormId(item.id);
     setBaFormTitle(item.title);
-    setBaFormCategory(item.category || "Exterior Wash");
+    setBaFormCategory(item.category || "Exterior Care");
     setBaFormBeforeImage(item.beforeImage);
     setBaFormAfterImage(item.afterImage);
     setBaFormDesc(item.description || "");
@@ -674,7 +674,7 @@ export default function Admin() {
       const item: dbBeforeAfterItem = {
         id: baFormId || `ba-${Date.now()}`,
         title: baFormTitle,
-        category: baFormCategory || "Exterior Wash",
+        category: baFormCategory || "Exterior Care",
         beforeImage: baFormBeforeImage || "",
         afterImage: baFormAfterImage || "",
         description: baFormDesc || "",
@@ -4985,7 +4985,7 @@ export default function Admin() {
                 <textarea
                   required
                   rows={5}
-                  placeholder={`Eco foam exterior wash\nWheel cleaning & shine\nDoor frame wipe down`}
+                  placeholder={`Eco exterior treatment\nWheel cleaning & shine\nDoor frame wipe down`}
                   value={planFeaturesText}
                   onChange={(e) => setPlanFeaturesText(e.target.value)}
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white text-dark resize-none font-mono"
@@ -5055,7 +5055,7 @@ export default function Admin() {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Exterior Foam Wash & Gloss Polish"
+                  placeholder="e.g. Exterior Care & Gloss Protection"
                   value={baFormTitle}
                   onChange={(e) => setBaFormTitle(e.target.value)}
                   className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 px-4 text-xs font-semibold text-dark focus:bg-white focus:ring-2 focus:ring-primary outline-none"
@@ -5067,7 +5067,7 @@ export default function Admin() {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Exterior Wash, Interior Cleaning"
+                  placeholder="e.g. Exterior Care, Interior Care"
                   value={baFormCategory}
                   onChange={(e) => setBaFormCategory(e.target.value)}
                   className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 px-4 text-xs font-semibold text-dark focus:bg-white focus:ring-2 focus:ring-primary outline-none"

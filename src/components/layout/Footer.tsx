@@ -111,15 +111,20 @@ export default function Footer() {
 
           {/* Popular Kanpur Locations */}
           <div>
-            <h4 className="text-white font-heading font-bold mb-5 text-sm uppercase tracking-wider">Locations</h4>
+            <h4 className="text-white font-heading font-bold mb-5 text-sm uppercase tracking-wider">Service Areas</h4>
             <ul className="flex flex-col gap-2.5 text-xs">
-              {seoLocations.slice(0, 6).map(location => (
+              {seoLocations.slice(0, 8).map(location => (
                 <li key={location.slug}>
                   <Link to={`/kanpur/${location.slug}`} className="hover:text-[#F4B400] transition-colors">
                     {location.name}
                   </Link>
                 </li>
               ))}
+              <li>
+                <Link to="/locations" className="text-[#F4B400] font-extrabold hover:underline">
+                  View All 29+ Locations &rarr;
+                </Link>
+              </li>
             </ul>
           </div>
 

@@ -30,7 +30,7 @@ export const blogPosts: BlogPost[] = [
       <p>Visibility is crucial for safety. Replace your windshield wipers every 6-12 months or as soon as they start streaking.</p>
       
       <h2>5. Clean the Interior Regularly</h2>
-      <p>Vacuuming the carpets and wiping down the dashboard not only preserves the interior materials but also ensures a hygienic driving environment.</p>
+      <p>Cleaning the carpets and wiping down the interior cabin not only preserves materials but also ensures a hygienic driving environment.</p>
     `,
     date: "2026-07-01",
     author: "VaCar Expert",
@@ -59,7 +59,7 @@ export const blogPosts: BlogPost[] = [
     date: "2026-07-05",
     author: "VaCar Expert",
     coverImage: "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?auto=format&fit=crop&q=80&w=800",
-    tags: ["Ceramic Coating", "Detailing", "Protection"]
+    tags: ["Ceramic Coating", "Paint Protection"]
   },
   {
     id: "3",
@@ -94,7 +94,7 @@ export const blogPosts: BlogPost[] = [
       <p>Studies show that a car's steering wheel can hold four times more bacteria than a public toilet seat. Spilled food, sweat, and pet dander accumulate over time.</p>
       
       <h2>The Professional Difference</h2>
-      <p>While a quick vacuum helps, professional interior detailing involves extracting dirt from deep within the upholstery fibers, steam cleaning vents, and sanitizing touchpoints.</p>
+      <p>While standard cleaning helps, professional interior care involves extracting dirt from upholstery fibers, steam cleaning vents, and sanitizing touchpoints.</p>
       
       <h2>Preserving Value</h2>
       <p>Regular interior maintenance prevents leather from cracking, plastics from fading, and fabrics from staining permanently, preserving your car's resale value.</p>
@@ -102,7 +102,7 @@ export const blogPosts: BlogPost[] = [
     date: "2026-07-15",
     author: "VaCar Expert",
     coverImage: "https://images.unsplash.com/photo-1601362840469-51e4d8d58785?auto=format&fit=crop&q=80&w=800",
-    tags: ["Interior", "Hygiene", "Detailing"]
+    tags: ["Interior", "Hygiene", "Care"]
   },
   {
     id: "5",

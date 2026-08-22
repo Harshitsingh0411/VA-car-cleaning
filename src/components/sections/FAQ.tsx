@@ -14,17 +14,17 @@ const faqs: FAQItem[] = [
   {
     category: "customer",
     question: "Do you offer doorstep car cleaning service?",
-    answer: "Yes, we are a 100% doorstep car cleaning and detailing service. Our professional team will arrive directly at your home, office, or designated location fully equipped with our own premium supplies and state-of-the-art equipment."
+    answer: "Yes, we are a 100% doorstep car care service. Our professional team will arrive directly at your home, office, or designated location fully equipped with our own premium supplies and state-of-the-art equipment."
   },
   {
     category: "customer",
     question: "What are the requirements for doorstep service?",
-    answer: "We only require access to a standard electrical outlet and a water source within reasonable distance of your vehicle. Our team handles everything else, including premium detailing agents, high-power vacuums, and professional tools."
+    answer: "We only require access to a standard electrical outlet and a water source within reasonable distance of your vehicle. Our team handles everything else, including premium agents and professional tools."
   },
   {
     category: "customer",
-    question: "How long does a typical car detailing session take?",
-    answer: "It depends on the service package. A standard Exterior Wash takes about 45 minutes, Deep Interior Cleaning takes about 60 to 90 minutes, and our full Premium Detailing package with ceramic wax can take up to 2 to 3 hours depending on the car size and condition."
+    question: "How long does a typical car service session take?",
+    answer: "It depends on the service package. A standard care package takes about 45 minutes, Deep Interior care takes about 60 to 90 minutes, and our full Premium package with ceramic wax can take up to 2 to 3 hours depending on the car size and condition."
   },
   {
     category: "customer",
@@ -34,7 +34,7 @@ const faqs: FAQItem[] = [
   {
     category: "applicant",
     question: "Who can apply for the part-time job opportunities?",
-    answer: "Our part-time opportunities are perfect for college students, freelancers, or anyone looking to earn extra, flexible income. No prior professional detailing experience is required, as we provide complete, paid training."
+    answer: "Our part-time opportunities are perfect for college students, freelancers, or anyone looking to earn extra, flexible income. No prior experience is required, as we provide complete, paid training."
   },
   {
     category: "applicant",

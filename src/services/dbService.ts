@@ -1382,9 +1382,9 @@ export const DEFAULT_ABOUT_SETTINGS: dbAboutSettings = {
   badge: "Who We Are",
   title: "Crafting the Showroom Shine",
   subtitle: "VA Car Cleaning Service stands for professional care, absolute premium precision, and uncompromising quality delivered to your door.",
-  storyHeading: "Redefining Mobile Detailing Across Districts",
-  storyText1: "Founded with a mission to bring professional car detailing directly to vehicle owners' driveways, VA Car Cleaning Service replaces the inconvenience of waiting at traditional car wash stations.",
-  storyText2: "Our trained technicians use 100% water-saving foam formulas, high-powered mobile vacuum systems, and non-scratch microfiber cloths to protect clear coats.",
+  storyHeading: "Redefining Mobile Care Across Districts",
+  storyText1: "Founded with a mission to bring professional car care directly to vehicle owners' driveways, VA Car Cleaning Service replaces the inconvenience of waiting at traditional service stations.",
+  storyText2: "Our trained technicians use 100% water-saving formulas, high-powered mobile systems, and non-scratch microfiber cloths to protect clear coats.",
   storyImageUrl: "",
   stat1Number: "1000+",
   stat1Label: "Cars Cleaned",
@@ -1642,9 +1642,9 @@ const LEGACY_SEED_IDS = [
 ];
 
 const LEGACY_SEED_NAMES = [
-  "bike & scooter foam wash",
-  "foam car wash & shine",
-  "deep interior cleaning & vacuum",
+  "bike & scooter care",
+  "car care & shine",
+  "deep interior care",
   "full car spa & paint protection"
 ];
 
@@ -2101,17 +2101,17 @@ export interface dbBeforeAfterItem extends BaseDoc {
 export const DEFAULT_BEFORE_AFTER_ITEMS: dbBeforeAfterItem[] = [
   {
     id: "ba-1",
-    title: "Exterior Foam Wash & Gloss Polish",
-    category: "Exterior Wash",
+    title: "Exterior Bath & Gloss Protection",
+    category: "Exterior Care",
     beforeImage: "",
     afterImage: "",
-    description: "Deep mud extraction, foam bath, and ceramic shine polish.",
+    description: "Deep mud extraction and ceramic shine polish.",
     displayOrder: 1
   },
   {
     id: "ba-2",
     title: "Interior Cabin Deep Clean & Sanitize",
-    category: "Interior Cleaning",
+    category: "Interior Care",
     beforeImage: "",
     afterImage: "",
     description: "Stain removal on upholstery, dashboard dressing, and odor elimination.",
@@ -2119,11 +2119,11 @@ export const DEFAULT_BEFORE_AFTER_ITEMS: dbBeforeAfterItem[] = [
   },
   {
     id: "ba-3",
-    title: "Alloy Wheel & Tyre Dressing",
-    category: "Wheel Detailing",
+    title: "Alloy Wheel & Tyre Care",
+    category: "Wheel Care",
     beforeImage: "",
     afterImage: "",
-    description: "Brake dust removal, rim de-ironization, and wet-look tyre glaze.",
+    description: "Brake dust removal, rim de-ironization, and wet-look glaze.",
     displayOrder: 3
   }
 ];

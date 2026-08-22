@@ -16,9 +16,9 @@ export interface SEOProps {
 }
 
 export default function SEO({
-  title = "VA Car & Bike Care | Premium Doorstep Car Cleaning & Detailing",
-  description = "Budget-friendly doorstep car & bike cleaning, snow foam wash, interior vacuuming, dashboard polish & monthly subscriptions in Kanpur. Pay on Delivery!",
-  keywords = "car wash, doorstep car cleaning, bike wash kanpur, interior detailing, foam wash, monthly car subscription, car care kanpur",
+  title = "VA Car & Bike Care | Premium Doorstep Car Care",
+  description = "Budget-friendly doorstep car & bike care & monthly subscriptions in Kanpur. Pay on Delivery!",
+  keywords = "car wash, doorstep car care, bike care kanpur, monthly car subscription, car care kanpur",
   canonicalUrl,
   type = "website",
   image = `${BASE_URL}/favicon.png`,

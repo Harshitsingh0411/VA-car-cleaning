@@ -63,8 +63,11 @@ export default function Navbar() {
     },
     { 
       name: "Locations", 
-      path: "#",
-      dropdown: seoLocations.slice(0, 8).map(l => ({ name: l.name, path: `/kanpur/${l.slug}` }))
+      path: "/locations",
+      dropdown: [
+        ...seoLocations.slice(0, 10).map(l => ({ name: l.name, path: `/kanpur/${l.slug}` })),
+        { name: "View All 29+ Locations →", path: "/locations" }
+      ]
     },
     { 
       name: "About Us", 

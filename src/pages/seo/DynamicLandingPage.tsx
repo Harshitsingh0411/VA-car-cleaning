@@ -107,14 +107,14 @@ export default function DynamicLandingPage({ type }: DynamicLandingProps) {
 
   const service = matchedService || {
     id: "",
-    name: "Doorstep Detailing & Cleaning",
+    name: "Doorstep Vehicle Care",
     slug: "",
-    description: `We bring the highest quality auto detailing, foam washing, and vehicle care directly to your doorstep in ${location.name}.`,
+    description: `We bring the highest quality auto care directly to your doorstep in ${location.name}.`,
     price: "",
     image: "https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&q=80&w=800",
     features: [
       "100% Doorstep Service at your location",
-      "Trained professional detailing technician",
+      "Trained professional technician",
       "Pay on delivery — zero advance needed"
     ]
   };
@@ -142,17 +142,17 @@ export default function DynamicLandingPage({ type }: DynamicLandingProps) {
     : `${service.name} in ${location.name} | Professional Doorstep Service`;
 
   const pageDescription = isLocationOnlyPage
-    ? `Professional doorstep car wash, motorcycle cleaning, and detailing services in ${location.name}. Eco-friendly foam wash right at your home.`
-    : `Looking for ${service.name.toLowerCase()} in ${location.name}? VaCar Cleaning Service offers premium, eco-friendly doorstep detailing${service.price ? ` at just ₹${service.price}` : ""}. Book online today!`;
+    ? `Professional doorstep car wash and motorcycle cleaning services in ${location.name}. Right at your home.`
+    : `Looking for ${service.name.toLowerCase()} in ${location.name}? VaCar Cleaning Service offers premium, eco-friendly doorstep care${service.price ? ` at just ₹${service.price}` : ""}. Book online today!`;
 
   const faqData = [
     {
       question: `Do you provide car & bike cleaning at home in ${location.name}?`,
-      answer: `Yes, we provide 100% doorstep car washing, bike foam wash, and auto detailing services anywhere in ${location.name}. Our professional crew comes fully equipped with water, power tools, and premium cleaning agents.`
+      answer: `Yes, we provide 100% doorstep car washing and bike care services anywhere in ${location.name}. Our professional crew comes fully equipped with water, power tools, and premium cleaning agents.`
     },
     {
-      question: `How much does doorstep detailing cost in ${location.name}?`,
-      answer: `Our professional detailing packages in ${location.name} offer transparent, budget-friendly rates with no hidden charges. You pay after service completion.`
+      question: `How much does doorstep care cost in ${location.name}?`,
+      answer: `Our professional care packages in ${location.name} offer transparent, budget-friendly rates with no hidden charges. You pay after service completion.`
     },
     {
       question: `How long does the service take?`,

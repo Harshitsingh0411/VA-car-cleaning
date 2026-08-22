@@ -39,9 +39,9 @@ const defaultTestimonials: DisplayTestimonial[] = [
   },
   {
     id: "default-3",
-    text: "Super easy booking process and punctual professional detailers. They removed stubborn stains and pet hair effortlessly.",
+    text: "Super easy booking process and punctual professional technicians. They removed stubborn stains effortlessly.",
     name: "Michael Chen",
-    role: "Verified Customer (Express Wash & Vacuum)",
+    role: "Verified Customer (Express Care)",
     avatar: getCartoonAvatar("Michael Chen"),
     stars: 5,
   },

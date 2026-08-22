@@ -21,8 +21,8 @@ export const getWebSiteSchema = () => ({
   "@id": `${BASE_URL}/#website`,
   "url": BASE_URL,
   "name": BRAND_NAME,
-  "alternateName": ["VA Car Detailing", "VA Bike Cleaning", "VaCar"],
-  "description": "Premium doorstep car and bike cleaning & detailing services in Kanpur. Zero advance payment required.",
+  "alternateName": ["VA Car Care", "VA Bike Care", "VaCar"],
+  "description": "Premium doorstep car and bike care services in Kanpur. Zero advance payment required.",
   "publisher": {
     "@id": `${BASE_URL}/#organization`
   },
@@ -201,7 +201,7 @@ export const getReviewSchema = (reviews: { author: string; rating: number; revie
   "@context": "https://schema.org",
   "@type": "Product",
   "name": "VA Doorstep Car & Bike Cleaning Service",
-  "description": "Professional doorstep car detailing, snow foam wash, interior vacuuming, and ceramic protection.",
+  "description": "Professional doorstep car and bike care service and ceramic protection.",
   "brand": {
     "@type": "Brand",
     "name": BRAND_NAME

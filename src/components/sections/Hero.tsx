@@ -66,7 +66,7 @@ export default function Hero() {
                   <span className="text-[#F4B400] font-extrabold">Professional & Budget Friendly</span>
                 </h1>
                 <p className="text-sm sm:text-base text-gray-300 max-w-lg leading-relaxed font-normal">
-                  We bring the showroom shine back to your car, motorcycle & scooter with eco foam washing & detailing right in your driveway. Bike wash starting at just ₹100!
+                  We bring the showroom shine back to your car, motorcycle &amp; scooter with eco vehicle care right in your driveway. Bike wash starting at just ₹100!
                 </p>
               </div>
             </ScrollReveal>

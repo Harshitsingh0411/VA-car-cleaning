@@ -59,7 +59,7 @@ export default function FoamWash() {
             <span className="mx-2">/</span>
             <Link to="/services" className="hover:text-white transition-colors">Services</Link>
             <span className="mx-2">/</span>
-            <span className="text-[#F4B400]">Foam Wash</span>
+            <span className="text-[#F4B400]">Foam Care</span>
           </div>
         </div>
       </div>
@@ -72,8 +72,8 @@ export default function FoamWash() {
           {/* LEFT: Copy & Steps */}
           <div className="lg:col-span-7 space-y-8">
             <div className="space-y-4">
-              <span className="text-primary font-bold text-[11px] uppercase tracking-widest block">— ACTIVE DIRT SUSPENSION —</span>
-              <h1 className="text-3xl md:text-4xl font-heading font-extrabold text-dark tracking-tight leading-[1.1]">Foam Wash</h1>
+              <span className="text-primary font-bold text-[11px] uppercase tracking-widest block">— PREMIUM DOORSTEP SERVICES —</span>
+              <h1 className="text-3xl md:text-4xl font-heading font-extrabold text-dark tracking-tight leading-[1.1]">Foam Care</h1>
               <p className="text-gray-600 text-sm leading-relaxed max-w-xl">
                 Experience the safest wash. Thick layers of high-foaming detergents lift and encapsulate abrasive mud particles, allowing them to rinse away without touching the paint directly.
               </p>
@@ -127,7 +127,7 @@ export default function FoamWash() {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-dark/70 via-transparent to-transparent" />
               <div className="absolute left-4 bottom-4 bg-[#F4B400] text-dark font-heading font-bold text-[10px] uppercase tracking-wider py-1 px-3 rounded-full shadow">
-                ✨ Deep Snow Foam Bath Treatment
+                ✨ Deep Lather Bath Treatment
               </div>
             </div>
 

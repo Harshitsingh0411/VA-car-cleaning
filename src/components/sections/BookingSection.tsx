@@ -58,7 +58,7 @@ export default function BookingSection() {
       const matchedService = services.find(s => s.id === service);
       const serviceName = matchedService ? matchedService.name : service;
       const servicePrice = matchedService ? matchedService.price : 0;
-      const vehicleLabel = "Car / Vehicle Detailing";
+      const vehicleLabel = "Car / Vehicle Service";
       const timeSlotLabel = getTimeSlotLabel(time);
       const cId = user ? user.uid : "guest-" + Math.random().toString(36).substring(2, 9);
 
@@ -255,13 +255,13 @@ export default function BookingSection() {
             </ScrollReveal>
           </div>
 
-          {/* RIGHT: Foam Wash Graphic */}
+          {/* RIGHT: Doorstep Care Graphic */}
           <div className="lg:col-span-5">
             <ScrollReveal variant="slide-left" delay={0.2}>
-              <div className="relative h-96 rounded-3xl overflow-hidden shadow-2xl border border-white/5 shrink-0 group transform-gpu">
+              <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-gray-100 aspect-video group">
                 <img
-                  src="https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&q=80&w=1000"
-                  alt="Doorstep Foam Wash detailing"
+                  src="https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&q=80&w=800"
+                  alt="Doorstep Care"
                   className="w-full h-full object-cover filter saturate-[0.8] contrast-[1.1] group-hover:scale-105 transition-transform duration-700 ease-out"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#070C16] via-transparent to-transparent" />

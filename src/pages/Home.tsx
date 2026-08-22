@@ -33,11 +33,11 @@ export default function Home() {
   const homeFaqs = [
     {
       question: "Do you offer doorstep car and bike cleaning in Kanpur?",
-      answer: "Yes, VA Car & Bike Care provides 100% doorstep car washing, bike detailing, foam wash, and interior cleaning at your home or office in Kanpur."
+      answer: "Yes, VA Car & Bike Care provides 100% doorstep car washing and interior care at your home or office in Kanpur."
     },
     {
       question: "How much does a doorstep car wash cost?",
-      answer: "Doorstep bike washes start at ₹100, exterior car washes at ₹150, and deep interior cleaning at ₹250. Monthly subscription plans offer max savings!"
+      answer: "Doorstep bike washes start at ₹100 and car services at ₹150. Monthly subscription plans offer max savings!"
     },
     {
       question: "How do monthly car cleaning subscriptions work?",
@@ -45,13 +45,13 @@ export default function Home() {
     },
     {
       question: "Do you clean super-bikes and heavy motorcycles?",
-      answer: "Yes, we specialize in superbike detailing, foam wash, engine bay cleaning, chain lube, and ceramic wax polish."
+      answer: "Yes, we specialize in superbike care, chain lube, and ceramic polish."
     }
   ];
 
   const homeReviews = [
     { author: "Aman Gupta", rating: 5, review: "Best doorstep car wash in Kanpur! Technician arrived on time and cleaned my SUV brilliantly.", date: "2026-07-28" },
-    { author: "Rohan Verma", rating: 5, review: "Super bike detailing for my Royal Enfield. Very affordable and professional foam wash.", date: "2026-08-01" },
+    { author: "Rohan Verma", rating: 5, review: "Super bike care for my Royal Enfield. Very affordable and professional.", date: "2026-08-01" },
     { author: "Sneha Sharma", rating: 5, review: "Subscribed to monthly car wash plan. Zero hassle and shiny car every morning!", date: "2026-08-03" }
   ];
 
@@ -59,8 +59,8 @@ export default function Home() {
     <div className="w-full bg-[#070C16]">
       <SEO 
         title="VA Car & Bike Care | Premium Doorstep Car Cleaning Service"
-        description="VA Car & Bike Care delivers top-rated doorstep car cleaning, snow foam wash, interior detailing & monthly subscription plans in Kanpur. Zero advance needed!"
-        keywords="VA Car Care, doorstep car wash kanpur, bike cleaning kanpur, monthly car wash subscription, interior dry cleaning, ceramic coating"
+        description="VA Car & Bike Care delivers top-rated doorstep car cleaning & monthly subscription plans in Kanpur. Zero advance needed!"
+        keywords="VA Car Care, doorstep car wash kanpur, bike cleaning kanpur, monthly car wash subscription, ceramic coating"
         schemas={[
           getWebSiteSchema(),
           getLocalBusinessSchema(),
@@ -98,15 +98,15 @@ export default function Home() {
 
       {/* Comprehensive SEO Content Section for Topical Authority */}
       <SeoTextSection 
-        heading="The Best Doorstep Car Wash & Detailing in Kanpur"
+        heading="The Best Doorstep Car Care in Kanpur"
         contentBlocks={[
           {
-            title: "Professional Mobile Detailing Delivered to You",
-            body: <p>At VA Car &amp; Bike Care, we understand that your time is valuable. That's why we bring our premium <strong>doorstep car washing and detailing services</strong> directly to your home, office, or apartment complex in Kanpur. We use industry-leading eco-friendly chemicals, ultra-soft microfiber cloths, and minimal water technology to ensure a scratch-free, mirror-like finish for your vehicle without the hassle of waiting at a traditional service center.</p>
+            title: "Professional Mobile Car Care Delivered to You",
+            body: <p>At VA Car &amp; Bike Care, we understand that your time is valuable. That's why we bring our premium <strong>doorstep car washing services</strong> directly to your home, office, or apartment complex in Kanpur. We use industry-leading eco-friendly chemicals, ultra-soft microfiber cloths, and minimal water technology to ensure a scratch-free finish for your vehicle without the hassle of waiting at a traditional service center.</p>
           },
           {
             title: "Advanced Car Care Technologies",
-            body: <p>We don't just wash cars; we rejuvenate them. Our expert technicians are equipped with advanced tools ranging from high-pressure foam lances for exterior snow washes to industrial-grade vacuum extractors for deep interior fabric cleaning. Whether you need a quick maintenance wash, a deep dashboard polish, or a multi-year 9H Ceramic Coating application, we guarantee the highest standards of automotive care.</p>
+            body: <p>We don't just wash cars; we rejuvenate them. Our expert technicians are equipped with advanced tools ranging from high-pressure lances to industrial-grade extractors for interior fabric care. Whether you need a quick maintenance wash or a multi-year 9H Ceramic Coating application, we guarantee the highest standards of automotive care.</p>
           }
         ]}
         faqs={homeFaqs.map(f => ({ q: f.question, a: f.answer }))}

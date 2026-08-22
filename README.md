@@ -8,13 +8,9 @@ VA Car Cleaning & Careers is a premium, professional doorstep car cleaning, deta
 
 ### 📅 Premium Doorstep Detailing & Booking
 - **Flexible Scheduling**: Select service plans, specify your vehicle size/type (Sedan, Hatchback, SUV, etc.), pick a convenient date and time slot, and provide address details.
-- **Service Categories**: Explore detailed walkthroughs of available services:
-  - **Foam Wash** (utilizing premium snow foam cannon technology)
-  - **Interior Cleaning** (deep vacuuming and dust remediation)
-  - **Exterior Wash** (high-pressure dual-bucket cleaning)
-  - **Wax Polish**, **Dashboard Detailing**, and **Tyre Dressing**.
+- **Service Categories**: Explore detailed walkthroughs of available services.
 - **Interactive Tools**: 
-  - **Before/After Slider**: Interactive visual slider simulating paint decontamination and heavy foam wash restoration.
+  - **Before/After Slider**: Interactive visual slider simulating paint decontamination and restoration.
   - **Earnings Calculator**: Interactive tool for prospective staff to estimate their monthly income based on shift hours and base + incentive rates.
 
 ### 💼 Career & Jobs Hub

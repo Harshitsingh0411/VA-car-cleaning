@@ -35,19 +35,19 @@ const faqsList: FAQItem[] = [
   {
     category: "Services",
     question: "Do you offer doorstep car cleaning service?",
-    answer: "Yes, we are a 100% doorstep car cleaning and detailing service. Our professional team will arrive directly at your home, office, or designated location fully equipped with our own premium supplies and state-of-the-art equipment.",
+    answer: "Yes, we are a 100% doorstep car care service. Our professional team will arrive directly at your home, office, or designated location fully equipped with our own premium supplies and state-of-the-art equipment.",
     icon: Car
   },
   {
     category: "Services",
     question: "What are the requirements for doorstep service?",
-    answer: "We only require access to a standard electrical outlet and a water source within reasonable distance of your vehicle. Our team handles everything else, including premium detailing agents, high-power vacuums, and professional tools.",
+    answer: "We only require access to a standard electrical outlet and a water source within reasonable distance of your vehicle. Our team handles everything else, including premium agents and professional tools.",
     icon: CheckSquare
   },
   {
     category: "Services",
     question: "How long does a car wash take?",
-    answer: "It depends on the package selected. A standard Hatchback or Sedan wash takes about 45-60 minutes, whereas a Deep Detailing or SUV Ceramic Waxing session may take between 2 to 3 hours.",
+    answer: "It depends on the package selected. A standard Hatchback or Sedan treatment takes about 45-60 minutes, whereas an SUV Ceramic Waxing session may take between 2 to 3 hours.",
     icon: Clock
   },
   {
@@ -65,7 +65,7 @@ const faqsList: FAQItem[] = [
   {
     category: "Pricing",
     question: "Do you have monthly cleaning subscription packages?",
-    answer: "Yes, we offer monthly subscription plans starting at ₹399 for bikes and ₹799 for cars. These include weekly exterior foam washes and bi-weekly deep interior vacuuming to keep your vehicle pristine year-round.",
+    answer: "Yes, we offer monthly subscription plans starting at ₹399 for bikes and ₹799 for cars. These include weekly maintenance care to keep your vehicle pristine year-round.",
     icon: Tag
   },
   {
@@ -77,7 +77,7 @@ const faqsList: FAQItem[] = [
   {
     category: "Jobs",
     question: "Who can apply for the part-time job opportunities?",
-    answer: "Our part-time opportunities are perfect for college students, freelancers, or anyone looking to earn extra, flexible income. No prior professional detailing experience is required, as we provide complete, paid training.",
+    answer: "Our part-time opportunities are perfect for college students, freelancers, or anyone looking to earn extra, flexible income. No prior experience is required, as we provide complete, paid training.",
     icon: Briefcase
   },
   {

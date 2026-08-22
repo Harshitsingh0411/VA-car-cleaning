@@ -18,8 +18,8 @@ export default function ExteriorWash() {
   };
 
   const steps = [
-    { title: "Foam Pre-soak", desc: "Thick dirt-encapsulating shampoo blanket to break down grit." },
-    { title: "Hand Detailing Wash", desc: "Plush scratch-free mitts and double-bucket grid system wash." },
+    { title: "Pre-soak Treatment", desc: "Thick dirt-encapsulating shampoo blanket to break down grit." },
+    { title: "Hand Care Bath", desc: "Plush scratch-free mitts and double-bucket grid system wash." },
     { title: "Rim & Tyre Blast", desc: "Cleans brake dust and road grime from wheels & arches." },
     { title: "Microfiber Towel Dry", desc: "Streak-free dry with ultra-absorbent deep-pile cloths." }
   ];
@@ -34,7 +34,7 @@ export default function ExteriorWash() {
             <span className="mx-2">/</span>
             <Link to="/services" className="hover:text-white transition-colors">Services</Link>
             <span className="mx-2">/</span>
-            <span className="text-[#F4B400]">Exterior Wash</span>
+            <span className="text-[#F4B400]">Exterior Care</span>
           </div>
         </div>
       </div>
@@ -48,7 +48,7 @@ export default function ExteriorWash() {
           <div className="lg:col-span-7 space-y-8">
             <div className="space-y-4">
               <span className="text-primary font-bold text-[11px] uppercase tracking-widest block">— PREMIUM DOORSTEP SERVICES —</span>
-              <h1 className="text-3xl md:text-4xl font-heading font-extrabold text-dark tracking-tight leading-[1.1]">Exterior Wash</h1>
+              <h1 className="text-3xl md:text-4xl font-heading font-extrabold text-dark tracking-tight leading-[1.1]">Exterior Care</h1>
               <p className="text-gray-600 text-sm leading-relaxed max-w-xl">
                 Remove accumulated grit, dust, and atmospheric pollution safely. We utilize high-lubricity active foam technologies and scratch-free microfiber mitts right in your driveway.
               </p>

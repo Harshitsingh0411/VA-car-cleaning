@@ -39,7 +39,7 @@ export default function VehicleMediaThumbnail({
   // Premium Animated Bike Image (high resolution detailing wash render)
   const bikeImageUrl = "https://static.vecteezy.com/system/resources/previews/027/526/205/non_2x/sport-bike-racing-motorcycle-cartoon-illustration-isolated-on-white-background-vector.jpg";
 
-  // Premium Animated Car Image (high resolution foam wash & detailing render)
+  // Premium Animated Car Image (high resolution care render)
   const carImageUrl = "https://cdnl.iconscout.com/lottie/premium/thumb/running-car-8287933-6621764.gif";
 
   const selectedImage = isBike ? bikeImageUrl : carImageUrl;

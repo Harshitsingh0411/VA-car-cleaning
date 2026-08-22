@@ -34,7 +34,7 @@ export default function TyreDressing() {
             <span className="mx-2">/</span>
             <Link to="/services" className="hover:text-white transition-colors">Services</Link>
             <span className="mx-2">/</span>
-            <span className="text-[#F4B400]">Tyre Dressing</span>
+            <span className="text-[#F4B400]">Tyre Care</span>
           </div>
         </div>
       </div>
@@ -47,8 +47,8 @@ export default function TyreDressing() {
           {/* LEFT: Copy & Steps */}
           <div className="lg:col-span-7 space-y-8">
             <div className="space-y-4">
-              <span className="text-primary font-bold text-[11px] uppercase tracking-widest block">— WHEEL CARE EXTRA SHINE —</span>
-              <h1 className="text-3xl md:text-4xl font-heading font-extrabold text-dark tracking-tight leading-[1.1]">Tyre Dressing</h1>
+              <span className="text-primary font-bold text-[11px] uppercase tracking-widest block">— PREMIUM DOORSTEP SERVICES —</span>
+              <h1 className="text-3xl md:text-4xl font-heading font-extrabold text-dark tracking-tight leading-[1.1]">Tyre Care</h1>
               <p className="text-gray-600 text-sm leading-relaxed max-w-xl">
                 Restore the deep rich, wet-gloss black look of your tyres. We remove blooming brown residues, scrub rim dust, and apply silicone-based dressing layers that seal the rubber pores.
               </p>
@@ -102,7 +102,7 @@ export default function TyreDressing() {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-dark/70 via-transparent to-transparent" />
               <div className="absolute left-4 bottom-4 bg-[#F4B400] text-dark font-heading font-bold text-[10px] uppercase tracking-wider py-1 px-3 rounded-full shadow">
-                ✨ Deep Black Glossy Tyre Dressing
+                ✨ Deep Black Glossy Tyre Care
               </div>
             </div>
 

@@ -42,10 +42,10 @@ const serviceTermsAndDetails: Record<string, {
   },
   "interior": {
     duration: "60-90 Minutes",
-    waterReq: "Requires 5A/15A standard power socket within 25 meters for vacuum system.",
+    waterReq: "Requires 5A/15A standard power socket within 25 meters for power equipment.",
     steps: [
-      { title: "Cabin Deep Vacuuming", desc: "High-power suction for floor mats, seats, boot space & crevices." },
-      { title: "Dashboard & Console Polish", desc: "Non-greasy UV protective shield for plastic and vinyl surfaces." },
+      { title: "Cabin Deep Cleaning", desc: "High-power suction for floor mats, seats, boot space & crevices." },
+      { title: "Dashboard & Console Care", desc: "Non-greasy UV protective shield for plastic and vinyl surfaces." },
       { title: "Upholstery Spot Extractor", desc: "Deep stain reduction on fabric seats & leather conditioner application." },
       { title: "Interior Glass Polish", desc: "Crystal clear streak-free windshield & mirror polish." }
     ],
@@ -302,7 +302,7 @@ export default function ServiceDetailPage() {
                 <span>100% Doorstep Satisfaction Guarantee</span>
               </div>
               <p className="text-xs text-emerald-900 leading-relaxed">
-                We bring our own eco-friendly waterless/foam wash formulas, non-scratch microfiber towels, and portable high-vacuum tools right to your driveway.
+                We bring our own eco-friendly waterless formulas, non-scratch microfiber towels, and portable tools right to your driveway.
               </p>
             </div>
           </div>

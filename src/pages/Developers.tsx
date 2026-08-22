@@ -326,7 +326,7 @@ export default function DevelopersPage() {
                 <span>OURS Team</span>
                 <ExternalLink size={14} />
               </a>{" "}
-              (engineered by Harshit Singh &amp; Divyanshu Kashyap) to deliver seamless doorstep vehicle detailing experiences in Kanpur.
+              (engineered by Harshit Singh &amp; Divyanshu Kashyap) to deliver seamless doorstep vehicle care experiences in Kanpur.
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 shrink-0 w-full sm:w-auto">

@@ -149,7 +149,7 @@ export default function GalleryPage() {
                 : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-100"
               }`}
           >
-            Exterior Wash
+            Exterior Care
           </button>
 
           <button
@@ -159,7 +159,7 @@ export default function GalleryPage() {
                 : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-100"
               }`}
           >
-            Interior Cleaning
+            Interior Care
           </button>
 
           <button
@@ -169,14 +169,14 @@ export default function GalleryPage() {
                 : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-100"
               }`}
           >
-            Wax & Gloss Polish
+            Gloss Shield
           </button>
         </div>
 
         {/* Privacy Assurance Banner */}
         <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 mb-8 text-center max-w-2xl mx-auto flex items-center justify-center gap-2 text-xs font-bold text-emerald-800">
           <Shield size={16} className="text-emerald-600 shrink-0" />
-          <span>Customer Privacy Protection: All review photo uploads showcase vehicle detailing quality while personal user details are strictly hidden.</span>
+          <span>Customer Privacy Protection: All review photo uploads showcase service care quality while personal user details are strictly hidden.</span>
         </div>
 
         {/* Media Grid */}

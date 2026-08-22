@@ -140,7 +140,7 @@ export default function MobileAdminSuite({ onLogout }: MobileAdminSuiteProps) {
 
   const [editBeforeAfterModalOpen, setEditBeforeAfterModalOpen] = useState(false);
   const [editingBeforeAfter, setEditingBeforeAfter] = useState<dbBeforeAfterItem | null>(null);
-  const [beforeAfterForm, setBeforeAfterForm] = useState({ title: "", beforeImage: "", afterImage: "", category: "Car detailing" });
+  const [beforeAfterForm, setBeforeAfterForm] = useState({ title: "", beforeImage: "", afterImage: "", category: "Car care" });
 
   const [manageBookingModalOpen, setManageBookingModalOpen] = useState(false);
   const [managingBooking, setManagingBooking] = useState<dbBooking | null>(null);
@@ -1326,7 +1326,7 @@ export default function MobileAdminSuite({ onLogout }: MobileAdminSuiteProps) {
             <div className="space-y-3">
               {(beforeAfterList.length > 0 ? beforeAfterList : [
                 { id: "ba-1", title: "Sedan Ceramic Coating & Paint Protection", beforeImage: "https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?w=400", afterImage: "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=400" },
-                { id: "ba-2", title: "SUV Interior Deep Clean & Foam Wash", beforeImage: "https://images.unsplash.com/photo-1607860108855-64acf2078ed9?w=400", afterImage: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=400" },
+                { id: "ba-2", title: "SUV Interior Deep Clean & Gloss Protection", beforeImage: "https://images.unsplash.com/photo-1607860108855-64acf2078ed9?w=400", afterImage: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=400" },
                 { id: "ba-3", title: "Superbike Polish & Chain Degreasing", beforeImage: "https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=400", afterImage: "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=400" }
               ]).map((ba, idx) => (
                 <div key={idx} className="bg-white text-dark p-4 rounded-2xl border border-gray-100 space-y-2 shadow-xs">
@@ -1361,9 +1361,9 @@ export default function MobileAdminSuite({ onLogout }: MobileAdminSuiteProps) {
             <h3 className="font-heading font-extrabold text-sm text-white">Blog & SEO Articles</h3>
             <div className="space-y-3">
               {(blogsList.length > 0 ? blogsList : [
-                { id: "bl-1", title: "Top 5 Monsoon Car Detailing & Paint Protection Tips", excerpt: "Learn how monsoon rain damages clear coat and how ceramic coating protects gloss.", coverImage: "https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?w=300" },
+                { id: "bl-1", title: "Top 5 Monsoon Car Paint Protection Tips", excerpt: "Learn how monsoon rain damages clear coat and how ceramic coating protects gloss.", coverImage: "https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?w=300" },
                 { id: "bl-2", title: "Why Regular Bike Chain Cleaning Increases Mileage", excerpt: "A clean chain reduces engine friction by up to 15%. Discover the best care routine.", coverImage: "https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=300" },
-                { id: "bl-3", title: "Interior Foam Wash vs Vacuuming Explained", excerpt: "Deep stain extraction vs surface cleaning — which detailing service does your vehicle need?", coverImage: "https://images.unsplash.com/photo-1607860108855-64acf2078ed9?w=300" }
+                { id: "bl-3", title: "Interior Cleaning Explained", excerpt: "Deep stain extraction vs surface cleaning — which care service does your vehicle need?", coverImage: "https://images.unsplash.com/photo-1607860108855-64acf2078ed9?w=300" }
               ]).map((bl, idx) => (
                 <div key={idx} className="bg-white text-dark p-4 rounded-2xl border border-gray-100 space-y-2 shadow-xs">
                   <div className="flex justify-between items-start gap-3">
