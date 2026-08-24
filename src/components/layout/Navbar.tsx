@@ -66,7 +66,7 @@ export default function Navbar() {
       path: "/locations",
       dropdown: [
         ...seoLocations.slice(0, 10).map(l => ({ name: l.name, path: `/kanpur/${l.slug}` })),
-        { name: "View All 29+ Locations →", path: "/locations" }
+        { name: "View All Locations →", path: "/locations" }
       ]
     },
     { 
@@ -188,6 +188,11 @@ export default function Navbar() {
                     {link.name === "Services" && (
                       <Link to="/services" className="block px-4 py-2.5 text-xs font-black text-[#0D3B8E] text-center hover:bg-gray-50 border-t border-gray-100 mt-1 uppercase tracking-wider">
                         View All Services →
+                      </Link>
+                    )}
+                    {link.name === "Locations" && (
+                      <Link to="/locations" className="block px-4 py-2.5 text-xs font-black text-[#0D3B8E] text-center hover:bg-gray-50 border-t border-gray-100 mt-1 uppercase tracking-wider">
+                        View All Locations →
                       </Link>
                     )}
                   </div>

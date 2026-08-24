@@ -4,11 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node node_modules/vite/bin/vite.js --port=3000 --host=0.0.0.0",
-    "build": "node node_modules/vite/bin/vite.js build && node node_modules/tsx/dist/cli.mjs scripts/generate-sitemap.ts",
-    "preview": "node node_modules/vite/bin/vite.js preview",
+    "dev": "vite --port=3000 --host=0.0.0.0",
+    "build": "vite build && tsx scripts/generate-sitemap.ts",
+    "preview": "vite preview",
     "clean": "rm -rf dist server.js",
-    "lint": "node node_modules/typescript/lib/tsc.js --noEmit"
+    "lint": "tsc --noEmit"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

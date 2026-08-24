@@ -10,6 +10,7 @@ import Layout from "./components/layout/Layout";
 import Home from "./pages/Home";
 import Loader from "./components/ui/Loader";
 import Services from "./pages/Services";
+import Locations from "./pages/Locations";
 import About from "./pages/About";
 import Founders from "./pages/Founders";
 import Developers from "./pages/Developers";

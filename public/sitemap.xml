@@ -1256,11 +1256,14 @@
     <priority>0.8</priority>
   </url>
   <url>
+<<<<<<< HEAD
     <loc>https://vacarcleaningservice.com/kanpur/indiranagar</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
+=======
+>>>>>>> 7e29a6d (location chnage)
     <loc>https://vacarcleaningservice.com/kanpur/indira-nagar</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -1302,6 +1305,19 @@
   </url>
   <url>
     <loc>https://vacarcleaningservice.com/kanpur/yashoda-nagar</loc>
+<<<<<<< HEAD
+=======
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://vacarcleaningservice.com/kanpur/bithoor</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://vacarcleaningservice.com/kanpur/keshav-puram</loc>
+>>>>>>> 7e29a6d (location chnage)
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -1321,6 +1337,7 @@
     <priority>0.8</priority>
   </url>
   <url>
+<<<<<<< HEAD
     <loc>https://vacarcleaningservice.com/kanpur/keshav-puram</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -1351,6 +1368,8 @@
     <priority>0.8</priority>
   </url>
   <url>
+=======
+>>>>>>> 7e29a6d (location chnage)
     <loc>https://vacarcleaningservice.com/kanpur/ashok-nagar</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
