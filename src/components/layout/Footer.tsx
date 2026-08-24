@@ -147,6 +147,7 @@ export default function Footer() {
               <div className="flex flex-col gap-1">
                 <span>{contactSettings.phone1}</span>
                 {contactSettings.phone2 && <span>{contactSettings.phone2}</span>}
+                {contactSettings.phone3 && <span>{contactSettings.phone3}</span>}
               </div>
             </div>
             <div className="flex items-center gap-2.5">

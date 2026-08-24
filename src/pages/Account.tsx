@@ -1383,7 +1383,7 @@ export default function Account() {
                       <input
                         type="text"
                         required
-                        placeholder="e.g. +91 95699 49626
+                        placeholder="e.g. +91 9569949626
 +91 92501 64163"
                         value={addressForm.phone}
                         onChange={(e) => setAddressForm({ ...addressForm, phone: e.target.value })}
@@ -1807,7 +1807,7 @@ export default function Account() {
                           </div>
                           <div className="flex items-center justify-center sm:justify-start gap-2">
                             <Phone size={14} className="text-gray-400 shrink-0" />
-                            <span>{editPhone || profile?.contactNumber || user.phoneNumber || "+91 95699 49626"}</span>
+                            <span>{editPhone || profile?.contactNumber || user.phoneNumber || "+91 9569949626"}</span>
                           </div>
                         </div>
                       </div>
@@ -1988,7 +1988,7 @@ export default function Account() {
                         </div>
                         <div className="flex items-center justify-center gap-2">
                           <Phone size={14} className="text-gray-400 shrink-0" />
-                          <span>{editPhone || profile?.contactNumber || user.phoneNumber || "+91 95699 49626"}</span>
+                          <span>{editPhone || profile?.contactNumber || user.phoneNumber || "+91 9569949626"}</span>
                         </div>
                         <div className="flex items-center justify-center gap-2">
                           <Calendar size={14} className="text-gray-400 shrink-0" />
@@ -2472,7 +2472,7 @@ export default function Account() {
                 className="w-full flex items-center justify-center gap-2.5 bg-primary hover:bg-[#0b327b] text-white font-bold py-3 px-4 rounded-xl text-xs transition-colors shadow-sm"
               >
                 <Phone size={15} className="text-amber-400" />
-                <span>Call Support (+91 95699 49626)</span>
+                <span>Call Support (+91 9569949626)</span>
               </a>
             </div>
 

@@ -57,7 +57,7 @@ export const getLocalBusinessSchema = () => ({
     `${BASE_URL}/favicon.png`,
     "https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&q=80&w=1200"
   ],
-  "telephone": "+91 95699 49626",
+  "telephone": "+91 9569949626",
   "email": "support@vacarcleaning.in",
   "priceRange": "₹₹",
   "paymentAccepted": "Cash, UPI, Credit Card, Debit Card, Net Banking",
@@ -102,15 +102,15 @@ export const getLocalBusinessSchema = () => ({
   },
   "contactPoint": {
     "@type": "ContactPoint",
-    "telephone": "+91 95699 49626",
+    "telephone": "+91 9569949626",
     "contactType": "customer service",
     "areaServed": "IN",
     "availableLanguage": ["en", "hi"]
   },
   "sameAs": [
-    "https://facebook.com/vacarcare",
-    "https://instagram.com/vacarcare",
-    "https://youtube.com/vacarcare"
+    "https://www.facebook.com/share/1J7sQUeyaC/",
+    "https://www.instagram.com/vacarcare_03?igsi=MTJzcGtudmhuYTZzOQ==",
+    "https://youtube.com/@vacarcare_03?si=IwY55ItftR6PGsJg"
   ]
 });
 

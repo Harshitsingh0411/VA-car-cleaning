@@ -35,7 +35,6 @@ import Benefits from "./pages/jobs/Benefits";
 import WorkWithUs from "./pages/jobs/WorkWithUs";
 
 import DynamicLandingPage from "./pages/seo/DynamicLandingPage";
-import Locations from "./pages/Locations";
 import TermsConditions from "./pages/TermsConditions";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import FAQs from "./pages/FAQs";

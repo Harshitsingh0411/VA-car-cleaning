@@ -200,7 +200,7 @@ export default function MobileAdminSuite({ onLogout }: MobileAdminSuiteProps) {
       await createBooking({
         customerId: "admin-created-" + Date.now(),
         customerName: newBookingCustomer || "Walk-in Customer",
-        customerPhone: newBookingPhone || "+91 95699 49626 / +91 92501 64163",
+        customerPhone: newBookingPhone || "+91 9569949626 / +91 92501 64163",
         vehicleDetails: newBookingVehicle,
         serviceName: selectedSvc ? selectedSvc.name : "Car Wash",
         scheduledDate: newBookingDate,
@@ -659,7 +659,7 @@ export default function MobileAdminSuite({ onLogout }: MobileAdminSuiteProps) {
               <div className="flex justify-between items-center">
                 <div>
                   <h4 className="font-bold text-sm text-dark">{selectedBookingDetails.customerName}</h4>
-                  <span className="text-xs text-gray-500 font-mono block">{selectedBookingDetails.customerPhone || "+91 95699 49626 / +91 92501 64163"}</span>
+                  <span className="text-xs text-gray-500 font-mono block">{selectedBookingDetails.customerPhone || "+91 9569949626 / +91 92501 64163"}</span>
                 </div>
                 <a
                   href={`tel:${selectedBookingDetails.customerPhone || "9876543210"}`}
@@ -739,7 +739,7 @@ export default function MobileAdminSuite({ onLogout }: MobileAdminSuiteProps) {
                 <label className="text-gray-700 block mb-1">Customer Phone</label>
                 <input
                   type="text"
-                  placeholder="+91 95699 49626
+                  placeholder="+91 9569949626
 +91 92501 64163"
                   value={newBookingPhone}
                   onChange={(e) => setNewBookingPhone(e.target.value)}
@@ -1083,7 +1083,7 @@ export default function MobileAdminSuite({ onLogout }: MobileAdminSuiteProps) {
                     </div>
                     <div>
                       <h4 className="font-bold text-xs text-dark">{t.name}</h4>
-                      <span className="text-[10px] text-gray-400 font-mono block">{t.phone || "+91 95699 49626 / +91 92501 64163"}</span>
+                      <span className="text-[10px] text-gray-400 font-mono block">{t.phone || "+91 9569949626 / +91 92501 64163"}</span>
                     </div>
                   </div>
                   <span className="text-[9px] font-bold px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-200 uppercase">

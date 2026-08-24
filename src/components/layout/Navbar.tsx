@@ -56,21 +56,21 @@ export default function Navbar() {
 
   const navLinks = [
     { name: "Home", path: "/" },
-    { 
-      name: "Services", 
+    {
+      name: "Services",
       path: "/services",
       dropdown: dynamicServices
     },
-    { 
-      name: "Locations", 
+    {
+      name: "Locations",
       path: "/locations",
       dropdown: [
         ...seoLocations.slice(0, 10).map(l => ({ name: l.name, path: `/kanpur/${l.slug}` })),
         { name: "View All Locations →", path: "/locations" }
       ]
     },
-    { 
-      name: "About Us", 
+    {
+      name: "About Us",
       path: "/about",
       dropdown: [
         { name: "About Company", path: "/about" },
@@ -177,8 +177,8 @@ export default function Navbar() {
                 <div className="absolute top-full left-0 mt-0 w-72 bg-white rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 translate-y-2 group-hover:translate-y-0 border border-gray-100 overflow-hidden z-50 transform-gpu">
                   <div className="p-2.5 max-h-[360px] overflow-y-auto grid grid-cols-1 gap-1">
                     {link.dropdown.map(dropItem => (
-                      <Link 
-                        key={dropItem.name} 
+                      <Link
+                        key={dropItem.name}
                         to={dropItem.path}
                         className="block px-3.5 py-2.5 text-xs font-bold text-gray-700 hover:text-[#0D3B8E] hover:bg-blue-50 rounded-xl transition-colors truncate"
                       >
@@ -210,7 +210,7 @@ export default function Navbar() {
             title="Call Helpline"
           >
             <Phone size={14} className="text-[#F4B400] shrink-0" />
-            <span className="hidden xl:inline whitespace-nowrap">+91 95699 49626</span>
+            <span className="hidden xl:inline whitespace-nowrap">+91 9569949626</span>
           </a>
 
           {user && (
@@ -352,7 +352,7 @@ export default function Navbar() {
                 className="flex items-center gap-2 text-white font-bold text-sm py-2 hover:text-[#F4B400] transition-colors"
               >
                 <Phone size={16} className="text-[#F4B400]" />
-                <span>+91 95699 49626</span>
+                <span>+91 9569949626</span>
               </a>
 
               {user ? (

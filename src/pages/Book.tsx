@@ -283,8 +283,8 @@ export default function BookPage() {
                   setSelectedModelId("");
                 }}
                 className={`flex-1 py-2 rounded-xl text-xs font-extrabold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${vehicleType === type
-                    ? "bg-primary border-primary text-white shadow-xs"
-                    : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
+                  ? "bg-primary border-primary text-white shadow-xs"
+                  : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
                   }`}
               >
                 <span>{type === "Car" ? "🚗" : "🏍️"}</span>
@@ -823,8 +823,8 @@ export default function BookPage() {
                                     type="button"
                                     onClick={() => handleApplyCouponCode(c.code)}
                                     className={`text-[11px] font-mono font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${appliedCoupon?.code === c.code
-                                        ? "bg-primary text-white border-primary shadow-xs"
-                                        : "bg-white text-gray-700 border-gray-200 hover:border-primary hover:text-primary"
+                                      ? "bg-primary text-white border-primary shadow-xs"
+                                      : "bg-white text-gray-700 border-gray-200 hover:border-primary hover:text-primary"
                                       }`}
                                     title={c.description}
                                   >
@@ -994,7 +994,7 @@ export default function BookPage() {
                             <input
                               type="tel"
                               required
-                              placeholder="+91 95699 49626
+                              placeholder="+91 9569949626
 +91 92501 64163"
                               {...register("phone", { required: "Phone number is required" })}
                               className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3.5 px-4 font-semibold text-dark text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition-all"

@@ -193,7 +193,7 @@ export default function JobsPage() {
                         </label>
                         <input
                           type="tel"
-                          placeholder="+91 95699 49626
+                          placeholder="+91 9569949626
 +91 92501 64163"
                           {...register("phone", {
                             required: "Phone is required",

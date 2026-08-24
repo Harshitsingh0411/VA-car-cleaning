@@ -1578,6 +1578,7 @@ export interface dbContactSettings {
   subtitle: string;
   phone1: string;
   phone2: string;
+  phone3?: string;
   email: string;
   address: string;
   cityTagline: string;
@@ -1593,16 +1594,17 @@ export const DEFAULT_CONTACT_SETTINGS: dbContactSettings = {
   badge: "100% Home & Doorstep Service",
   title: "No Shop Footprint, We Come to Your Driveway",
   subtitle: "Save time and fuel. We bring the complete detailing wash setup directly to your doorstep. Proudly cleaning Cars and Bikes across active districts.",
-  phone1: "+91 95699 49626",
+  phone1: "+91 9569949626",
   phone2: "+91 92501 64163",
+  phone3: "+91 77529 79143",
   email: "vacarcleanservice3@gmail.com",
   address: "Everywhere in Kanpur nagar",
   cityTagline: "Coming to your City Soon",
   whatsappNumber: "919250164163",
   whatsappMessage: "Need a quick quote? Chat on WhatsApp!",
-  facebook: "https://facebook.com",
-  instagram: "https://instagram.com",
-  youtube: "https://youtube.com",
+  facebook: "https://www.facebook.com/share/1J7sQUeyaC/",
+  instagram: "https://www.instagram.com/vacarcare_03?igsi=MTJzcGtudmhuYTZzOQ==",
+  youtube: "https://youtube.com/@vacarcare_03?si=IwY55ItftR6PGsJg",
   twitter: "https://twitter.com"
 };
 

@@ -1,23 +1,23 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { 
-  ChevronDown, 
-  HelpCircle, 
-  ArrowLeft, 
-  Search, 
-  Mail, 
-  Phone, 
-  MessageCircle, 
-  Calendar, 
-  Tag, 
-  Car, 
-  Briefcase, 
-  LayoutGrid, 
-  Clock, 
-  CheckSquare, 
-  ThumbsUp, 
-  ThumbsDown, 
-  ShieldCheck 
+import {
+  ChevronDown,
+  HelpCircle,
+  ArrowLeft,
+  Search,
+  Mail,
+  Phone,
+  MessageCircle,
+  Calendar,
+  Tag,
+  Car,
+  Briefcase,
+  LayoutGrid,
+  Clock,
+  CheckSquare,
+  ThumbsUp,
+  ThumbsDown,
+  ShieldCheck
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import SEO from "../components/seo/SEO";
@@ -96,8 +96,8 @@ export default function FAQsPage() {
 
   const filteredFaqs = faqsList.filter(item => {
     const matchesCategory = activeCategory === "All" || item.category === activeCategory;
-    const matchesSearch = item.question.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          item.answer.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = item.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.answer.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
@@ -123,7 +123,7 @@ export default function FAQsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50/50 pt-24 pb-20 text-left relative">
-      <SEO 
+      <SEO
         title="Frequently Asked Questions (FAQ) | VA Car & Bike Care"
         description="Got questions about our doorstep car cleaning, monthly wash subscriptions, or part-time job opportunities? Browse our frequently asked questions."
         keywords="car wash faq, doorstep detailing questions, car cleaning subscription cost, bike wash kanpur faq"
@@ -134,7 +134,7 @@ export default function FAQsPage() {
       />
 
       <div className="container mx-auto px-4 md:px-6 max-w-7xl space-y-6">
-        
+
         <Breadcrumbs items={breadcrumbs} />
 
         {/* Hero Header */}
@@ -154,7 +154,7 @@ export default function FAQsPage() {
             {/* Search bar */}
             <div className="relative w-full max-w-md">
               <Search className="absolute left-4 top-3 text-gray-400" size={16} />
-              <input 
+              <input
                 type="text"
                 placeholder="Search questions or keywords..."
                 value={searchQuery}
@@ -169,13 +169,13 @@ export default function FAQsPage() {
               <rect x="20" y="30" width="130" height="110" rx="30" fill="url(#paint0_linear)" />
               <path d="M50 140L35 170L75 140H50Z" fill="url(#paint0_linear)" />
               <text x="85" y="105" fill="white" fontSize="60" fontWeight="bold" textAnchor="middle">?</text>
-              
+
               <rect x="100" y="100" width="80" height="60" rx="20" fill="white" className="filter drop-shadow-md" />
               <path d="M120 160L110 180L140 160H120Z" fill="white" />
               <circle cx="125" cy="130" r="4" fill="#94A3B8" />
               <circle cx="140" cy="130" r="4" fill="#94A3B8" />
               <circle cx="155" cy="130" r="4" fill="#94A3B8" />
-              
+
               <path d="M170 60L175 45L180 60L195 65L180 70L175 85L170 70L155 65L170 60Z" fill="#FBBF24" />
               <path d="M15 80L18 72L21 80L29 83L21 86L18 94L15 86L7 83L15 80Z" fill="#FBBF24" />
 
@@ -202,11 +202,10 @@ export default function FAQsPage() {
                   setActiveCategory(cat.id);
                   setOpenIndex(null);
                 }}
-                className={`p-4 rounded-3xl border text-left cursor-pointer transition-all flex flex-col justify-between h-28 hover:scale-[1.02] ${
-                  isActive 
+                className={`p-4 rounded-3xl border text-left cursor-pointer transition-all flex flex-col justify-between h-28 hover:scale-[1.02] ${isActive
                     ? "bg-primary text-white border-primary shadow-md"
                     : "bg-white text-[#0F172A] border-gray-100 hover:border-primary/20 shadow-2xs"
-                }`}
+                  }`}
               >
                 <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${isActive ? "bg-white/15" : "bg-[#EEF5FE] text-primary"}`}>
                   <Icon size={16} />
@@ -224,7 +223,7 @@ export default function FAQsPage() {
 
         {/* Two-Column Content Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-          
+
           <div className="lg:col-span-2 space-y-3">
             {filteredFaqs.length === 0 ? (
               <div className="bg-white border border-gray-100 rounded-3xl p-12 text-center shadow-xs">
@@ -237,8 +236,8 @@ export default function FAQsPage() {
                 const isOpen = openIndex === idx;
                 const IconComponent = faq.icon;
                 return (
-                  <div 
-                    key={idx} 
+                  <div
+                    key={idx}
                     className="bg-white border border-gray-100 rounded-3xl p-5 hover:border-primary/10 shadow-2xs hover:shadow-xs transition-all"
                   >
                     <button
@@ -251,12 +250,12 @@ export default function FAQsPage() {
                         </div>
                         <span>{faq.question}</span>
                       </div>
-                      <ChevronDown 
-                        size={16} 
+                      <ChevronDown
+                        size={16}
                         className={`text-gray-400 transition-transform duration-200 shrink-0 ${isOpen ? "rotate-180 text-primary" : ""}`}
                       />
                     </button>
-                    
+
                     <AnimatePresence initial={false}>
                       {isOpen && (
                         <motion.div
@@ -270,27 +269,25 @@ export default function FAQsPage() {
                             <p className="text-xs text-gray-500 font-semibold leading-relaxed">
                               {faq.answer}
                             </p>
-                            
+
                             <div className="flex items-center gap-2 pt-3 border-t border-gray-50 text-xs text-gray-500 font-medium">
                               <span>Was this answer helpful?</span>
-                              <button 
+                              <button
                                 onClick={() => handleFeedback(idx, "yes")}
-                                className={`px-3 py-1.5 rounded-lg border font-bold flex items-center gap-1.5 cursor-pointer transition-all ${
-                                  helpfulFeedbacks[idx] === "yes"
+                                className={`px-3 py-1.5 rounded-lg border font-bold flex items-center gap-1.5 cursor-pointer transition-all ${helpfulFeedbacks[idx] === "yes"
                                     ? "bg-emerald-50 text-emerald-600 border-emerald-200"
                                     : "bg-white text-gray-600 hover:bg-gray-50 border-gray-200"
-                                }`}
+                                  }`}
                               >
                                 <ThumbsUp size={11} />
                                 <span>Yes</span>
                               </button>
-                              <button 
+                              <button
                                 onClick={() => handleFeedback(idx, "no")}
-                                className={`px-3 py-1.5 rounded-lg border font-bold flex items-center gap-1.5 cursor-pointer transition-all ${
-                                  helpfulFeedbacks[idx] === "no"
+                                className={`px-3 py-1.5 rounded-lg border font-bold flex items-center gap-1.5 cursor-pointer transition-all ${helpfulFeedbacks[idx] === "no"
                                     ? "bg-rose-50 text-rose-600 border-rose-200"
                                     : "bg-white text-gray-600 hover:bg-gray-50 border-gray-200"
-                                }`}
+                                  }`}
                               >
                                 <ThumbsDown size={11} />
                                 <span>No</span>
@@ -321,7 +318,7 @@ export default function FAQsPage() {
               </div>
 
               <div className="space-y-3 pt-2">
-                <a 
+                <a
                   href="https://wa.me/919569949626"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -336,7 +333,7 @@ export default function FAQsPage() {
                   </div>
                 </a>
 
-                <a 
+                <a
                   href="tel:+919569949626"
                   className="flex items-center gap-3.5 p-3.5 border border-blue-50 bg-blue-50/20 hover:bg-blue-50/50 rounded-2xl transition-colors cursor-pointer group"
                 >
@@ -345,11 +342,11 @@ export default function FAQsPage() {
                   </div>
                   <div>
                     <h5 className="font-heading font-extrabold text-xs text-[#0F172A]">Call Us</h5>
-                    <p className="text-[10px] text-primary font-bold mt-0.5">+91 95699 49626</p>
+                    <p className="text-[10px] text-primary font-bold mt-0.5">+91 9569949626</p>
                   </div>
                 </a>
 
-                <a 
+                <a
                   href="mailto:support@vacarcare.com"
                   className="flex items-center gap-3.5 p-3.5 border border-amber-100 bg-amber-50/20 hover:bg-amber-50/50 rounded-2xl transition-colors cursor-pointer group"
                 >

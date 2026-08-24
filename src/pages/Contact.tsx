@@ -296,7 +296,7 @@ export default function ContactPage() {
                       </div>
                       <div>
                         <span className="block text-[10px] text-gray-400 font-bold uppercase">Call / WhatsApp Helpline</span>
-                        <span className="text-sm font-semibold group-hover:text-[#F4B400] transition-colors">{contactSettings.phone1} {contactSettings.phone2 ? `/ ${contactSettings.phone2}` : ""}</span>
+                        <span className="text-sm font-semibold group-hover:text-[#F4B400] transition-colors">{contactSettings.phone1} {contactSettings.phone2 ? `/ ${contactSettings.phone2}` : ""} {contactSettings.phone3 ? `/ ${contactSettings.phone3}` : ""}</span>
                       </div>
                     </a>
 

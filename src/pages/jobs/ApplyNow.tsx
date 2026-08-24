@@ -127,7 +127,7 @@ export default function ApplyNow() {
                     type="tel"
                     name="phone"
                     required
-                    placeholder="+91 95699 49626
+                    placeholder="+91 9569949626
 +91 92501 64163"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
