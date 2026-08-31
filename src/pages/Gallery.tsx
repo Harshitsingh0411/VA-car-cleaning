@@ -124,8 +124,8 @@ export default function GalleryPage() {
           <button
             onClick={() => setActiveFilter("all")}
             className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${activeFilter === "all"
-                ? "bg-primary text-white shadow-md"
-                : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-100"
+              ? "bg-primary text-white shadow-md"
+              : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-100"
               }`}
           >
             All Works ({items.length})
@@ -134,43 +134,14 @@ export default function GalleryPage() {
           <button
             onClick={() => setActiveFilter("customer")}
             className={`px-5 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${activeFilter === "customer"
-                ? "bg-amber-500 text-white shadow-md"
-                : "bg-white text-amber-600 hover:bg-amber-50 border border-amber-100"
+              ? "bg-amber-500 text-white shadow-md"
+              : "bg-white text-amber-600 hover:bg-amber-50 border border-amber-100"
               }`}
           >
             <Camera size={13} />
             Verified Customer Uploads ({customerItemCount})
           </button>
 
-          <button
-            onClick={() => setActiveFilter("exterior")}
-            className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${activeFilter === "exterior"
-                ? "bg-primary text-white shadow-md"
-                : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-100"
-              }`}
-          >
-            Exterior Care
-          </button>
-
-          <button
-            onClick={() => setActiveFilter("interior")}
-            className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${activeFilter === "interior"
-                ? "bg-primary text-white shadow-md"
-                : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-100"
-              }`}
-          >
-            Interior Care
-          </button>
-
-          <button
-            onClick={() => setActiveFilter("shine")}
-            className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${activeFilter === "shine"
-                ? "bg-primary text-white shadow-md"
-                : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-100"
-              }`}
-          >
-            Gloss Shield
-          </button>
         </div>
 
         {/* Privacy Assurance Banner */}

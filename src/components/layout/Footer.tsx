@@ -92,6 +92,8 @@ export default function Footer() {
               <li><Link to="/founders" className="hover:text-[#F4B400] transition-colors">Founders Details</Link></li>
               <li><Link to="/developers" className="hover:text-[#F4B400] transition-colors font-semibold text-[#F4B400]">Software Developers</Link></li>
               <li><Link to="/contact" className="hover:text-[#F4B400] transition-colors">Contact Us</Link></li>
+              <li><Link to="/gallery" className="hover:text-[#F4B400] transition-colors ">Gallery</Link></li>
+
             </ul>
           </div>
 
