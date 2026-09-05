@@ -1601,7 +1601,7 @@ export const DEFAULT_CONTACT_SETTINGS: dbContactSettings = {
   address: "Everywhere in Kanpur nagar",
   cityTagline: "Coming to your City Soon",
   whatsappNumber: "919250164163",
-  whatsappMessage: "Need a quick quote? Chat on WhatsApp!",
+  whatsappMessage: "Hii, VA Car Cleaning! I came from your website and want to book a service.",
   facebook: "https://www.facebook.com/share/1J7sQUeyaC/",
   instagram: "https://www.instagram.com/vacarcare_03?igsi=MTJzcGtudmhuYTZzOQ==",
   youtube: "https://youtube.com/@vacarcare_03?si=IwY55ItftR6PGsJg",
